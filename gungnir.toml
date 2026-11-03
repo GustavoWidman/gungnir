@@ -1,0 +1,96 @@
+# The catalog: sandbox base, harness packages, backends and models.
+# Adding a model is one [[models]] entry. Adding a backend for an existing harness is one
+# [backends.<id>] table. Prices are USD per million tokens, checked on the vendor pages on
+# 2026-11-03 (paper/notes/facts-models-tooling.md). A rate the vendor page does not list is
+# omitted, never guessed.
+
+[sandbox]
+packages = ["bashInteractive", "coreutils", "diffutils", "findutils", "gawk", "gnugrep", "gnused", "which", "socat", "cacert"]
+
+[harnesses.claude-code]
+package = "claude-code"
+
+[harnesses.codex]
+package = "codex"
+
+[backends.anthropic]
+harness = "claude-code"
+credential = { kind = "env-token", var = "CLAUDE_CODE_OAUTH_TOKEN", file = "~/.config/gungnir/claude/oauth_token" }
+egress = ["api.anthropic.com"]
+
+[backends.openai]
+harness = "codex"
+credential = { kind = "codex-home", dir = "~/.config/gungnir/codex" }
+egress = ["chatgpt.com", "auth.openai.com", "api.openai.com"]
+
+[backends.zai]
+harness = "claude-code"
+endpoint = "https://api.z.ai/api/anthropic"
+credential = { kind = "api-key", var = "ANTHROPIC_AUTH_TOKEN", file = "~/.config/gungnir/glm/api_key" }
+egress = ["api.z.ai"]
+
+[[models]]
+id = "claude-fable-5-1"
+efforts = ["low", "medium", "high", "xhigh", "max"]
+served-by = { anthropic = "claude-fable-5-1" }
+prices = [{ since = "2026-11-03", input = 10.0, output = 50.0, cache-read = 0.25, cache-write = 12.5, cache-write-1h = 20.0 }]
+
+[[models]]
+id = "claude-opus-5-5"
+efforts = ["low", "medium", "high", "xhigh", "max"]
+served-by = { anthropic = "claude-opus-5-5" }
+prices = [{ since = "2026-11-03", input = 4.0, output = 20.0, cache-read = 0.2, cache-write = 5.0, cache-write-1h = 8.0 }]
+
+[[models]]
+id = "claude-sonnet-5-5"
+efforts = ["low", "medium", "high", "xhigh", "max"]
+served-by = { anthropic = "claude-sonnet-5-5" }
+prices = [{ since = "2026-11-03", input = 2.0, output = 10.0, cache-read = 0.1, cache-write = 2.5, cache-write-1h = 4.0 }]
+
+[[models]]
+id = "claude-haiku-5-5"
+efforts = ["low", "medium", "high", "xhigh", "max"]
+served-by = { anthropic = "claude-haiku-5-5" }
+prices = [
+  { since = "2026-11-03", input = 0.1, output = 0.5, cache-read = 0.01 },
+  { since = "2026-11-03", above-prompt-tokens = 100000, input = 0.5, output = 2.5, cache-read = 0.05 },
+]
+
+[[models]]
+id = "gpt-6-astra"
+efforts = ["low", "medium", "high", "xhigh", "max"]
+served-by = { openai = "gpt-6-astra" }
+prices = [{ since = "2026-11-03", input = 10.0, output = 50.0, cache-read = 1.0, cache-write = 12.5 }]
+
+[[models]]
+id = "gpt-6.1-sol"
+efforts = ["low", "medium", "high", "xhigh", "max"]
+served-by = { openai = "gpt-6.1-sol" }
+prices = [{ since = "2026-11-03", input = 2.0, output = 10.0, cache-read = 0.1, cache-write = 2.5 }]
+
+[[models]]
+id = "gpt-6.1-terra"
+efforts = ["none", "low", "medium", "high", "xhigh", "max"]
+served-by = { openai = "gpt-6.1-terra" }
+prices = [{ since = "2026-11-03", input = 1.0, output = 5.0, cache-read = 0.05, cache-write = 1.25 }]
+
+[[models]]
+id = "gpt-6-luna"
+efforts = ["none", "low", "medium", "high", "xhigh", "max"]
+served-by = { openai = "gpt-6-luna" }
+prices = [
+  { since = "2026-11-03", input = 0.1, output = 0.5, cache-read = 0.01 },
+  { since = "2026-11-03", above-prompt-tokens = 272000, input = 0.2, output = 0.75, cache-read = 0.01 },
+]
+
+[[models]]
+id = "glm-5.3"
+efforts = ["low", "high", "max"]
+served-by = { zai = "glm-5.3" }
+prices = [{ since = "2026-11-03", input = 1.4, output = 4.4, cache-read = 0.26 }]
+
+[[models]]
+id = "glm-5.3-flash"
+efforts = ["low", "high", "max"]
+served-by = { zai = "glm-5.3-flash" }
+prices = [{ since = "2026-11-03", input = 0.15, output = 0.5, cache-read = 0.03 }]
