@@ -50,6 +50,45 @@ served-by = { zai = "glm", anthropic = "glm-relay" }
 prices = [{ since = "2026-01-01", input = 1.0, output = 4.0, cache-read = 0.2 }]
 "#;
 
+/// Four systems over two backends, on one scenario in two languages, twice: 16 trials.
+pub const EXPERIMENT_TOML: &str = r#"
+name = "trial-run"
+results = "../runs/trial-run"
+repetitions = 2
+scenarios = ["echo"]
+languages = ["python", "rust"]
+
+[pins]
+claude-code = "2.1.316"
+codex = "0.166.0"
+
+[budget]
+wall = "40m"
+idle = "10m"
+
+[concurrency]
+anthropic = 2
+openai = 1
+
+[[systems]]
+model = "opus"
+efforts = ["high", "low"]
+
+[[systems]]
+model = "luna"
+efforts = "all"
+"#;
+
+/// Writes a repository with the fixture catalog, languages `python` and `rust`, scenario
+/// `echo` with references for both, and `experiments/trial.toml`.
+pub fn repo(root: &Path) {
+    write(root, "gungnir.toml", CATALOG_TOML);
+    language(root, "python");
+    language(root, "rust");
+    scenario(root, "echo", &["python", "rust"]);
+    write(root, "experiments/trial.toml", EXPERIMENT_TOML);
+}
+
 /// The catalog in [`CATALOG_TOML`].
 pub fn catalog() -> Catalog {
     let dir = TempDir::new().unwrap();

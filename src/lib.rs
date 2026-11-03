@@ -2,6 +2,7 @@
 //! exports tidy tables. See `docs/architecture.md` for the design contract.
 
 pub mod catalog;
+pub mod experiment;
 pub mod id;
 pub mod language;
 pub mod scenario;
