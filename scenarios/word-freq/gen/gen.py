@@ -4,6 +4,7 @@ Inputs come from fixed seeds. Expected outputs come from the Python reference. T
 committed; the workloads are large, so they are regenerated on demand and never committed.
 """
 
+import hashlib
 import random
 import string
 import subprocess
@@ -104,8 +105,16 @@ def workloads():
     write("workloads", "many-distinct", 1000, zipf_text(rng, vocabulary(rng, 250_000, max_len=9), 2_500_000, exponent=0.5), expect=False)
 
 
+def write_digests():
+    """Records the workloads' SHA-256 so a regeneration is checked byte for byte."""
+    lines = []
+    for path in sorted((ROOT / "workloads").glob("*.in")):
+        lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+    (ROOT / "workloads.sha256").write_text("".join(lines))
+
+
 def main():
-    commands = {"cases": cases, "workloads": workloads}
+    commands = {"cases": cases, "workloads": lambda: (workloads(), write_digests())}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
         sys.exit(f"usage: {sys.argv[0]} {{{'|'.join(commands)}}}")
     commands[sys.argv[1]]()
