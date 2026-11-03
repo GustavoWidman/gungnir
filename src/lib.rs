@@ -8,6 +8,7 @@ pub mod id;
 pub mod language;
 pub mod provenance;
 pub mod scenario;
+pub mod secret;
 pub mod store;
 pub mod trial;
 
