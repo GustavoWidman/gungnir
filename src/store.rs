@@ -1,7 +1,10 @@
-//! Files on disk: content digests, crash-safe writes, and the readers every loader shares.
+//! Files on disk: content digests, crash-safe writes and directory commits, and the readers
+//! every loader shares.
 mod digest;
+mod partial;
 
 pub use digest::Digest;
+pub use partial::{PartialDir, read_record, sweep_partial};
 
 use eyre::{Report, Result, WrapErr, eyre};
 use serde::{Serialize, de::DeserializeOwned};
