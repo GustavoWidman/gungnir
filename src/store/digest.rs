@@ -40,10 +40,10 @@ impl Digest {
 
     /// Digest of a tree holding exactly `files`, equal to [`Digest::of_tree`] over the same
     /// files written to disk.
-    pub fn of_files<'a>(files: impl IntoIterator<Item = (&'a str, &'a [u8])>) -> Self {
+    pub fn of_files<'a, P: Into<PathBuf>>(files: impl IntoIterator<Item = (P, &'a [u8])>) -> Self {
         let entries = files
             .into_iter()
-            .map(|(path, bytes)| (PathBuf::from(path), Entry::File(Self::of_bytes(bytes))))
+            .map(|(path, bytes)| (path.into(), Entry::File(Self::of_bytes(bytes))))
             .collect();
         Self::of_entries(&entries)
     }

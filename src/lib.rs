@@ -3,6 +3,8 @@
 
 pub mod catalog;
 pub mod id;
+pub mod language;
+pub mod scenario;
 pub mod store;
 
 #[cfg(test)]

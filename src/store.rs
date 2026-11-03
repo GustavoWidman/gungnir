@@ -1,14 +1,16 @@
-//! Durable files: content digests and crash-safe writes.
+//! Files on disk: content digests, crash-safe writes, and the readers every loader shares.
 mod digest;
 
 pub use digest::Digest;
 
-use eyre::{Result, WrapErr};
+use eyre::{Report, Result, WrapErr, eyre};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
+    collections::BTreeMap,
     fs::{self, File},
     io::{ErrorKind, Write},
-    path::Path,
+    path::{Path, PathBuf},
+    str::FromStr,
 };
 use tempfile::NamedTempFile;
 
@@ -52,6 +54,32 @@ pub fn read_json<T: DeserializeOwned>(path: &Path) -> Result<Option<T>> {
 pub(crate) fn read_toml<T: DeserializeOwned>(path: &Path) -> Result<T> {
     let text = fs::read_to_string(path).wrap_err_with(|| format!("reading {}", path.display()))?;
     toml::from_str(&text).wrap_err_with(|| format!("parsing {}", path.display()))
+}
+
+/// The subdirectories of `dir` keyed by their names parsed as `T`. Files are skipped and a
+/// directory whose name does not parse is an error.
+pub(crate) fn subdirs<T>(dir: &Path) -> Result<BTreeMap<T, PathBuf>>
+where
+    T: FromStr<Err = Report> + Ord,
+{
+    let mut found = BTreeMap::new();
+    let listing = fs::read_dir(dir).wrap_err_with(|| format!("listing {}", dir.display()))?;
+    for entry in listing {
+        let entry = entry.wrap_err_with(|| format!("listing {}", dir.display()))?;
+        let path = entry.path();
+        if !entry.file_type()?.is_dir() {
+            continue;
+        }
+        let name = entry
+            .file_name()
+            .into_string()
+            .map_err(|_| eyre!("{} is not a UTF-8 name", path.display()))?;
+        let id = name
+            .parse()
+            .wrap_err_with(|| format!("{}", path.display()))?;
+        found.insert(id, path);
+    }
+    Ok(found)
 }
 
 fn sync_dir(dir: &Path) -> Result<()> {
