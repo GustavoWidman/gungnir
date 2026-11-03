@@ -16,6 +16,7 @@
   outputs =
     inputs@{
       flake-parts,
+      crane,
       fenix,
       systems,
       devshell,
@@ -38,9 +39,42 @@
             file = ./rust-toolchain.toml;
             sha256 = "sha256-2wqUa1sFNg8sdadO5YXcUSwpoBek+e+viCiSqnpUbdM=";
           };
+
+          craneLib = (crane.mkLib pkgs).overrideToolchain rust;
+
+          args = {
+            src = lib.fileset.toSource {
+              root = ./.;
+              fileset = lib.fileset.unions [
+                (craneLib.fileset.commonCargoSources ./.)
+                ./gungnir.toml
+                ./languages
+              ];
+            };
+            strictDeps = true;
+          };
+
+          cargoArtifacts = craneLib.buildDepsOnly args;
+
+          gungnir = craneLib.buildPackage (args // { inherit cargoArtifacts; });
         in
         {
           _module.args.pkgs = pkgs;
+
+          packages.default = gungnir;
+          packages.gungnir = gungnir;
+
+          checks = {
+            package = gungnir;
+            clippy = craneLib.cargoClippy (
+              args
+              // {
+                inherit cargoArtifacts;
+                cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+              }
+            );
+            fmt = craneLib.cargoFmt { inherit (args) src; };
+          };
 
           devshells.default = {
             packages = [

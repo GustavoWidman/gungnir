@@ -1,0 +1,14 @@
+[package]
+name = "gungnir"
+version = "0.1.0"
+edition = "2024"
+description = "Benchmark of coding agents across programming languages and reasoning effort"
+publish = false
+
+[dependencies]
+clap = { version = "4.6.7", features = ["derive"] }
+eyre = "0.6.14"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
