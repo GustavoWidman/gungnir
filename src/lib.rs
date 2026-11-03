@@ -5,6 +5,7 @@ pub mod catalog;
 pub mod experiment;
 pub mod id;
 pub mod language;
+pub mod provenance;
 pub mod scenario;
 pub mod store;
 pub mod trial;

@@ -3,6 +3,7 @@
 use crate::{
     catalog::System,
     id::{AttemptNo, LanguageId, Rep, ScenarioId},
+    provenance::SessionId,
     store::Lock,
 };
 use eyre::Result;
@@ -61,6 +62,11 @@ impl ResultsDir {
     /// Takes the lock on `.locks/<phase>.lock`, failing at once if another process holds it.
     pub fn lock(&self, phase: Phase) -> Result<Lock> {
         Lock::acquire(&self.0.join(".locks").join(format!("{phase}.lock")))
+    }
+
+    /// `sessions/<id>.json`.
+    pub fn session(&self, id: &SessionId) -> PathBuf {
+        self.0.join("sessions").join(format!("{id}.json"))
     }
 
     /// `trials/<system>/<scenario>/<language>/r<k>/`.
