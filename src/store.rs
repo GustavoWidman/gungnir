@@ -48,6 +48,12 @@ pub fn read_json<T: DeserializeOwned>(path: &Path) -> Result<Option<T>> {
         .wrap_err_with(|| format!("parsing {}", path.display()))
 }
 
+/// Reads and parses a TOML file, naming the file in any error.
+pub(crate) fn read_toml<T: DeserializeOwned>(path: &Path) -> Result<T> {
+    let text = fs::read_to_string(path).wrap_err_with(|| format!("reading {}", path.display()))?;
+    toml::from_str(&text).wrap_err_with(|| format!("parsing {}", path.display()))
+}
+
 fn sync_dir(dir: &Path) -> Result<()> {
     File::open(dir)
         .and_then(|file| file.sync_all())
