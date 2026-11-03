@@ -11,6 +11,7 @@ pub mod scenario;
 pub mod secret;
 pub mod stop;
 pub mod store;
+pub mod toolchains;
 pub mod trial;
 
 #[cfg(test)]
