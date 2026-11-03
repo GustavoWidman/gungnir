@@ -1,0 +1,6 @@
+title = "Word frequency"
+compare = "exact"
+
+[limits]
+time = "10s"
+memory = "1GiB"
