@@ -1,0 +1,9 @@
+packages = ["rustc", "cargo", "gcc"]
+build = [["cargo", "build", "--release", "--offline", "--quiet"]]
+run = ["./target/release/solution"]
+sources = ["src/**/*.rs"]
+ignore = ["target/**"]
+lizard = "rust"
+
+[env]
+CARGO_HOME = "/tmp/cargo-home"

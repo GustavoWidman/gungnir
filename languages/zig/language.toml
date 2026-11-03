@@ -1,0 +1,10 @@
+packages = ["zig"]
+build = [["zig", "build-exe", "src/main.zig", "-O", "ReleaseFast", "-femit-bin=solution"]]
+run = ["./solution"]
+sources = ["src/**/*.zig"]
+ignore = ["solution", "solution.o", ".zig-cache/**"]
+lizard = "zig"
+
+[env]
+ZIG_GLOBAL_CACHE_DIR = "/tmp/zig-global-cache"
+ZIG_LOCAL_CACHE_DIR = "/tmp/zig-local-cache"

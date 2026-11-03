@@ -1,0 +1,11 @@
+packages = ["python314", "uv"]
+build = [["uv", "sync", "--offline", "--quiet"]]
+run = [".venv/bin/python", "main.py"]
+sources = ["**/*.py"]
+ignore = [".venv/**", "**/__pycache__/**"]
+lizard = "python"
+
+[env]
+UV_CACHE_DIR = "/tmp/uv-cache"
+UV_PYTHON_DOWNLOADS = "never"
+UV_NO_MANAGED_PYTHON = "1"
