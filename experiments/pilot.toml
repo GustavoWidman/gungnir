@@ -1,0 +1,35 @@
+# The pilot: every effort level of four models, on two scenarios in three languages.
+name = "pilot"
+results = "../runs/pilot"
+repetitions = 3
+scenarios = ["interval-cover", "word-freq"]
+languages = ["python", "rust", "zig"]
+
+[pins]
+claude-code = "2.1.316"
+codex = "0.166.0"
+
+[budget]
+wall = "40m"
+idle = "10m"
+
+[concurrency]
+anthropic = 2
+openai = 2
+zai = 3
+
+[[systems]]
+model = "claude-haiku-5-5"
+efforts = "all"
+
+[[systems]]
+model = "gpt-6-luna"
+efforts = "all"
+
+[[systems]]
+model = "glm-5.3-flash"
+efforts = "all"
+
+[[systems]]
+model = "glm-5.3"
+efforts = "all"

@@ -1,0 +1,35 @@
+# One trial per pilot model, to check every harness, backend and credential end to end.
+name = "smoke"
+results = "../runs/smoke"
+repetitions = 1
+scenarios = ["interval-cover"]
+languages = ["python"]
+
+[pins]
+claude-code = "2.1.316"
+codex = "0.166.0"
+
+[budget]
+wall = "40m"
+idle = "10m"
+
+[concurrency]
+anthropic = 2
+openai = 2
+zai = 3
+
+[[systems]]
+model = "claude-haiku-5-5"
+efforts = ["low"]
+
+[[systems]]
+model = "gpt-6-luna"
+efforts = ["low"]
+
+[[systems]]
+model = "glm-5.3-flash"
+efforts = ["low"]
+
+[[systems]]
+model = "glm-5.3"
+efforts = ["low"]
