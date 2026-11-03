@@ -57,12 +57,35 @@
           cargoArtifacts = craneLib.buildDepsOnly args;
 
           gungnir = craneLib.buildPackage (args // { inherit cargoArtifacts; });
+
+          toolchains = import ./nix/toolchains.nix {
+            inherit pkgs lib;
+            root = ./.;
+          };
+
+          wrapped = pkgs.symlinkJoin {
+            name = "gungnir-${gungnir.version}";
+            paths = [ gungnir ];
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            postBuild = ''
+              wrapProgram $out/bin/gungnir \
+                --set GUNGNIR_TOOLCHAINS ${toolchains} \
+                --prefix PATH : ${
+                  lib.makeBinPath [
+                    pkgs.bubblewrap
+                    pkgs.util-linux
+                  ]
+                }
+            '';
+            meta.mainProgram = "gungnir";
+          };
         in
         {
           _module.args.pkgs = pkgs;
 
-          packages.default = gungnir;
-          packages.gungnir = gungnir;
+          packages.default = wrapped;
+          packages.gungnir = wrapped;
+          packages.toolchains = toolchains;
 
           checks = {
             package = gungnir;
@@ -89,6 +112,10 @@
               pkgs.codex
             ];
             env = [
+              {
+                name = "GUNGNIR_TOOLCHAINS";
+                value = "${toolchains}";
+              }
               {
                 name = "TYPST_FONT_PATHS";
                 value = "${pkgs.gyre-fonts}/share/fonts";
