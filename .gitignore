@@ -1,0 +1,6 @@
+/target
+/result*
+/.direnv
+/runs
+*.local.toml
+/paper/*.pdf
