@@ -1,0 +1,1 @@
+Regenerate from the scenario directory with Python 3.14: `python3 gen/gen.py cases` rewrites examples/ and hidden/ (committed), and `python3 gen/gen.py workloads` writes workloads/ (gitignored, large). Seeds are fixed. Expected outputs come from `reference/python`.

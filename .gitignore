@@ -4,3 +4,4 @@
 /runs
 *.local.toml
 /paper/*.pdf
+/scenarios/*/workloads/
