@@ -18,14 +18,15 @@ gungnir runs a benchmark of AI coding agents. It drives each vendor's own CLI he
 gungnir.toml                  catalog: sandbox base packages, harness packages, backends, models, prices
 languages/<id>/
   language.toml               packages, build, run, sources, ignore, lizard, env
-  preamble.md                 per-language prompt preamble; {build} {run} {packages} placeholders
+  preamble.md                 per-language prompt preamble; {build} and {run} placeholders
   template/                   files scaffolded into every workspace
 scenarios/<id>/
-  scenario.toml               title, compare mode, case limits, workloads
+  scenario.toml               title, compare mode, case limits
   spec.md                     the language-neutral task
   examples/NAME.in NAME.out   visible to the agent
   hidden/NAME.in NAME.out     never mounted into a sandbox that runs agent code
-  workloads/NAME.in           inputs for timing
+  workloads/NAME.in           inputs for timing, written on demand by gen/ and never committed
+  gen/                        the seeded generator for hidden cases and workloads
   reference/<language>/       a complete reference solution per supported language
 experiments/<name>.toml       the matrix to run
 nix/toolchains.nix            sandbox environments derived from gungnir.toml and languages/
