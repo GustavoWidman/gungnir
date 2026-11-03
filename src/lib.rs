@@ -9,6 +9,7 @@ pub mod language;
 pub mod provenance;
 pub mod scenario;
 pub mod secret;
+pub mod stop;
 pub mod store;
 pub mod trial;
 
