@@ -1,5 +1,61 @@
 //! Fixture helpers shared by the unit tests.
+use crate::catalog::Catalog;
 use std::{fmt::Debug, fs, path::Path, str::FromStr};
+use tempfile::TempDir;
+
+/// Two harnesses and three backends. `glm` is served by two backends, so an experiment
+/// must choose one.
+pub const CATALOG_TOML: &str = r#"
+[sandbox]
+packages = ["coreutils"]
+
+[harnesses.claude-code]
+package = "claude-code"
+
+[harnesses.codex]
+package = "codex"
+
+[backends.anthropic]
+harness = "claude-code"
+credential = { kind = "env-token", var = "TOKEN", file = "~/token" }
+egress = ["api.anthropic.com"]
+
+[backends.openai]
+harness = "codex"
+credential = { kind = "codex-home", dir = "~/codex" }
+egress = ["api.openai.com"]
+
+[backends.zai]
+harness = "claude-code"
+endpoint = "https://api.z.ai/api/anthropic"
+credential = { kind = "api-key", var = "KEY", file = "~/key" }
+egress = ["api.z.ai"]
+
+[[models]]
+id = "opus"
+efforts = ["low", "high", "max"]
+served-by = { anthropic = "claude-opus" }
+prices = [{ since = "2026-01-01", input = 4.0, output = 20.0, cache-read = 0.2 }]
+
+[[models]]
+id = "luna"
+efforts = ["none", "low"]
+served-by = { openai = "gpt-luna" }
+prices = [{ since = "2026-01-01", input = 0.1, output = 0.5, cache-read = 0.01 }]
+
+[[models]]
+id = "glm"
+efforts = ["low", "high"]
+served-by = { zai = "glm", anthropic = "glm-relay" }
+prices = [{ since = "2026-01-01", input = 1.0, output = 4.0, cache-read = 0.2 }]
+"#;
+
+/// The catalog in [`CATALOG_TOML`].
+pub fn catalog() -> Catalog {
+    let dir = TempDir::new().unwrap();
+    write(dir.path(), "gungnir.toml", CATALOG_TOML);
+    Catalog::load(&dir.path().join("gungnir.toml")).unwrap()
+}
 
 /// Parses an identifier the test knows to be valid.
 pub fn id<T: FromStr<Err: Debug>>(value: &str) -> T {

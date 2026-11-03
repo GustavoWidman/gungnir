@@ -6,6 +6,7 @@ pub mod id;
 pub mod language;
 pub mod scenario;
 pub mod store;
+pub mod trial;
 
 #[cfg(test)]
 mod testing;
