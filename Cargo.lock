@@ -360,6 +360,7 @@ dependencies = [
  "clap",
  "command-fds",
  "eyre",
+ "futures-util",
  "globset",
  "humantime",
  "nix",

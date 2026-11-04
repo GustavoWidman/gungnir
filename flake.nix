@@ -74,6 +74,7 @@
                   lib.makeBinPath [
                     pkgs.bubblewrap
                     pkgs.util-linux
+                    pkgs.python3Packages.lizard
                   ]
                 }
             '';
