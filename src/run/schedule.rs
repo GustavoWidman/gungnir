@@ -36,7 +36,7 @@ pub struct Tally {
 #[derive(Clone, Debug, Default)]
 pub struct Guard {
     /// Stop a backend once any of its quota windows reports at least this fraction used.
-    pub ceilings: BTreeMap<BackendId, f64>,
+    pub ceilings: BTreeMap<BackendId, Ceiling>,
     /// Stop starting attempts on a backend at this time.
     pub deadlines: BTreeMap<BackendId, DateTime<Utc>>,
     /// Stop a backend after this many attempts in a row errored, crashed or failed, since an
@@ -44,23 +44,32 @@ pub struct Guard {
     pub max_errors: Option<u32>,
 }
 
+/// A quota ceiling, counted only from attempts that started at or after `from`, so that a
+/// ceiling meant for a quota window that has not reset yet ignores the window before it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Ceiling {
+    pub fraction: f64,
+    pub from: Option<DateTime<Utc>>,
+}
+
 impl Guard {
-    /// Why `backend` must start nothing more, given the quota its latest attempt reported, the
-    /// errors in a row it has had, and the time.
+    /// Why `backend` must start nothing more, given the quota its latest attempt reported with
+    /// when that attempt started, the errors in a row it has had, and the time.
     fn stops(
         &self,
         backend: &BackendId,
-        quota: Option<(&str, f64)>,
+        quota: Option<(&str, f64, DateTime<Utc>)>,
         errors: u32,
         now: DateTime<Utc>,
     ) -> Option<String> {
-        if let (Some(ceiling), Some((window, used))) = (self.ceilings.get(backend), quota)
-            && used >= *ceiling
+        if let (Some(ceiling), Some((window, used, started))) = (self.ceilings.get(backend), quota)
+            && ceiling.from.is_none_or(|from| started >= from)
+            && used >= ceiling.fraction
         {
             return Some(format!(
                 "its {window} quota is {:.0}% used, at or past the {:.0}% ceiling",
                 used * 100.0,
-                ceiling * 100.0
+                ceiling.fraction * 100.0
             ));
         }
         if let Some(deadline) = self.deadlines.get(backend)
@@ -190,16 +199,19 @@ pub(super) async fn schedule(
                     Err(_) => lane.errors + 1,
                 };
                 let quota = match &result {
-                    Ok(Attempted::Committed(record)) => most_used(record),
+                    Ok(Attempted::Committed(record)) => most_used(record)
+                        .map(|(window, used)| (window, used, record.started())),
                     _ => None,
                 };
-                if let Some((window, used)) = &quota {
+                if let Some((window, used, _)) = &quota {
                     info!("{backend}: {window} quota {:.0}% used", used * 100.0);
                 }
                 if lane.stopped.is_none()
                     && let Some(reason) = guard.stops(
                         backend,
-                        quota.as_ref().map(|(window, used)| (window.as_str(), *used)),
+                        quota.as_ref().map(|(window, used, started)| {
+                            (window.as_str(), *used, *started)
+                        }),
                         lane.errors,
                         Utc::now(),
                     )
@@ -543,7 +555,13 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn a_quota_at_its_ceiling_stops_the_backend_after_running_attempts_finish() {
         let mut bench = Bench::new();
-        bench.guard.ceilings.insert(backend("anthropic"), 0.75);
+        bench.guard.ceilings.insert(
+            backend("anthropic"),
+            Ceiling {
+                fraction: 0.75,
+                from: None,
+            },
+        );
         let mut spent = bench.record.clone();
         spent.outcome.quota.insert(
             "seven_day".to_owned(),
@@ -566,6 +584,33 @@ mod tests {
         assert_eq!(bench.starts("openai").len(), 8);
         assert_eq!(tally.committed, 10);
         assert_eq!(tally.unstarted, 6);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_ceiling_ignores_attempts_that_started_before_it_applies() {
+        let mut bench = Bench::new();
+        let later = bench.record.started() + chrono::Duration::hours(1);
+        bench.guard.ceilings.insert(
+            backend("anthropic"),
+            Ceiling {
+                fraction: 0.35,
+                from: Some(later),
+            },
+        );
+        let mut spent = bench.record.clone();
+        spent.outcome.quota.insert(
+            "7d".to_owned(),
+            crate::run::Quota {
+                first: 0.9,
+                last: 0.95,
+            },
+        );
+        let tally = bench
+            .schedule(&Stop::default(), |_, _| {
+                (10 * MINUTE, Attempted::Committed(Box::new(spent.clone())))
+            })
+            .await;
+        assert_eq!(tally.committed, 16);
     }
 
     #[tokio::test(start_paused = true)]

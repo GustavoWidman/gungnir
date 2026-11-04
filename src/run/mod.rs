@@ -14,7 +14,7 @@ pub use records::{
     AgentExit, Cut, DiscardedAttempt, Outcome, Process, ProcessExit, Quota, RunInputs, RunRecord,
     Sample, Tokens,
 };
-pub use schedule::{Guard, Tally};
+pub use schedule::{Ceiling, Guard, Tally};
 
 use crate::{
     catalog::{Backend, System},

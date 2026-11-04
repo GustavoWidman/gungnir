@@ -9,7 +9,7 @@ use crate::{
     lifecycle::{self, Current, Fate, Lifecycle},
     measure::{self, Machine, MeasureInputs, MeasureRecord, Program, Settings, Spread, Summary},
     provenance::Session,
-    run::{self, Guard, Host, Tally},
+    run::{self, Ceiling, Guard, Host, Tally},
     sandbox::{Backend, Bubblewrap},
     scenario::Scenario,
     stop::{Stage, Stop},
@@ -76,9 +76,11 @@ enum Command {
         /// The experiment file, such as experiments/smoke.toml.
         experiment: PathBuf,
         /// Stop starting attempts on a backend once any of its quota windows reports this
-        /// fraction used, as BACKEND=FRACTION, such as anthropic=0.75. Repeat for several.
-        #[arg(long = "quota-ceiling", value_name = "BACKEND=FRACTION", value_parser = ceiling)]
-        ceilings: Vec<(BackendId, f64)>,
+        /// fraction used, as BACKEND=FRACTION or BACKEND=FRACTION@TIME to count only attempts
+        /// that started at or after an RFC 3339 time, such as openai=0.35@2026-11-04T04:05:00-03:00.
+        /// Repeat for several.
+        #[arg(long = "quota-ceiling", value_name = "BACKEND=FRACTION[@TIME]", value_parser = ceiling)]
+        ceilings: Vec<(BackendId, Ceiling)>,
         /// Stop starting attempts on a backend at a time, as BACKEND=RFC3339, such as
         /// anthropic=2026-11-04T04:00:00-03:00. Repeat for several.
         #[arg(long = "stop-at", value_name = "BACKEND=TIME", value_parser = deadline)]
@@ -194,11 +196,19 @@ fn run_trials(path: &Path, guard: &Guard) -> Result<()> {
     Ok(())
 }
 
-/// Parses `BACKEND=FRACTION` with the fraction in (0, 1].
-fn ceiling(arg: &str) -> Result<(BackendId, f64)> {
-    let (backend, fraction) = arg
+/// Parses `BACKEND=FRACTION[@TIME]` with the fraction in (0, 1] and an RFC 3339 time.
+fn ceiling(arg: &str) -> Result<(BackendId, Ceiling)> {
+    let (backend, rest) = arg
         .split_once('=')
-        .ok_or_else(|| eyre!("expected BACKEND=FRACTION, got {arg:?}"))?;
+        .ok_or_else(|| eyre!("expected BACKEND=FRACTION[@TIME], got {arg:?}"))?;
+    let (fraction, from) = match rest.split_once('@') {
+        Some((fraction, time)) => {
+            let time = DateTime::parse_from_rfc3339(time)
+                .wrap_err_with(|| format!("{time:?} is not an RFC 3339 time"))?;
+            (fraction, Some(time.with_timezone(&Utc)))
+        }
+        None => (rest, None),
+    };
     let fraction: f64 = fraction
         .parse()
         .wrap_err_with(|| format!("{fraction:?} is not a number"))?;
@@ -206,7 +216,7 @@ fn ceiling(arg: &str) -> Result<(BackendId, f64)> {
         fraction > 0.0 && fraction <= 1.0,
         "a quota ceiling is a fraction in (0, 1], got {fraction}"
     );
-    Ok((backend.parse()?, fraction))
+    Ok((backend.parse()?, Ceiling { fraction, from }))
 }
 
 /// Parses `BACKEND=TIME` with an RFC 3339 time.
