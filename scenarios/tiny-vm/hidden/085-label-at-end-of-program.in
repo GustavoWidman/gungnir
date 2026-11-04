@@ -1,0 +1,7 @@
+        push 1
+        print
+        jmp end
+        push 2
+        print
+end:
+; nothing follows

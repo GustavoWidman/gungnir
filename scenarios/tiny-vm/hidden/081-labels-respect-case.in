@@ -1,0 +1,8 @@
+        jmp Loop
+loop:   push 1
+        print
+        halt
+Loop:   push 2
+        print
+        jmp LOOP_
+LOOP_:  jmp loop

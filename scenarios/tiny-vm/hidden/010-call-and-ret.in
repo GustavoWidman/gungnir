@@ -1,0 +1,10 @@
+        push 3
+        call double
+        print
+        push -4
+        call double
+        print
+        halt
+double: dup
+        add
+        ret

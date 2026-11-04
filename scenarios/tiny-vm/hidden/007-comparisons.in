@@ -1,0 +1,168 @@
+push 1
+push 2
+eq
+print
+push 1
+push 2
+ne
+print
+push 1
+push 2
+lt
+print
+push 1
+push 2
+le
+print
+push 1
+push 2
+gt
+print
+push 1
+push 2
+ge
+print
+push 2
+push 1
+eq
+print
+push 2
+push 1
+ne
+print
+push 2
+push 1
+lt
+print
+push 2
+push 1
+le
+print
+push 2
+push 1
+gt
+print
+push 2
+push 1
+ge
+print
+push 2
+push 2
+eq
+print
+push 2
+push 2
+ne
+print
+push 2
+push 2
+lt
+print
+push 2
+push 2
+le
+print
+push 2
+push 2
+gt
+print
+push 2
+push 2
+ge
+print
+push -1
+push 1
+eq
+print
+push -1
+push 1
+ne
+print
+push -1
+push 1
+lt
+print
+push -1
+push 1
+le
+print
+push -1
+push 1
+gt
+print
+push -1
+push 1
+ge
+print
+push 1
+push -1
+eq
+print
+push 1
+push -1
+ne
+print
+push 1
+push -1
+lt
+print
+push 1
+push -1
+le
+print
+push 1
+push -1
+gt
+print
+push 1
+push -1
+ge
+print
+push -5
+push -3
+eq
+print
+push -5
+push -3
+ne
+print
+push -5
+push -3
+lt
+print
+push -5
+push -3
+le
+print
+push -5
+push -3
+gt
+print
+push -5
+push -3
+ge
+print
+push 0
+push 0
+eq
+print
+push 0
+push 0
+ne
+print
+push 0
+push 0
+lt
+print
+push 0
+push 0
+le
+print
+push 0
+push 0
+gt
+print
+push 0
+push 0
+ge
+print

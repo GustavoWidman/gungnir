@@ -1,0 +1,36 @@
+push 2
+push 3
+add
+print
+push 2
+push 3
+sub
+print
+push -5
+push -6
+add
+print
+push -5
+push -6
+sub
+print
+push 6
+push 7
+mul
+print
+push -6
+push 7
+mul
+print
+push -6
+push -7
+mul
+print
+push 0
+push -9
+mul
+print
+push 3037000499
+dup
+mul
+print

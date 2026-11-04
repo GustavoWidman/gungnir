@@ -1,0 +1,13 @@
+push 9223372036854775807
+push 1
+add
+print
+push -7
+push 2
+div
+print
+PUSH -7
+Push 2
+mod
+print
+drop

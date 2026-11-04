@@ -1,0 +1,10003 @@
+push 0
+print
+push 1
+print
+push 2
+print
+push 3
+print
+push 4
+print
+push 5
+print
+push 6
+print
+push 7
+print
+push 8
+print
+push 9
+print
+push 10
+print
+push 11
+print
+push 12
+print
+push 13
+print
+push 14
+print
+push 15
+print
+push 16
+print
+push 17
+print
+push 18
+print
+push 19
+print
+push 20
+print
+push 21
+print
+push 22
+print
+push 23
+print
+push 24
+print
+push 25
+print
+push 26
+print
+push 27
+print
+push 28
+print
+push 29
+print
+push 30
+print
+push 31
+print
+push 32
+print
+push 33
+print
+push 34
+print
+push 35
+print
+push 36
+print
+push 37
+print
+push 38
+print
+push 39
+print
+push 40
+print
+push 41
+print
+push 42
+print
+push 43
+print
+push 44
+print
+push 45
+print
+push 46
+print
+push 47
+print
+push 48
+print
+push 49
+print
+push 50
+print
+push 51
+print
+push 52
+print
+push 53
+print
+push 54
+print
+push 55
+print
+push 56
+print
+push 57
+print
+push 58
+print
+push 59
+print
+push 60
+print
+push 61
+print
+push 62
+print
+push 63
+print
+push 64
+print
+push 65
+print
+push 66
+print
+push 67
+print
+push 68
+print
+push 69
+print
+push 70
+print
+push 71
+print
+push 72
+print
+push 73
+print
+push 74
+print
+push 75
+print
+push 76
+print
+push 77
+print
+push 78
+print
+push 79
+print
+push 80
+print
+push 81
+print
+push 82
+print
+push 83
+print
+push 84
+print
+push 85
+print
+push 86
+print
+push 87
+print
+push 88
+print
+push 89
+print
+push 90
+print
+push 91
+print
+push 92
+print
+push 93
+print
+push 94
+print
+push 95
+print
+push 96
+print
+push 97
+print
+push 98
+print
+push 99
+print
+push 100
+print
+push 101
+print
+push 102
+print
+push 103
+print
+push 104
+print
+push 105
+print
+push 106
+print
+push 107
+print
+push 108
+print
+push 109
+print
+push 110
+print
+push 111
+print
+push 112
+print
+push 113
+print
+push 114
+print
+push 115
+print
+push 116
+print
+push 117
+print
+push 118
+print
+push 119
+print
+push 120
+print
+push 121
+print
+push 122
+print
+push 123
+print
+push 124
+print
+push 125
+print
+push 126
+print
+push 127
+print
+push 128
+print
+push 129
+print
+push 130
+print
+push 131
+print
+push 132
+print
+push 133
+print
+push 134
+print
+push 135
+print
+push 136
+print
+push 137
+print
+push 138
+print
+push 139
+print
+push 140
+print
+push 141
+print
+push 142
+print
+push 143
+print
+push 144
+print
+push 145
+print
+push 146
+print
+push 147
+print
+push 148
+print
+push 149
+print
+push 150
+print
+push 151
+print
+push 152
+print
+push 153
+print
+push 154
+print
+push 155
+print
+push 156
+print
+push 157
+print
+push 158
+print
+push 159
+print
+push 160
+print
+push 161
+print
+push 162
+print
+push 163
+print
+push 164
+print
+push 165
+print
+push 166
+print
+push 167
+print
+push 168
+print
+push 169
+print
+push 170
+print
+push 171
+print
+push 172
+print
+push 173
+print
+push 174
+print
+push 175
+print
+push 176
+print
+push 177
+print
+push 178
+print
+push 179
+print
+push 180
+print
+push 181
+print
+push 182
+print
+push 183
+print
+push 184
+print
+push 185
+print
+push 186
+print
+push 187
+print
+push 188
+print
+push 189
+print
+push 190
+print
+push 191
+print
+push 192
+print
+push 193
+print
+push 194
+print
+push 195
+print
+push 196
+print
+push 197
+print
+push 198
+print
+push 199
+print
+push 200
+print
+push 201
+print
+push 202
+print
+push 203
+print
+push 204
+print
+push 205
+print
+push 206
+print
+push 207
+print
+push 208
+print
+push 209
+print
+push 210
+print
+push 211
+print
+push 212
+print
+push 213
+print
+push 214
+print
+push 215
+print
+push 216
+print
+push 217
+print
+push 218
+print
+push 219
+print
+push 220
+print
+push 221
+print
+push 222
+print
+push 223
+print
+push 224
+print
+push 225
+print
+push 226
+print
+push 227
+print
+push 228
+print
+push 229
+print
+push 230
+print
+push 231
+print
+push 232
+print
+push 233
+print
+push 234
+print
+push 235
+print
+push 236
+print
+push 237
+print
+push 238
+print
+push 239
+print
+push 240
+print
+push 241
+print
+push 242
+print
+push 243
+print
+push 244
+print
+push 245
+print
+push 246
+print
+push 247
+print
+push 248
+print
+push 249
+print
+push 250
+print
+push 251
+print
+push 252
+print
+push 253
+print
+push 254
+print
+push 255
+print
+push 256
+print
+push 257
+print
+push 258
+print
+push 259
+print
+push 260
+print
+push 261
+print
+push 262
+print
+push 263
+print
+push 264
+print
+push 265
+print
+push 266
+print
+push 267
+print
+push 268
+print
+push 269
+print
+push 270
+print
+push 271
+print
+push 272
+print
+push 273
+print
+push 274
+print
+push 275
+print
+push 276
+print
+push 277
+print
+push 278
+print
+push 279
+print
+push 280
+print
+push 281
+print
+push 282
+print
+push 283
+print
+push 284
+print
+push 285
+print
+push 286
+print
+push 287
+print
+push 288
+print
+push 289
+print
+push 290
+print
+push 291
+print
+push 292
+print
+push 293
+print
+push 294
+print
+push 295
+print
+push 296
+print
+push 297
+print
+push 298
+print
+push 299
+print
+push 300
+print
+push 301
+print
+push 302
+print
+push 303
+print
+push 304
+print
+push 305
+print
+push 306
+print
+push 307
+print
+push 308
+print
+push 309
+print
+push 310
+print
+push 311
+print
+push 312
+print
+push 313
+print
+push 314
+print
+push 315
+print
+push 316
+print
+push 317
+print
+push 318
+print
+push 319
+print
+push 320
+print
+push 321
+print
+push 322
+print
+push 323
+print
+push 324
+print
+push 325
+print
+push 326
+print
+push 327
+print
+push 328
+print
+push 329
+print
+push 330
+print
+push 331
+print
+push 332
+print
+push 333
+print
+push 334
+print
+push 335
+print
+push 336
+print
+push 337
+print
+push 338
+print
+push 339
+print
+push 340
+print
+push 341
+print
+push 342
+print
+push 343
+print
+push 344
+print
+push 345
+print
+push 346
+print
+push 347
+print
+push 348
+print
+push 349
+print
+push 350
+print
+push 351
+print
+push 352
+print
+push 353
+print
+push 354
+print
+push 355
+print
+push 356
+print
+push 357
+print
+push 358
+print
+push 359
+print
+push 360
+print
+push 361
+print
+push 362
+print
+push 363
+print
+push 364
+print
+push 365
+print
+push 366
+print
+push 367
+print
+push 368
+print
+push 369
+print
+push 370
+print
+push 371
+print
+push 372
+print
+push 373
+print
+push 374
+print
+push 375
+print
+push 376
+print
+push 377
+print
+push 378
+print
+push 379
+print
+push 380
+print
+push 381
+print
+push 382
+print
+push 383
+print
+push 384
+print
+push 385
+print
+push 386
+print
+push 387
+print
+push 388
+print
+push 389
+print
+push 390
+print
+push 391
+print
+push 392
+print
+push 393
+print
+push 394
+print
+push 395
+print
+push 396
+print
+push 397
+print
+push 398
+print
+push 399
+print
+push 400
+print
+push 401
+print
+push 402
+print
+push 403
+print
+push 404
+print
+push 405
+print
+push 406
+print
+push 407
+print
+push 408
+print
+push 409
+print
+push 410
+print
+push 411
+print
+push 412
+print
+push 413
+print
+push 414
+print
+push 415
+print
+push 416
+print
+push 417
+print
+push 418
+print
+push 419
+print
+push 420
+print
+push 421
+print
+push 422
+print
+push 423
+print
+push 424
+print
+push 425
+print
+push 426
+print
+push 427
+print
+push 428
+print
+push 429
+print
+push 430
+print
+push 431
+print
+push 432
+print
+push 433
+print
+push 434
+print
+push 435
+print
+push 436
+print
+push 437
+print
+push 438
+print
+push 439
+print
+push 440
+print
+push 441
+print
+push 442
+print
+push 443
+print
+push 444
+print
+push 445
+print
+push 446
+print
+push 447
+print
+push 448
+print
+push 449
+print
+push 450
+print
+push 451
+print
+push 452
+print
+push 453
+print
+push 454
+print
+push 455
+print
+push 456
+print
+push 457
+print
+push 458
+print
+push 459
+print
+push 460
+print
+push 461
+print
+push 462
+print
+push 463
+print
+push 464
+print
+push 465
+print
+push 466
+print
+push 467
+print
+push 468
+print
+push 469
+print
+push 470
+print
+push 471
+print
+push 472
+print
+push 473
+print
+push 474
+print
+push 475
+print
+push 476
+print
+push 477
+print
+push 478
+print
+push 479
+print
+push 480
+print
+push 481
+print
+push 482
+print
+push 483
+print
+push 484
+print
+push 485
+print
+push 486
+print
+push 487
+print
+push 488
+print
+push 489
+print
+push 490
+print
+push 491
+print
+push 492
+print
+push 493
+print
+push 494
+print
+push 495
+print
+push 496
+print
+push 497
+print
+push 498
+print
+push 499
+print
+push 500
+print
+push 501
+print
+push 502
+print
+push 503
+print
+push 504
+print
+push 505
+print
+push 506
+print
+push 507
+print
+push 508
+print
+push 509
+print
+push 510
+print
+push 511
+print
+push 512
+print
+push 513
+print
+push 514
+print
+push 515
+print
+push 516
+print
+push 517
+print
+push 518
+print
+push 519
+print
+push 520
+print
+push 521
+print
+push 522
+print
+push 523
+print
+push 524
+print
+push 525
+print
+push 526
+print
+push 527
+print
+push 528
+print
+push 529
+print
+push 530
+print
+push 531
+print
+push 532
+print
+push 533
+print
+push 534
+print
+push 535
+print
+push 536
+print
+push 537
+print
+push 538
+print
+push 539
+print
+push 540
+print
+push 541
+print
+push 542
+print
+push 543
+print
+push 544
+print
+push 545
+print
+push 546
+print
+push 547
+print
+push 548
+print
+push 549
+print
+push 550
+print
+push 551
+print
+push 552
+print
+push 553
+print
+push 554
+print
+push 555
+print
+push 556
+print
+push 557
+print
+push 558
+print
+push 559
+print
+push 560
+print
+push 561
+print
+push 562
+print
+push 563
+print
+push 564
+print
+push 565
+print
+push 566
+print
+push 567
+print
+push 568
+print
+push 569
+print
+push 570
+print
+push 571
+print
+push 572
+print
+push 573
+print
+push 574
+print
+push 575
+print
+push 576
+print
+push 577
+print
+push 578
+print
+push 579
+print
+push 580
+print
+push 581
+print
+push 582
+print
+push 583
+print
+push 584
+print
+push 585
+print
+push 586
+print
+push 587
+print
+push 588
+print
+push 589
+print
+push 590
+print
+push 591
+print
+push 592
+print
+push 593
+print
+push 594
+print
+push 595
+print
+push 596
+print
+push 597
+print
+push 598
+print
+push 599
+print
+push 600
+print
+push 601
+print
+push 602
+print
+push 603
+print
+push 604
+print
+push 605
+print
+push 606
+print
+push 607
+print
+push 608
+print
+push 609
+print
+push 610
+print
+push 611
+print
+push 612
+print
+push 613
+print
+push 614
+print
+push 615
+print
+push 616
+print
+push 617
+print
+push 618
+print
+push 619
+print
+push 620
+print
+push 621
+print
+push 622
+print
+push 623
+print
+push 624
+print
+push 625
+print
+push 626
+print
+push 627
+print
+push 628
+print
+push 629
+print
+push 630
+print
+push 631
+print
+push 632
+print
+push 633
+print
+push 634
+print
+push 635
+print
+push 636
+print
+push 637
+print
+push 638
+print
+push 639
+print
+push 640
+print
+push 641
+print
+push 642
+print
+push 643
+print
+push 644
+print
+push 645
+print
+push 646
+print
+push 647
+print
+push 648
+print
+push 649
+print
+push 650
+print
+push 651
+print
+push 652
+print
+push 653
+print
+push 654
+print
+push 655
+print
+push 656
+print
+push 657
+print
+push 658
+print
+push 659
+print
+push 660
+print
+push 661
+print
+push 662
+print
+push 663
+print
+push 664
+print
+push 665
+print
+push 666
+print
+push 667
+print
+push 668
+print
+push 669
+print
+push 670
+print
+push 671
+print
+push 672
+print
+push 673
+print
+push 674
+print
+push 675
+print
+push 676
+print
+push 677
+print
+push 678
+print
+push 679
+print
+push 680
+print
+push 681
+print
+push 682
+print
+push 683
+print
+push 684
+print
+push 685
+print
+push 686
+print
+push 687
+print
+push 688
+print
+push 689
+print
+push 690
+print
+push 691
+print
+push 692
+print
+push 693
+print
+push 694
+print
+push 695
+print
+push 696
+print
+push 697
+print
+push 698
+print
+push 699
+print
+push 700
+print
+push 701
+print
+push 702
+print
+push 703
+print
+push 704
+print
+push 705
+print
+push 706
+print
+push 707
+print
+push 708
+print
+push 709
+print
+push 710
+print
+push 711
+print
+push 712
+print
+push 713
+print
+push 714
+print
+push 715
+print
+push 716
+print
+push 717
+print
+push 718
+print
+push 719
+print
+push 720
+print
+push 721
+print
+push 722
+print
+push 723
+print
+push 724
+print
+push 725
+print
+push 726
+print
+push 727
+print
+push 728
+print
+push 729
+print
+push 730
+print
+push 731
+print
+push 732
+print
+push 733
+print
+push 734
+print
+push 735
+print
+push 736
+print
+push 737
+print
+push 738
+print
+push 739
+print
+push 740
+print
+push 741
+print
+push 742
+print
+push 743
+print
+push 744
+print
+push 745
+print
+push 746
+print
+push 747
+print
+push 748
+print
+push 749
+print
+push 750
+print
+push 751
+print
+push 752
+print
+push 753
+print
+push 754
+print
+push 755
+print
+push 756
+print
+push 757
+print
+push 758
+print
+push 759
+print
+push 760
+print
+push 761
+print
+push 762
+print
+push 763
+print
+push 764
+print
+push 765
+print
+push 766
+print
+push 767
+print
+push 768
+print
+push 769
+print
+push 770
+print
+push 771
+print
+push 772
+print
+push 773
+print
+push 774
+print
+push 775
+print
+push 776
+print
+push 777
+print
+push 778
+print
+push 779
+print
+push 780
+print
+push 781
+print
+push 782
+print
+push 783
+print
+push 784
+print
+push 785
+print
+push 786
+print
+push 787
+print
+push 788
+print
+push 789
+print
+push 790
+print
+push 791
+print
+push 792
+print
+push 793
+print
+push 794
+print
+push 795
+print
+push 796
+print
+push 797
+print
+push 798
+print
+push 799
+print
+push 800
+print
+push 801
+print
+push 802
+print
+push 803
+print
+push 804
+print
+push 805
+print
+push 806
+print
+push 807
+print
+push 808
+print
+push 809
+print
+push 810
+print
+push 811
+print
+push 812
+print
+push 813
+print
+push 814
+print
+push 815
+print
+push 816
+print
+push 817
+print
+push 818
+print
+push 819
+print
+push 820
+print
+push 821
+print
+push 822
+print
+push 823
+print
+push 824
+print
+push 825
+print
+push 826
+print
+push 827
+print
+push 828
+print
+push 829
+print
+push 830
+print
+push 831
+print
+push 832
+print
+push 833
+print
+push 834
+print
+push 835
+print
+push 836
+print
+push 837
+print
+push 838
+print
+push 839
+print
+push 840
+print
+push 841
+print
+push 842
+print
+push 843
+print
+push 844
+print
+push 845
+print
+push 846
+print
+push 847
+print
+push 848
+print
+push 849
+print
+push 850
+print
+push 851
+print
+push 852
+print
+push 853
+print
+push 854
+print
+push 855
+print
+push 856
+print
+push 857
+print
+push 858
+print
+push 859
+print
+push 860
+print
+push 861
+print
+push 862
+print
+push 863
+print
+push 864
+print
+push 865
+print
+push 866
+print
+push 867
+print
+push 868
+print
+push 869
+print
+push 870
+print
+push 871
+print
+push 872
+print
+push 873
+print
+push 874
+print
+push 875
+print
+push 876
+print
+push 877
+print
+push 878
+print
+push 879
+print
+push 880
+print
+push 881
+print
+push 882
+print
+push 883
+print
+push 884
+print
+push 885
+print
+push 886
+print
+push 887
+print
+push 888
+print
+push 889
+print
+push 890
+print
+push 891
+print
+push 892
+print
+push 893
+print
+push 894
+print
+push 895
+print
+push 896
+print
+push 897
+print
+push 898
+print
+push 899
+print
+push 900
+print
+push 901
+print
+push 902
+print
+push 903
+print
+push 904
+print
+push 905
+print
+push 906
+print
+push 907
+print
+push 908
+print
+push 909
+print
+push 910
+print
+push 911
+print
+push 912
+print
+push 913
+print
+push 914
+print
+push 915
+print
+push 916
+print
+push 917
+print
+push 918
+print
+push 919
+print
+push 920
+print
+push 921
+print
+push 922
+print
+push 923
+print
+push 924
+print
+push 925
+print
+push 926
+print
+push 927
+print
+push 928
+print
+push 929
+print
+push 930
+print
+push 931
+print
+push 932
+print
+push 933
+print
+push 934
+print
+push 935
+print
+push 936
+print
+push 937
+print
+push 938
+print
+push 939
+print
+push 940
+print
+push 941
+print
+push 942
+print
+push 943
+print
+push 944
+print
+push 945
+print
+push 946
+print
+push 947
+print
+push 948
+print
+push 949
+print
+push 950
+print
+push 951
+print
+push 952
+print
+push 953
+print
+push 954
+print
+push 955
+print
+push 956
+print
+push 957
+print
+push 958
+print
+push 959
+print
+push 960
+print
+push 961
+print
+push 962
+print
+push 963
+print
+push 964
+print
+push 965
+print
+push 966
+print
+push 967
+print
+push 968
+print
+push 969
+print
+push 970
+print
+push 971
+print
+push 972
+print
+push 973
+print
+push 974
+print
+push 975
+print
+push 976
+print
+push 977
+print
+push 978
+print
+push 979
+print
+push 980
+print
+push 981
+print
+push 982
+print
+push 983
+print
+push 984
+print
+push 985
+print
+push 986
+print
+push 987
+print
+push 988
+print
+push 989
+print
+push 990
+print
+push 991
+print
+push 992
+print
+push 993
+print
+push 994
+print
+push 995
+print
+push 996
+print
+push 997
+print
+push 998
+print
+push 999
+print
+push 1000
+print
+push 1001
+print
+push 1002
+print
+push 1003
+print
+push 1004
+print
+push 1005
+print
+push 1006
+print
+push 1007
+print
+push 1008
+print
+push 1009
+print
+push 1010
+print
+push 1011
+print
+push 1012
+print
+push 1013
+print
+push 1014
+print
+push 1015
+print
+push 1016
+print
+push 1017
+print
+push 1018
+print
+push 1019
+print
+push 1020
+print
+push 1021
+print
+push 1022
+print
+push 1023
+print
+push 1024
+print
+push 1025
+print
+push 1026
+print
+push 1027
+print
+push 1028
+print
+push 1029
+print
+push 1030
+print
+push 1031
+print
+push 1032
+print
+push 1033
+print
+push 1034
+print
+push 1035
+print
+push 1036
+print
+push 1037
+print
+push 1038
+print
+push 1039
+print
+push 1040
+print
+push 1041
+print
+push 1042
+print
+push 1043
+print
+push 1044
+print
+push 1045
+print
+push 1046
+print
+push 1047
+print
+push 1048
+print
+push 1049
+print
+push 1050
+print
+push 1051
+print
+push 1052
+print
+push 1053
+print
+push 1054
+print
+push 1055
+print
+push 1056
+print
+push 1057
+print
+push 1058
+print
+push 1059
+print
+push 1060
+print
+push 1061
+print
+push 1062
+print
+push 1063
+print
+push 1064
+print
+push 1065
+print
+push 1066
+print
+push 1067
+print
+push 1068
+print
+push 1069
+print
+push 1070
+print
+push 1071
+print
+push 1072
+print
+push 1073
+print
+push 1074
+print
+push 1075
+print
+push 1076
+print
+push 1077
+print
+push 1078
+print
+push 1079
+print
+push 1080
+print
+push 1081
+print
+push 1082
+print
+push 1083
+print
+push 1084
+print
+push 1085
+print
+push 1086
+print
+push 1087
+print
+push 1088
+print
+push 1089
+print
+push 1090
+print
+push 1091
+print
+push 1092
+print
+push 1093
+print
+push 1094
+print
+push 1095
+print
+push 1096
+print
+push 1097
+print
+push 1098
+print
+push 1099
+print
+push 1100
+print
+push 1101
+print
+push 1102
+print
+push 1103
+print
+push 1104
+print
+push 1105
+print
+push 1106
+print
+push 1107
+print
+push 1108
+print
+push 1109
+print
+push 1110
+print
+push 1111
+print
+push 1112
+print
+push 1113
+print
+push 1114
+print
+push 1115
+print
+push 1116
+print
+push 1117
+print
+push 1118
+print
+push 1119
+print
+push 1120
+print
+push 1121
+print
+push 1122
+print
+push 1123
+print
+push 1124
+print
+push 1125
+print
+push 1126
+print
+push 1127
+print
+push 1128
+print
+push 1129
+print
+push 1130
+print
+push 1131
+print
+push 1132
+print
+push 1133
+print
+push 1134
+print
+push 1135
+print
+push 1136
+print
+push 1137
+print
+push 1138
+print
+push 1139
+print
+push 1140
+print
+push 1141
+print
+push 1142
+print
+push 1143
+print
+push 1144
+print
+push 1145
+print
+push 1146
+print
+push 1147
+print
+push 1148
+print
+push 1149
+print
+push 1150
+print
+push 1151
+print
+push 1152
+print
+push 1153
+print
+push 1154
+print
+push 1155
+print
+push 1156
+print
+push 1157
+print
+push 1158
+print
+push 1159
+print
+push 1160
+print
+push 1161
+print
+push 1162
+print
+push 1163
+print
+push 1164
+print
+push 1165
+print
+push 1166
+print
+push 1167
+print
+push 1168
+print
+push 1169
+print
+push 1170
+print
+push 1171
+print
+push 1172
+print
+push 1173
+print
+push 1174
+print
+push 1175
+print
+push 1176
+print
+push 1177
+print
+push 1178
+print
+push 1179
+print
+push 1180
+print
+push 1181
+print
+push 1182
+print
+push 1183
+print
+push 1184
+print
+push 1185
+print
+push 1186
+print
+push 1187
+print
+push 1188
+print
+push 1189
+print
+push 1190
+print
+push 1191
+print
+push 1192
+print
+push 1193
+print
+push 1194
+print
+push 1195
+print
+push 1196
+print
+push 1197
+print
+push 1198
+print
+push 1199
+print
+push 1200
+print
+push 1201
+print
+push 1202
+print
+push 1203
+print
+push 1204
+print
+push 1205
+print
+push 1206
+print
+push 1207
+print
+push 1208
+print
+push 1209
+print
+push 1210
+print
+push 1211
+print
+push 1212
+print
+push 1213
+print
+push 1214
+print
+push 1215
+print
+push 1216
+print
+push 1217
+print
+push 1218
+print
+push 1219
+print
+push 1220
+print
+push 1221
+print
+push 1222
+print
+push 1223
+print
+push 1224
+print
+push 1225
+print
+push 1226
+print
+push 1227
+print
+push 1228
+print
+push 1229
+print
+push 1230
+print
+push 1231
+print
+push 1232
+print
+push 1233
+print
+push 1234
+print
+push 1235
+print
+push 1236
+print
+push 1237
+print
+push 1238
+print
+push 1239
+print
+push 1240
+print
+push 1241
+print
+push 1242
+print
+push 1243
+print
+push 1244
+print
+push 1245
+print
+push 1246
+print
+push 1247
+print
+push 1248
+print
+push 1249
+print
+push 1250
+print
+push 1251
+print
+push 1252
+print
+push 1253
+print
+push 1254
+print
+push 1255
+print
+push 1256
+print
+push 1257
+print
+push 1258
+print
+push 1259
+print
+push 1260
+print
+push 1261
+print
+push 1262
+print
+push 1263
+print
+push 1264
+print
+push 1265
+print
+push 1266
+print
+push 1267
+print
+push 1268
+print
+push 1269
+print
+push 1270
+print
+push 1271
+print
+push 1272
+print
+push 1273
+print
+push 1274
+print
+push 1275
+print
+push 1276
+print
+push 1277
+print
+push 1278
+print
+push 1279
+print
+push 1280
+print
+push 1281
+print
+push 1282
+print
+push 1283
+print
+push 1284
+print
+push 1285
+print
+push 1286
+print
+push 1287
+print
+push 1288
+print
+push 1289
+print
+push 1290
+print
+push 1291
+print
+push 1292
+print
+push 1293
+print
+push 1294
+print
+push 1295
+print
+push 1296
+print
+push 1297
+print
+push 1298
+print
+push 1299
+print
+push 1300
+print
+push 1301
+print
+push 1302
+print
+push 1303
+print
+push 1304
+print
+push 1305
+print
+push 1306
+print
+push 1307
+print
+push 1308
+print
+push 1309
+print
+push 1310
+print
+push 1311
+print
+push 1312
+print
+push 1313
+print
+push 1314
+print
+push 1315
+print
+push 1316
+print
+push 1317
+print
+push 1318
+print
+push 1319
+print
+push 1320
+print
+push 1321
+print
+push 1322
+print
+push 1323
+print
+push 1324
+print
+push 1325
+print
+push 1326
+print
+push 1327
+print
+push 1328
+print
+push 1329
+print
+push 1330
+print
+push 1331
+print
+push 1332
+print
+push 1333
+print
+push 1334
+print
+push 1335
+print
+push 1336
+print
+push 1337
+print
+push 1338
+print
+push 1339
+print
+push 1340
+print
+push 1341
+print
+push 1342
+print
+push 1343
+print
+push 1344
+print
+push 1345
+print
+push 1346
+print
+push 1347
+print
+push 1348
+print
+push 1349
+print
+push 1350
+print
+push 1351
+print
+push 1352
+print
+push 1353
+print
+push 1354
+print
+push 1355
+print
+push 1356
+print
+push 1357
+print
+push 1358
+print
+push 1359
+print
+push 1360
+print
+push 1361
+print
+push 1362
+print
+push 1363
+print
+push 1364
+print
+push 1365
+print
+push 1366
+print
+push 1367
+print
+push 1368
+print
+push 1369
+print
+push 1370
+print
+push 1371
+print
+push 1372
+print
+push 1373
+print
+push 1374
+print
+push 1375
+print
+push 1376
+print
+push 1377
+print
+push 1378
+print
+push 1379
+print
+push 1380
+print
+push 1381
+print
+push 1382
+print
+push 1383
+print
+push 1384
+print
+push 1385
+print
+push 1386
+print
+push 1387
+print
+push 1388
+print
+push 1389
+print
+push 1390
+print
+push 1391
+print
+push 1392
+print
+push 1393
+print
+push 1394
+print
+push 1395
+print
+push 1396
+print
+push 1397
+print
+push 1398
+print
+push 1399
+print
+push 1400
+print
+push 1401
+print
+push 1402
+print
+push 1403
+print
+push 1404
+print
+push 1405
+print
+push 1406
+print
+push 1407
+print
+push 1408
+print
+push 1409
+print
+push 1410
+print
+push 1411
+print
+push 1412
+print
+push 1413
+print
+push 1414
+print
+push 1415
+print
+push 1416
+print
+push 1417
+print
+push 1418
+print
+push 1419
+print
+push 1420
+print
+push 1421
+print
+push 1422
+print
+push 1423
+print
+push 1424
+print
+push 1425
+print
+push 1426
+print
+push 1427
+print
+push 1428
+print
+push 1429
+print
+push 1430
+print
+push 1431
+print
+push 1432
+print
+push 1433
+print
+push 1434
+print
+push 1435
+print
+push 1436
+print
+push 1437
+print
+push 1438
+print
+push 1439
+print
+push 1440
+print
+push 1441
+print
+push 1442
+print
+push 1443
+print
+push 1444
+print
+push 1445
+print
+push 1446
+print
+push 1447
+print
+push 1448
+print
+push 1449
+print
+push 1450
+print
+push 1451
+print
+push 1452
+print
+push 1453
+print
+push 1454
+print
+push 1455
+print
+push 1456
+print
+push 1457
+print
+push 1458
+print
+push 1459
+print
+push 1460
+print
+push 1461
+print
+push 1462
+print
+push 1463
+print
+push 1464
+print
+push 1465
+print
+push 1466
+print
+push 1467
+print
+push 1468
+print
+push 1469
+print
+push 1470
+print
+push 1471
+print
+push 1472
+print
+push 1473
+print
+push 1474
+print
+push 1475
+print
+push 1476
+print
+push 1477
+print
+push 1478
+print
+push 1479
+print
+push 1480
+print
+push 1481
+print
+push 1482
+print
+push 1483
+print
+push 1484
+print
+push 1485
+print
+push 1486
+print
+push 1487
+print
+push 1488
+print
+push 1489
+print
+push 1490
+print
+push 1491
+print
+push 1492
+print
+push 1493
+print
+push 1494
+print
+push 1495
+print
+push 1496
+print
+push 1497
+print
+push 1498
+print
+push 1499
+print
+push 1500
+print
+push 1501
+print
+push 1502
+print
+push 1503
+print
+push 1504
+print
+push 1505
+print
+push 1506
+print
+push 1507
+print
+push 1508
+print
+push 1509
+print
+push 1510
+print
+push 1511
+print
+push 1512
+print
+push 1513
+print
+push 1514
+print
+push 1515
+print
+push 1516
+print
+push 1517
+print
+push 1518
+print
+push 1519
+print
+push 1520
+print
+push 1521
+print
+push 1522
+print
+push 1523
+print
+push 1524
+print
+push 1525
+print
+push 1526
+print
+push 1527
+print
+push 1528
+print
+push 1529
+print
+push 1530
+print
+push 1531
+print
+push 1532
+print
+push 1533
+print
+push 1534
+print
+push 1535
+print
+push 1536
+print
+push 1537
+print
+push 1538
+print
+push 1539
+print
+push 1540
+print
+push 1541
+print
+push 1542
+print
+push 1543
+print
+push 1544
+print
+push 1545
+print
+push 1546
+print
+push 1547
+print
+push 1548
+print
+push 1549
+print
+push 1550
+print
+push 1551
+print
+push 1552
+print
+push 1553
+print
+push 1554
+print
+push 1555
+print
+push 1556
+print
+push 1557
+print
+push 1558
+print
+push 1559
+print
+push 1560
+print
+push 1561
+print
+push 1562
+print
+push 1563
+print
+push 1564
+print
+push 1565
+print
+push 1566
+print
+push 1567
+print
+push 1568
+print
+push 1569
+print
+push 1570
+print
+push 1571
+print
+push 1572
+print
+push 1573
+print
+push 1574
+print
+push 1575
+print
+push 1576
+print
+push 1577
+print
+push 1578
+print
+push 1579
+print
+push 1580
+print
+push 1581
+print
+push 1582
+print
+push 1583
+print
+push 1584
+print
+push 1585
+print
+push 1586
+print
+push 1587
+print
+push 1588
+print
+push 1589
+print
+push 1590
+print
+push 1591
+print
+push 1592
+print
+push 1593
+print
+push 1594
+print
+push 1595
+print
+push 1596
+print
+push 1597
+print
+push 1598
+print
+push 1599
+print
+push 1600
+print
+push 1601
+print
+push 1602
+print
+push 1603
+print
+push 1604
+print
+push 1605
+print
+push 1606
+print
+push 1607
+print
+push 1608
+print
+push 1609
+print
+push 1610
+print
+push 1611
+print
+push 1612
+print
+push 1613
+print
+push 1614
+print
+push 1615
+print
+push 1616
+print
+push 1617
+print
+push 1618
+print
+push 1619
+print
+push 1620
+print
+push 1621
+print
+push 1622
+print
+push 1623
+print
+push 1624
+print
+push 1625
+print
+push 1626
+print
+push 1627
+print
+push 1628
+print
+push 1629
+print
+push 1630
+print
+push 1631
+print
+push 1632
+print
+push 1633
+print
+push 1634
+print
+push 1635
+print
+push 1636
+print
+push 1637
+print
+push 1638
+print
+push 1639
+print
+push 1640
+print
+push 1641
+print
+push 1642
+print
+push 1643
+print
+push 1644
+print
+push 1645
+print
+push 1646
+print
+push 1647
+print
+push 1648
+print
+push 1649
+print
+push 1650
+print
+push 1651
+print
+push 1652
+print
+push 1653
+print
+push 1654
+print
+push 1655
+print
+push 1656
+print
+push 1657
+print
+push 1658
+print
+push 1659
+print
+push 1660
+print
+push 1661
+print
+push 1662
+print
+push 1663
+print
+push 1664
+print
+push 1665
+print
+push 1666
+print
+push 1667
+print
+push 1668
+print
+push 1669
+print
+push 1670
+print
+push 1671
+print
+push 1672
+print
+push 1673
+print
+push 1674
+print
+push 1675
+print
+push 1676
+print
+push 1677
+print
+push 1678
+print
+push 1679
+print
+push 1680
+print
+push 1681
+print
+push 1682
+print
+push 1683
+print
+push 1684
+print
+push 1685
+print
+push 1686
+print
+push 1687
+print
+push 1688
+print
+push 1689
+print
+push 1690
+print
+push 1691
+print
+push 1692
+print
+push 1693
+print
+push 1694
+print
+push 1695
+print
+push 1696
+print
+push 1697
+print
+push 1698
+print
+push 1699
+print
+push 1700
+print
+push 1701
+print
+push 1702
+print
+push 1703
+print
+push 1704
+print
+push 1705
+print
+push 1706
+print
+push 1707
+print
+push 1708
+print
+push 1709
+print
+push 1710
+print
+push 1711
+print
+push 1712
+print
+push 1713
+print
+push 1714
+print
+push 1715
+print
+push 1716
+print
+push 1717
+print
+push 1718
+print
+push 1719
+print
+push 1720
+print
+push 1721
+print
+push 1722
+print
+push 1723
+print
+push 1724
+print
+push 1725
+print
+push 1726
+print
+push 1727
+print
+push 1728
+print
+push 1729
+print
+push 1730
+print
+push 1731
+print
+push 1732
+print
+push 1733
+print
+push 1734
+print
+push 1735
+print
+push 1736
+print
+push 1737
+print
+push 1738
+print
+push 1739
+print
+push 1740
+print
+push 1741
+print
+push 1742
+print
+push 1743
+print
+push 1744
+print
+push 1745
+print
+push 1746
+print
+push 1747
+print
+push 1748
+print
+push 1749
+print
+push 1750
+print
+push 1751
+print
+push 1752
+print
+push 1753
+print
+push 1754
+print
+push 1755
+print
+push 1756
+print
+push 1757
+print
+push 1758
+print
+push 1759
+print
+push 1760
+print
+push 1761
+print
+push 1762
+print
+push 1763
+print
+push 1764
+print
+push 1765
+print
+push 1766
+print
+push 1767
+print
+push 1768
+print
+push 1769
+print
+push 1770
+print
+push 1771
+print
+push 1772
+print
+push 1773
+print
+push 1774
+print
+push 1775
+print
+push 1776
+print
+push 1777
+print
+push 1778
+print
+push 1779
+print
+push 1780
+print
+push 1781
+print
+push 1782
+print
+push 1783
+print
+push 1784
+print
+push 1785
+print
+push 1786
+print
+push 1787
+print
+push 1788
+print
+push 1789
+print
+push 1790
+print
+push 1791
+print
+push 1792
+print
+push 1793
+print
+push 1794
+print
+push 1795
+print
+push 1796
+print
+push 1797
+print
+push 1798
+print
+push 1799
+print
+push 1800
+print
+push 1801
+print
+push 1802
+print
+push 1803
+print
+push 1804
+print
+push 1805
+print
+push 1806
+print
+push 1807
+print
+push 1808
+print
+push 1809
+print
+push 1810
+print
+push 1811
+print
+push 1812
+print
+push 1813
+print
+push 1814
+print
+push 1815
+print
+push 1816
+print
+push 1817
+print
+push 1818
+print
+push 1819
+print
+push 1820
+print
+push 1821
+print
+push 1822
+print
+push 1823
+print
+push 1824
+print
+push 1825
+print
+push 1826
+print
+push 1827
+print
+push 1828
+print
+push 1829
+print
+push 1830
+print
+push 1831
+print
+push 1832
+print
+push 1833
+print
+push 1834
+print
+push 1835
+print
+push 1836
+print
+push 1837
+print
+push 1838
+print
+push 1839
+print
+push 1840
+print
+push 1841
+print
+push 1842
+print
+push 1843
+print
+push 1844
+print
+push 1845
+print
+push 1846
+print
+push 1847
+print
+push 1848
+print
+push 1849
+print
+push 1850
+print
+push 1851
+print
+push 1852
+print
+push 1853
+print
+push 1854
+print
+push 1855
+print
+push 1856
+print
+push 1857
+print
+push 1858
+print
+push 1859
+print
+push 1860
+print
+push 1861
+print
+push 1862
+print
+push 1863
+print
+push 1864
+print
+push 1865
+print
+push 1866
+print
+push 1867
+print
+push 1868
+print
+push 1869
+print
+push 1870
+print
+push 1871
+print
+push 1872
+print
+push 1873
+print
+push 1874
+print
+push 1875
+print
+push 1876
+print
+push 1877
+print
+push 1878
+print
+push 1879
+print
+push 1880
+print
+push 1881
+print
+push 1882
+print
+push 1883
+print
+push 1884
+print
+push 1885
+print
+push 1886
+print
+push 1887
+print
+push 1888
+print
+push 1889
+print
+push 1890
+print
+push 1891
+print
+push 1892
+print
+push 1893
+print
+push 1894
+print
+push 1895
+print
+push 1896
+print
+push 1897
+print
+push 1898
+print
+push 1899
+print
+push 1900
+print
+push 1901
+print
+push 1902
+print
+push 1903
+print
+push 1904
+print
+push 1905
+print
+push 1906
+print
+push 1907
+print
+push 1908
+print
+push 1909
+print
+push 1910
+print
+push 1911
+print
+push 1912
+print
+push 1913
+print
+push 1914
+print
+push 1915
+print
+push 1916
+print
+push 1917
+print
+push 1918
+print
+push 1919
+print
+push 1920
+print
+push 1921
+print
+push 1922
+print
+push 1923
+print
+push 1924
+print
+push 1925
+print
+push 1926
+print
+push 1927
+print
+push 1928
+print
+push 1929
+print
+push 1930
+print
+push 1931
+print
+push 1932
+print
+push 1933
+print
+push 1934
+print
+push 1935
+print
+push 1936
+print
+push 1937
+print
+push 1938
+print
+push 1939
+print
+push 1940
+print
+push 1941
+print
+push 1942
+print
+push 1943
+print
+push 1944
+print
+push 1945
+print
+push 1946
+print
+push 1947
+print
+push 1948
+print
+push 1949
+print
+push 1950
+print
+push 1951
+print
+push 1952
+print
+push 1953
+print
+push 1954
+print
+push 1955
+print
+push 1956
+print
+push 1957
+print
+push 1958
+print
+push 1959
+print
+push 1960
+print
+push 1961
+print
+push 1962
+print
+push 1963
+print
+push 1964
+print
+push 1965
+print
+push 1966
+print
+push 1967
+print
+push 1968
+print
+push 1969
+print
+push 1970
+print
+push 1971
+print
+push 1972
+print
+push 1973
+print
+push 1974
+print
+push 1975
+print
+push 1976
+print
+push 1977
+print
+push 1978
+print
+push 1979
+print
+push 1980
+print
+push 1981
+print
+push 1982
+print
+push 1983
+print
+push 1984
+print
+push 1985
+print
+push 1986
+print
+push 1987
+print
+push 1988
+print
+push 1989
+print
+push 1990
+print
+push 1991
+print
+push 1992
+print
+push 1993
+print
+push 1994
+print
+push 1995
+print
+push 1996
+print
+push 1997
+print
+push 1998
+print
+push 1999
+print
+push 2000
+print
+push 2001
+print
+push 2002
+print
+push 2003
+print
+push 2004
+print
+push 2005
+print
+push 2006
+print
+push 2007
+print
+push 2008
+print
+push 2009
+print
+push 2010
+print
+push 2011
+print
+push 2012
+print
+push 2013
+print
+push 2014
+print
+push 2015
+print
+push 2016
+print
+push 2017
+print
+push 2018
+print
+push 2019
+print
+push 2020
+print
+push 2021
+print
+push 2022
+print
+push 2023
+print
+push 2024
+print
+push 2025
+print
+push 2026
+print
+push 2027
+print
+push 2028
+print
+push 2029
+print
+push 2030
+print
+push 2031
+print
+push 2032
+print
+push 2033
+print
+push 2034
+print
+push 2035
+print
+push 2036
+print
+push 2037
+print
+push 2038
+print
+push 2039
+print
+push 2040
+print
+push 2041
+print
+push 2042
+print
+push 2043
+print
+push 2044
+print
+push 2045
+print
+push 2046
+print
+push 2047
+print
+push 2048
+print
+push 2049
+print
+push 2050
+print
+push 2051
+print
+push 2052
+print
+push 2053
+print
+push 2054
+print
+push 2055
+print
+push 2056
+print
+push 2057
+print
+push 2058
+print
+push 2059
+print
+push 2060
+print
+push 2061
+print
+push 2062
+print
+push 2063
+print
+push 2064
+print
+push 2065
+print
+push 2066
+print
+push 2067
+print
+push 2068
+print
+push 2069
+print
+push 2070
+print
+push 2071
+print
+push 2072
+print
+push 2073
+print
+push 2074
+print
+push 2075
+print
+push 2076
+print
+push 2077
+print
+push 2078
+print
+push 2079
+print
+push 2080
+print
+push 2081
+print
+push 2082
+print
+push 2083
+print
+push 2084
+print
+push 2085
+print
+push 2086
+print
+push 2087
+print
+push 2088
+print
+push 2089
+print
+push 2090
+print
+push 2091
+print
+push 2092
+print
+push 2093
+print
+push 2094
+print
+push 2095
+print
+push 2096
+print
+push 2097
+print
+push 2098
+print
+push 2099
+print
+push 2100
+print
+push 2101
+print
+push 2102
+print
+push 2103
+print
+push 2104
+print
+push 2105
+print
+push 2106
+print
+push 2107
+print
+push 2108
+print
+push 2109
+print
+push 2110
+print
+push 2111
+print
+push 2112
+print
+push 2113
+print
+push 2114
+print
+push 2115
+print
+push 2116
+print
+push 2117
+print
+push 2118
+print
+push 2119
+print
+push 2120
+print
+push 2121
+print
+push 2122
+print
+push 2123
+print
+push 2124
+print
+push 2125
+print
+push 2126
+print
+push 2127
+print
+push 2128
+print
+push 2129
+print
+push 2130
+print
+push 2131
+print
+push 2132
+print
+push 2133
+print
+push 2134
+print
+push 2135
+print
+push 2136
+print
+push 2137
+print
+push 2138
+print
+push 2139
+print
+push 2140
+print
+push 2141
+print
+push 2142
+print
+push 2143
+print
+push 2144
+print
+push 2145
+print
+push 2146
+print
+push 2147
+print
+push 2148
+print
+push 2149
+print
+push 2150
+print
+push 2151
+print
+push 2152
+print
+push 2153
+print
+push 2154
+print
+push 2155
+print
+push 2156
+print
+push 2157
+print
+push 2158
+print
+push 2159
+print
+push 2160
+print
+push 2161
+print
+push 2162
+print
+push 2163
+print
+push 2164
+print
+push 2165
+print
+push 2166
+print
+push 2167
+print
+push 2168
+print
+push 2169
+print
+push 2170
+print
+push 2171
+print
+push 2172
+print
+push 2173
+print
+push 2174
+print
+push 2175
+print
+push 2176
+print
+push 2177
+print
+push 2178
+print
+push 2179
+print
+push 2180
+print
+push 2181
+print
+push 2182
+print
+push 2183
+print
+push 2184
+print
+push 2185
+print
+push 2186
+print
+push 2187
+print
+push 2188
+print
+push 2189
+print
+push 2190
+print
+push 2191
+print
+push 2192
+print
+push 2193
+print
+push 2194
+print
+push 2195
+print
+push 2196
+print
+push 2197
+print
+push 2198
+print
+push 2199
+print
+push 2200
+print
+push 2201
+print
+push 2202
+print
+push 2203
+print
+push 2204
+print
+push 2205
+print
+push 2206
+print
+push 2207
+print
+push 2208
+print
+push 2209
+print
+push 2210
+print
+push 2211
+print
+push 2212
+print
+push 2213
+print
+push 2214
+print
+push 2215
+print
+push 2216
+print
+push 2217
+print
+push 2218
+print
+push 2219
+print
+push 2220
+print
+push 2221
+print
+push 2222
+print
+push 2223
+print
+push 2224
+print
+push 2225
+print
+push 2226
+print
+push 2227
+print
+push 2228
+print
+push 2229
+print
+push 2230
+print
+push 2231
+print
+push 2232
+print
+push 2233
+print
+push 2234
+print
+push 2235
+print
+push 2236
+print
+push 2237
+print
+push 2238
+print
+push 2239
+print
+push 2240
+print
+push 2241
+print
+push 2242
+print
+push 2243
+print
+push 2244
+print
+push 2245
+print
+push 2246
+print
+push 2247
+print
+push 2248
+print
+push 2249
+print
+push 2250
+print
+push 2251
+print
+push 2252
+print
+push 2253
+print
+push 2254
+print
+push 2255
+print
+push 2256
+print
+push 2257
+print
+push 2258
+print
+push 2259
+print
+push 2260
+print
+push 2261
+print
+push 2262
+print
+push 2263
+print
+push 2264
+print
+push 2265
+print
+push 2266
+print
+push 2267
+print
+push 2268
+print
+push 2269
+print
+push 2270
+print
+push 2271
+print
+push 2272
+print
+push 2273
+print
+push 2274
+print
+push 2275
+print
+push 2276
+print
+push 2277
+print
+push 2278
+print
+push 2279
+print
+push 2280
+print
+push 2281
+print
+push 2282
+print
+push 2283
+print
+push 2284
+print
+push 2285
+print
+push 2286
+print
+push 2287
+print
+push 2288
+print
+push 2289
+print
+push 2290
+print
+push 2291
+print
+push 2292
+print
+push 2293
+print
+push 2294
+print
+push 2295
+print
+push 2296
+print
+push 2297
+print
+push 2298
+print
+push 2299
+print
+push 2300
+print
+push 2301
+print
+push 2302
+print
+push 2303
+print
+push 2304
+print
+push 2305
+print
+push 2306
+print
+push 2307
+print
+push 2308
+print
+push 2309
+print
+push 2310
+print
+push 2311
+print
+push 2312
+print
+push 2313
+print
+push 2314
+print
+push 2315
+print
+push 2316
+print
+push 2317
+print
+push 2318
+print
+push 2319
+print
+push 2320
+print
+push 2321
+print
+push 2322
+print
+push 2323
+print
+push 2324
+print
+push 2325
+print
+push 2326
+print
+push 2327
+print
+push 2328
+print
+push 2329
+print
+push 2330
+print
+push 2331
+print
+push 2332
+print
+push 2333
+print
+push 2334
+print
+push 2335
+print
+push 2336
+print
+push 2337
+print
+push 2338
+print
+push 2339
+print
+push 2340
+print
+push 2341
+print
+push 2342
+print
+push 2343
+print
+push 2344
+print
+push 2345
+print
+push 2346
+print
+push 2347
+print
+push 2348
+print
+push 2349
+print
+push 2350
+print
+push 2351
+print
+push 2352
+print
+push 2353
+print
+push 2354
+print
+push 2355
+print
+push 2356
+print
+push 2357
+print
+push 2358
+print
+push 2359
+print
+push 2360
+print
+push 2361
+print
+push 2362
+print
+push 2363
+print
+push 2364
+print
+push 2365
+print
+push 2366
+print
+push 2367
+print
+push 2368
+print
+push 2369
+print
+push 2370
+print
+push 2371
+print
+push 2372
+print
+push 2373
+print
+push 2374
+print
+push 2375
+print
+push 2376
+print
+push 2377
+print
+push 2378
+print
+push 2379
+print
+push 2380
+print
+push 2381
+print
+push 2382
+print
+push 2383
+print
+push 2384
+print
+push 2385
+print
+push 2386
+print
+push 2387
+print
+push 2388
+print
+push 2389
+print
+push 2390
+print
+push 2391
+print
+push 2392
+print
+push 2393
+print
+push 2394
+print
+push 2395
+print
+push 2396
+print
+push 2397
+print
+push 2398
+print
+push 2399
+print
+push 2400
+print
+push 2401
+print
+push 2402
+print
+push 2403
+print
+push 2404
+print
+push 2405
+print
+push 2406
+print
+push 2407
+print
+push 2408
+print
+push 2409
+print
+push 2410
+print
+push 2411
+print
+push 2412
+print
+push 2413
+print
+push 2414
+print
+push 2415
+print
+push 2416
+print
+push 2417
+print
+push 2418
+print
+push 2419
+print
+push 2420
+print
+push 2421
+print
+push 2422
+print
+push 2423
+print
+push 2424
+print
+push 2425
+print
+push 2426
+print
+push 2427
+print
+push 2428
+print
+push 2429
+print
+push 2430
+print
+push 2431
+print
+push 2432
+print
+push 2433
+print
+push 2434
+print
+push 2435
+print
+push 2436
+print
+push 2437
+print
+push 2438
+print
+push 2439
+print
+push 2440
+print
+push 2441
+print
+push 2442
+print
+push 2443
+print
+push 2444
+print
+push 2445
+print
+push 2446
+print
+push 2447
+print
+push 2448
+print
+push 2449
+print
+push 2450
+print
+push 2451
+print
+push 2452
+print
+push 2453
+print
+push 2454
+print
+push 2455
+print
+push 2456
+print
+push 2457
+print
+push 2458
+print
+push 2459
+print
+push 2460
+print
+push 2461
+print
+push 2462
+print
+push 2463
+print
+push 2464
+print
+push 2465
+print
+push 2466
+print
+push 2467
+print
+push 2468
+print
+push 2469
+print
+push 2470
+print
+push 2471
+print
+push 2472
+print
+push 2473
+print
+push 2474
+print
+push 2475
+print
+push 2476
+print
+push 2477
+print
+push 2478
+print
+push 2479
+print
+push 2480
+print
+push 2481
+print
+push 2482
+print
+push 2483
+print
+push 2484
+print
+push 2485
+print
+push 2486
+print
+push 2487
+print
+push 2488
+print
+push 2489
+print
+push 2490
+print
+push 2491
+print
+push 2492
+print
+push 2493
+print
+push 2494
+print
+push 2495
+print
+push 2496
+print
+push 2497
+print
+push 2498
+print
+push 2499
+print
+push 2500
+print
+push 2501
+print
+push 2502
+print
+push 2503
+print
+push 2504
+print
+push 2505
+print
+push 2506
+print
+push 2507
+print
+push 2508
+print
+push 2509
+print
+push 2510
+print
+push 2511
+print
+push 2512
+print
+push 2513
+print
+push 2514
+print
+push 2515
+print
+push 2516
+print
+push 2517
+print
+push 2518
+print
+push 2519
+print
+push 2520
+print
+push 2521
+print
+push 2522
+print
+push 2523
+print
+push 2524
+print
+push 2525
+print
+push 2526
+print
+push 2527
+print
+push 2528
+print
+push 2529
+print
+push 2530
+print
+push 2531
+print
+push 2532
+print
+push 2533
+print
+push 2534
+print
+push 2535
+print
+push 2536
+print
+push 2537
+print
+push 2538
+print
+push 2539
+print
+push 2540
+print
+push 2541
+print
+push 2542
+print
+push 2543
+print
+push 2544
+print
+push 2545
+print
+push 2546
+print
+push 2547
+print
+push 2548
+print
+push 2549
+print
+push 2550
+print
+push 2551
+print
+push 2552
+print
+push 2553
+print
+push 2554
+print
+push 2555
+print
+push 2556
+print
+push 2557
+print
+push 2558
+print
+push 2559
+print
+push 2560
+print
+push 2561
+print
+push 2562
+print
+push 2563
+print
+push 2564
+print
+push 2565
+print
+push 2566
+print
+push 2567
+print
+push 2568
+print
+push 2569
+print
+push 2570
+print
+push 2571
+print
+push 2572
+print
+push 2573
+print
+push 2574
+print
+push 2575
+print
+push 2576
+print
+push 2577
+print
+push 2578
+print
+push 2579
+print
+push 2580
+print
+push 2581
+print
+push 2582
+print
+push 2583
+print
+push 2584
+print
+push 2585
+print
+push 2586
+print
+push 2587
+print
+push 2588
+print
+push 2589
+print
+push 2590
+print
+push 2591
+print
+push 2592
+print
+push 2593
+print
+push 2594
+print
+push 2595
+print
+push 2596
+print
+push 2597
+print
+push 2598
+print
+push 2599
+print
+push 2600
+print
+push 2601
+print
+push 2602
+print
+push 2603
+print
+push 2604
+print
+push 2605
+print
+push 2606
+print
+push 2607
+print
+push 2608
+print
+push 2609
+print
+push 2610
+print
+push 2611
+print
+push 2612
+print
+push 2613
+print
+push 2614
+print
+push 2615
+print
+push 2616
+print
+push 2617
+print
+push 2618
+print
+push 2619
+print
+push 2620
+print
+push 2621
+print
+push 2622
+print
+push 2623
+print
+push 2624
+print
+push 2625
+print
+push 2626
+print
+push 2627
+print
+push 2628
+print
+push 2629
+print
+push 2630
+print
+push 2631
+print
+push 2632
+print
+push 2633
+print
+push 2634
+print
+push 2635
+print
+push 2636
+print
+push 2637
+print
+push 2638
+print
+push 2639
+print
+push 2640
+print
+push 2641
+print
+push 2642
+print
+push 2643
+print
+push 2644
+print
+push 2645
+print
+push 2646
+print
+push 2647
+print
+push 2648
+print
+push 2649
+print
+push 2650
+print
+push 2651
+print
+push 2652
+print
+push 2653
+print
+push 2654
+print
+push 2655
+print
+push 2656
+print
+push 2657
+print
+push 2658
+print
+push 2659
+print
+push 2660
+print
+push 2661
+print
+push 2662
+print
+push 2663
+print
+push 2664
+print
+push 2665
+print
+push 2666
+print
+push 2667
+print
+push 2668
+print
+push 2669
+print
+push 2670
+print
+push 2671
+print
+push 2672
+print
+push 2673
+print
+push 2674
+print
+push 2675
+print
+push 2676
+print
+push 2677
+print
+push 2678
+print
+push 2679
+print
+push 2680
+print
+push 2681
+print
+push 2682
+print
+push 2683
+print
+push 2684
+print
+push 2685
+print
+push 2686
+print
+push 2687
+print
+push 2688
+print
+push 2689
+print
+push 2690
+print
+push 2691
+print
+push 2692
+print
+push 2693
+print
+push 2694
+print
+push 2695
+print
+push 2696
+print
+push 2697
+print
+push 2698
+print
+push 2699
+print
+push 2700
+print
+push 2701
+print
+push 2702
+print
+push 2703
+print
+push 2704
+print
+push 2705
+print
+push 2706
+print
+push 2707
+print
+push 2708
+print
+push 2709
+print
+push 2710
+print
+push 2711
+print
+push 2712
+print
+push 2713
+print
+push 2714
+print
+push 2715
+print
+push 2716
+print
+push 2717
+print
+push 2718
+print
+push 2719
+print
+push 2720
+print
+push 2721
+print
+push 2722
+print
+push 2723
+print
+push 2724
+print
+push 2725
+print
+push 2726
+print
+push 2727
+print
+push 2728
+print
+push 2729
+print
+push 2730
+print
+push 2731
+print
+push 2732
+print
+push 2733
+print
+push 2734
+print
+push 2735
+print
+push 2736
+print
+push 2737
+print
+push 2738
+print
+push 2739
+print
+push 2740
+print
+push 2741
+print
+push 2742
+print
+push 2743
+print
+push 2744
+print
+push 2745
+print
+push 2746
+print
+push 2747
+print
+push 2748
+print
+push 2749
+print
+push 2750
+print
+push 2751
+print
+push 2752
+print
+push 2753
+print
+push 2754
+print
+push 2755
+print
+push 2756
+print
+push 2757
+print
+push 2758
+print
+push 2759
+print
+push 2760
+print
+push 2761
+print
+push 2762
+print
+push 2763
+print
+push 2764
+print
+push 2765
+print
+push 2766
+print
+push 2767
+print
+push 2768
+print
+push 2769
+print
+push 2770
+print
+push 2771
+print
+push 2772
+print
+push 2773
+print
+push 2774
+print
+push 2775
+print
+push 2776
+print
+push 2777
+print
+push 2778
+print
+push 2779
+print
+push 2780
+print
+push 2781
+print
+push 2782
+print
+push 2783
+print
+push 2784
+print
+push 2785
+print
+push 2786
+print
+push 2787
+print
+push 2788
+print
+push 2789
+print
+push 2790
+print
+push 2791
+print
+push 2792
+print
+push 2793
+print
+push 2794
+print
+push 2795
+print
+push 2796
+print
+push 2797
+print
+push 2798
+print
+push 2799
+print
+push 2800
+print
+push 2801
+print
+push 2802
+print
+push 2803
+print
+push 2804
+print
+push 2805
+print
+push 2806
+print
+push 2807
+print
+push 2808
+print
+push 2809
+print
+push 2810
+print
+push 2811
+print
+push 2812
+print
+push 2813
+print
+push 2814
+print
+push 2815
+print
+push 2816
+print
+push 2817
+print
+push 2818
+print
+push 2819
+print
+push 2820
+print
+push 2821
+print
+push 2822
+print
+push 2823
+print
+push 2824
+print
+push 2825
+print
+push 2826
+print
+push 2827
+print
+push 2828
+print
+push 2829
+print
+push 2830
+print
+push 2831
+print
+push 2832
+print
+push 2833
+print
+push 2834
+print
+push 2835
+print
+push 2836
+print
+push 2837
+print
+push 2838
+print
+push 2839
+print
+push 2840
+print
+push 2841
+print
+push 2842
+print
+push 2843
+print
+push 2844
+print
+push 2845
+print
+push 2846
+print
+push 2847
+print
+push 2848
+print
+push 2849
+print
+push 2850
+print
+push 2851
+print
+push 2852
+print
+push 2853
+print
+push 2854
+print
+push 2855
+print
+push 2856
+print
+push 2857
+print
+push 2858
+print
+push 2859
+print
+push 2860
+print
+push 2861
+print
+push 2862
+print
+push 2863
+print
+push 2864
+print
+push 2865
+print
+push 2866
+print
+push 2867
+print
+push 2868
+print
+push 2869
+print
+push 2870
+print
+push 2871
+print
+push 2872
+print
+push 2873
+print
+push 2874
+print
+push 2875
+print
+push 2876
+print
+push 2877
+print
+push 2878
+print
+push 2879
+print
+push 2880
+print
+push 2881
+print
+push 2882
+print
+push 2883
+print
+push 2884
+print
+push 2885
+print
+push 2886
+print
+push 2887
+print
+push 2888
+print
+push 2889
+print
+push 2890
+print
+push 2891
+print
+push 2892
+print
+push 2893
+print
+push 2894
+print
+push 2895
+print
+push 2896
+print
+push 2897
+print
+push 2898
+print
+push 2899
+print
+push 2900
+print
+push 2901
+print
+push 2902
+print
+push 2903
+print
+push 2904
+print
+push 2905
+print
+push 2906
+print
+push 2907
+print
+push 2908
+print
+push 2909
+print
+push 2910
+print
+push 2911
+print
+push 2912
+print
+push 2913
+print
+push 2914
+print
+push 2915
+print
+push 2916
+print
+push 2917
+print
+push 2918
+print
+push 2919
+print
+push 2920
+print
+push 2921
+print
+push 2922
+print
+push 2923
+print
+push 2924
+print
+push 2925
+print
+push 2926
+print
+push 2927
+print
+push 2928
+print
+push 2929
+print
+push 2930
+print
+push 2931
+print
+push 2932
+print
+push 2933
+print
+push 2934
+print
+push 2935
+print
+push 2936
+print
+push 2937
+print
+push 2938
+print
+push 2939
+print
+push 2940
+print
+push 2941
+print
+push 2942
+print
+push 2943
+print
+push 2944
+print
+push 2945
+print
+push 2946
+print
+push 2947
+print
+push 2948
+print
+push 2949
+print
+push 2950
+print
+push 2951
+print
+push 2952
+print
+push 2953
+print
+push 2954
+print
+push 2955
+print
+push 2956
+print
+push 2957
+print
+push 2958
+print
+push 2959
+print
+push 2960
+print
+push 2961
+print
+push 2962
+print
+push 2963
+print
+push 2964
+print
+push 2965
+print
+push 2966
+print
+push 2967
+print
+push 2968
+print
+push 2969
+print
+push 2970
+print
+push 2971
+print
+push 2972
+print
+push 2973
+print
+push 2974
+print
+push 2975
+print
+push 2976
+print
+push 2977
+print
+push 2978
+print
+push 2979
+print
+push 2980
+print
+push 2981
+print
+push 2982
+print
+push 2983
+print
+push 2984
+print
+push 2985
+print
+push 2986
+print
+push 2987
+print
+push 2988
+print
+push 2989
+print
+push 2990
+print
+push 2991
+print
+push 2992
+print
+push 2993
+print
+push 2994
+print
+push 2995
+print
+push 2996
+print
+push 2997
+print
+push 2998
+print
+push 2999
+print
+push 3000
+print
+push 3001
+print
+push 3002
+print
+push 3003
+print
+push 3004
+print
+push 3005
+print
+push 3006
+print
+push 3007
+print
+push 3008
+print
+push 3009
+print
+push 3010
+print
+push 3011
+print
+push 3012
+print
+push 3013
+print
+push 3014
+print
+push 3015
+print
+push 3016
+print
+push 3017
+print
+push 3018
+print
+push 3019
+print
+push 3020
+print
+push 3021
+print
+push 3022
+print
+push 3023
+print
+push 3024
+print
+push 3025
+print
+push 3026
+print
+push 3027
+print
+push 3028
+print
+push 3029
+print
+push 3030
+print
+push 3031
+print
+push 3032
+print
+push 3033
+print
+push 3034
+print
+push 3035
+print
+push 3036
+print
+push 3037
+print
+push 3038
+print
+push 3039
+print
+push 3040
+print
+push 3041
+print
+push 3042
+print
+push 3043
+print
+push 3044
+print
+push 3045
+print
+push 3046
+print
+push 3047
+print
+push 3048
+print
+push 3049
+print
+push 3050
+print
+push 3051
+print
+push 3052
+print
+push 3053
+print
+push 3054
+print
+push 3055
+print
+push 3056
+print
+push 3057
+print
+push 3058
+print
+push 3059
+print
+push 3060
+print
+push 3061
+print
+push 3062
+print
+push 3063
+print
+push 3064
+print
+push 3065
+print
+push 3066
+print
+push 3067
+print
+push 3068
+print
+push 3069
+print
+push 3070
+print
+push 3071
+print
+push 3072
+print
+push 3073
+print
+push 3074
+print
+push 3075
+print
+push 3076
+print
+push 3077
+print
+push 3078
+print
+push 3079
+print
+push 3080
+print
+push 3081
+print
+push 3082
+print
+push 3083
+print
+push 3084
+print
+push 3085
+print
+push 3086
+print
+push 3087
+print
+push 3088
+print
+push 3089
+print
+push 3090
+print
+push 3091
+print
+push 3092
+print
+push 3093
+print
+push 3094
+print
+push 3095
+print
+push 3096
+print
+push 3097
+print
+push 3098
+print
+push 3099
+print
+push 3100
+print
+push 3101
+print
+push 3102
+print
+push 3103
+print
+push 3104
+print
+push 3105
+print
+push 3106
+print
+push 3107
+print
+push 3108
+print
+push 3109
+print
+push 3110
+print
+push 3111
+print
+push 3112
+print
+push 3113
+print
+push 3114
+print
+push 3115
+print
+push 3116
+print
+push 3117
+print
+push 3118
+print
+push 3119
+print
+push 3120
+print
+push 3121
+print
+push 3122
+print
+push 3123
+print
+push 3124
+print
+push 3125
+print
+push 3126
+print
+push 3127
+print
+push 3128
+print
+push 3129
+print
+push 3130
+print
+push 3131
+print
+push 3132
+print
+push 3133
+print
+push 3134
+print
+push 3135
+print
+push 3136
+print
+push 3137
+print
+push 3138
+print
+push 3139
+print
+push 3140
+print
+push 3141
+print
+push 3142
+print
+push 3143
+print
+push 3144
+print
+push 3145
+print
+push 3146
+print
+push 3147
+print
+push 3148
+print
+push 3149
+print
+push 3150
+print
+push 3151
+print
+push 3152
+print
+push 3153
+print
+push 3154
+print
+push 3155
+print
+push 3156
+print
+push 3157
+print
+push 3158
+print
+push 3159
+print
+push 3160
+print
+push 3161
+print
+push 3162
+print
+push 3163
+print
+push 3164
+print
+push 3165
+print
+push 3166
+print
+push 3167
+print
+push 3168
+print
+push 3169
+print
+push 3170
+print
+push 3171
+print
+push 3172
+print
+push 3173
+print
+push 3174
+print
+push 3175
+print
+push 3176
+print
+push 3177
+print
+push 3178
+print
+push 3179
+print
+push 3180
+print
+push 3181
+print
+push 3182
+print
+push 3183
+print
+push 3184
+print
+push 3185
+print
+push 3186
+print
+push 3187
+print
+push 3188
+print
+push 3189
+print
+push 3190
+print
+push 3191
+print
+push 3192
+print
+push 3193
+print
+push 3194
+print
+push 3195
+print
+push 3196
+print
+push 3197
+print
+push 3198
+print
+push 3199
+print
+push 3200
+print
+push 3201
+print
+push 3202
+print
+push 3203
+print
+push 3204
+print
+push 3205
+print
+push 3206
+print
+push 3207
+print
+push 3208
+print
+push 3209
+print
+push 3210
+print
+push 3211
+print
+push 3212
+print
+push 3213
+print
+push 3214
+print
+push 3215
+print
+push 3216
+print
+push 3217
+print
+push 3218
+print
+push 3219
+print
+push 3220
+print
+push 3221
+print
+push 3222
+print
+push 3223
+print
+push 3224
+print
+push 3225
+print
+push 3226
+print
+push 3227
+print
+push 3228
+print
+push 3229
+print
+push 3230
+print
+push 3231
+print
+push 3232
+print
+push 3233
+print
+push 3234
+print
+push 3235
+print
+push 3236
+print
+push 3237
+print
+push 3238
+print
+push 3239
+print
+push 3240
+print
+push 3241
+print
+push 3242
+print
+push 3243
+print
+push 3244
+print
+push 3245
+print
+push 3246
+print
+push 3247
+print
+push 3248
+print
+push 3249
+print
+push 3250
+print
+push 3251
+print
+push 3252
+print
+push 3253
+print
+push 3254
+print
+push 3255
+print
+push 3256
+print
+push 3257
+print
+push 3258
+print
+push 3259
+print
+push 3260
+print
+push 3261
+print
+push 3262
+print
+push 3263
+print
+push 3264
+print
+push 3265
+print
+push 3266
+print
+push 3267
+print
+push 3268
+print
+push 3269
+print
+push 3270
+print
+push 3271
+print
+push 3272
+print
+push 3273
+print
+push 3274
+print
+push 3275
+print
+push 3276
+print
+push 3277
+print
+push 3278
+print
+push 3279
+print
+push 3280
+print
+push 3281
+print
+push 3282
+print
+push 3283
+print
+push 3284
+print
+push 3285
+print
+push 3286
+print
+push 3287
+print
+push 3288
+print
+push 3289
+print
+push 3290
+print
+push 3291
+print
+push 3292
+print
+push 3293
+print
+push 3294
+print
+push 3295
+print
+push 3296
+print
+push 3297
+print
+push 3298
+print
+push 3299
+print
+push 3300
+print
+push 3301
+print
+push 3302
+print
+push 3303
+print
+push 3304
+print
+push 3305
+print
+push 3306
+print
+push 3307
+print
+push 3308
+print
+push 3309
+print
+push 3310
+print
+push 3311
+print
+push 3312
+print
+push 3313
+print
+push 3314
+print
+push 3315
+print
+push 3316
+print
+push 3317
+print
+push 3318
+print
+push 3319
+print
+push 3320
+print
+push 3321
+print
+push 3322
+print
+push 3323
+print
+push 3324
+print
+push 3325
+print
+push 3326
+print
+push 3327
+print
+push 3328
+print
+push 3329
+print
+push 3330
+print
+push 3331
+print
+push 3332
+print
+push 3333
+print
+push 3334
+print
+push 3335
+print
+push 3336
+print
+push 3337
+print
+push 3338
+print
+push 3339
+print
+push 3340
+print
+push 3341
+print
+push 3342
+print
+push 3343
+print
+push 3344
+print
+push 3345
+print
+push 3346
+print
+push 3347
+print
+push 3348
+print
+push 3349
+print
+push 3350
+print
+push 3351
+print
+push 3352
+print
+push 3353
+print
+push 3354
+print
+push 3355
+print
+push 3356
+print
+push 3357
+print
+push 3358
+print
+push 3359
+print
+push 3360
+print
+push 3361
+print
+push 3362
+print
+push 3363
+print
+push 3364
+print
+push 3365
+print
+push 3366
+print
+push 3367
+print
+push 3368
+print
+push 3369
+print
+push 3370
+print
+push 3371
+print
+push 3372
+print
+push 3373
+print
+push 3374
+print
+push 3375
+print
+push 3376
+print
+push 3377
+print
+push 3378
+print
+push 3379
+print
+push 3380
+print
+push 3381
+print
+push 3382
+print
+push 3383
+print
+push 3384
+print
+push 3385
+print
+push 3386
+print
+push 3387
+print
+push 3388
+print
+push 3389
+print
+push 3390
+print
+push 3391
+print
+push 3392
+print
+push 3393
+print
+push 3394
+print
+push 3395
+print
+push 3396
+print
+push 3397
+print
+push 3398
+print
+push 3399
+print
+push 3400
+print
+push 3401
+print
+push 3402
+print
+push 3403
+print
+push 3404
+print
+push 3405
+print
+push 3406
+print
+push 3407
+print
+push 3408
+print
+push 3409
+print
+push 3410
+print
+push 3411
+print
+push 3412
+print
+push 3413
+print
+push 3414
+print
+push 3415
+print
+push 3416
+print
+push 3417
+print
+push 3418
+print
+push 3419
+print
+push 3420
+print
+push 3421
+print
+push 3422
+print
+push 3423
+print
+push 3424
+print
+push 3425
+print
+push 3426
+print
+push 3427
+print
+push 3428
+print
+push 3429
+print
+push 3430
+print
+push 3431
+print
+push 3432
+print
+push 3433
+print
+push 3434
+print
+push 3435
+print
+push 3436
+print
+push 3437
+print
+push 3438
+print
+push 3439
+print
+push 3440
+print
+push 3441
+print
+push 3442
+print
+push 3443
+print
+push 3444
+print
+push 3445
+print
+push 3446
+print
+push 3447
+print
+push 3448
+print
+push 3449
+print
+push 3450
+print
+push 3451
+print
+push 3452
+print
+push 3453
+print
+push 3454
+print
+push 3455
+print
+push 3456
+print
+push 3457
+print
+push 3458
+print
+push 3459
+print
+push 3460
+print
+push 3461
+print
+push 3462
+print
+push 3463
+print
+push 3464
+print
+push 3465
+print
+push 3466
+print
+push 3467
+print
+push 3468
+print
+push 3469
+print
+push 3470
+print
+push 3471
+print
+push 3472
+print
+push 3473
+print
+push 3474
+print
+push 3475
+print
+push 3476
+print
+push 3477
+print
+push 3478
+print
+push 3479
+print
+push 3480
+print
+push 3481
+print
+push 3482
+print
+push 3483
+print
+push 3484
+print
+push 3485
+print
+push 3486
+print
+push 3487
+print
+push 3488
+print
+push 3489
+print
+push 3490
+print
+push 3491
+print
+push 3492
+print
+push 3493
+print
+push 3494
+print
+push 3495
+print
+push 3496
+print
+push 3497
+print
+push 3498
+print
+push 3499
+print
+push 3500
+print
+push 3501
+print
+push 3502
+print
+push 3503
+print
+push 3504
+print
+push 3505
+print
+push 3506
+print
+push 3507
+print
+push 3508
+print
+push 3509
+print
+push 3510
+print
+push 3511
+print
+push 3512
+print
+push 3513
+print
+push 3514
+print
+push 3515
+print
+push 3516
+print
+push 3517
+print
+push 3518
+print
+push 3519
+print
+push 3520
+print
+push 3521
+print
+push 3522
+print
+push 3523
+print
+push 3524
+print
+push 3525
+print
+push 3526
+print
+push 3527
+print
+push 3528
+print
+push 3529
+print
+push 3530
+print
+push 3531
+print
+push 3532
+print
+push 3533
+print
+push 3534
+print
+push 3535
+print
+push 3536
+print
+push 3537
+print
+push 3538
+print
+push 3539
+print
+push 3540
+print
+push 3541
+print
+push 3542
+print
+push 3543
+print
+push 3544
+print
+push 3545
+print
+push 3546
+print
+push 3547
+print
+push 3548
+print
+push 3549
+print
+push 3550
+print
+push 3551
+print
+push 3552
+print
+push 3553
+print
+push 3554
+print
+push 3555
+print
+push 3556
+print
+push 3557
+print
+push 3558
+print
+push 3559
+print
+push 3560
+print
+push 3561
+print
+push 3562
+print
+push 3563
+print
+push 3564
+print
+push 3565
+print
+push 3566
+print
+push 3567
+print
+push 3568
+print
+push 3569
+print
+push 3570
+print
+push 3571
+print
+push 3572
+print
+push 3573
+print
+push 3574
+print
+push 3575
+print
+push 3576
+print
+push 3577
+print
+push 3578
+print
+push 3579
+print
+push 3580
+print
+push 3581
+print
+push 3582
+print
+push 3583
+print
+push 3584
+print
+push 3585
+print
+push 3586
+print
+push 3587
+print
+push 3588
+print
+push 3589
+print
+push 3590
+print
+push 3591
+print
+push 3592
+print
+push 3593
+print
+push 3594
+print
+push 3595
+print
+push 3596
+print
+push 3597
+print
+push 3598
+print
+push 3599
+print
+push 3600
+print
+push 3601
+print
+push 3602
+print
+push 3603
+print
+push 3604
+print
+push 3605
+print
+push 3606
+print
+push 3607
+print
+push 3608
+print
+push 3609
+print
+push 3610
+print
+push 3611
+print
+push 3612
+print
+push 3613
+print
+push 3614
+print
+push 3615
+print
+push 3616
+print
+push 3617
+print
+push 3618
+print
+push 3619
+print
+push 3620
+print
+push 3621
+print
+push 3622
+print
+push 3623
+print
+push 3624
+print
+push 3625
+print
+push 3626
+print
+push 3627
+print
+push 3628
+print
+push 3629
+print
+push 3630
+print
+push 3631
+print
+push 3632
+print
+push 3633
+print
+push 3634
+print
+push 3635
+print
+push 3636
+print
+push 3637
+print
+push 3638
+print
+push 3639
+print
+push 3640
+print
+push 3641
+print
+push 3642
+print
+push 3643
+print
+push 3644
+print
+push 3645
+print
+push 3646
+print
+push 3647
+print
+push 3648
+print
+push 3649
+print
+push 3650
+print
+push 3651
+print
+push 3652
+print
+push 3653
+print
+push 3654
+print
+push 3655
+print
+push 3656
+print
+push 3657
+print
+push 3658
+print
+push 3659
+print
+push 3660
+print
+push 3661
+print
+push 3662
+print
+push 3663
+print
+push 3664
+print
+push 3665
+print
+push 3666
+print
+push 3667
+print
+push 3668
+print
+push 3669
+print
+push 3670
+print
+push 3671
+print
+push 3672
+print
+push 3673
+print
+push 3674
+print
+push 3675
+print
+push 3676
+print
+push 3677
+print
+push 3678
+print
+push 3679
+print
+push 3680
+print
+push 3681
+print
+push 3682
+print
+push 3683
+print
+push 3684
+print
+push 3685
+print
+push 3686
+print
+push 3687
+print
+push 3688
+print
+push 3689
+print
+push 3690
+print
+push 3691
+print
+push 3692
+print
+push 3693
+print
+push 3694
+print
+push 3695
+print
+push 3696
+print
+push 3697
+print
+push 3698
+print
+push 3699
+print
+push 3700
+print
+push 3701
+print
+push 3702
+print
+push 3703
+print
+push 3704
+print
+push 3705
+print
+push 3706
+print
+push 3707
+print
+push 3708
+print
+push 3709
+print
+push 3710
+print
+push 3711
+print
+push 3712
+print
+push 3713
+print
+push 3714
+print
+push 3715
+print
+push 3716
+print
+push 3717
+print
+push 3718
+print
+push 3719
+print
+push 3720
+print
+push 3721
+print
+push 3722
+print
+push 3723
+print
+push 3724
+print
+push 3725
+print
+push 3726
+print
+push 3727
+print
+push 3728
+print
+push 3729
+print
+push 3730
+print
+push 3731
+print
+push 3732
+print
+push 3733
+print
+push 3734
+print
+push 3735
+print
+push 3736
+print
+push 3737
+print
+push 3738
+print
+push 3739
+print
+push 3740
+print
+push 3741
+print
+push 3742
+print
+push 3743
+print
+push 3744
+print
+push 3745
+print
+push 3746
+print
+push 3747
+print
+push 3748
+print
+push 3749
+print
+push 3750
+print
+push 3751
+print
+push 3752
+print
+push 3753
+print
+push 3754
+print
+push 3755
+print
+push 3756
+print
+push 3757
+print
+push 3758
+print
+push 3759
+print
+push 3760
+print
+push 3761
+print
+push 3762
+print
+push 3763
+print
+push 3764
+print
+push 3765
+print
+push 3766
+print
+push 3767
+print
+push 3768
+print
+push 3769
+print
+push 3770
+print
+push 3771
+print
+push 3772
+print
+push 3773
+print
+push 3774
+print
+push 3775
+print
+push 3776
+print
+push 3777
+print
+push 3778
+print
+push 3779
+print
+push 3780
+print
+push 3781
+print
+push 3782
+print
+push 3783
+print
+push 3784
+print
+push 3785
+print
+push 3786
+print
+push 3787
+print
+push 3788
+print
+push 3789
+print
+push 3790
+print
+push 3791
+print
+push 3792
+print
+push 3793
+print
+push 3794
+print
+push 3795
+print
+push 3796
+print
+push 3797
+print
+push 3798
+print
+push 3799
+print
+push 3800
+print
+push 3801
+print
+push 3802
+print
+push 3803
+print
+push 3804
+print
+push 3805
+print
+push 3806
+print
+push 3807
+print
+push 3808
+print
+push 3809
+print
+push 3810
+print
+push 3811
+print
+push 3812
+print
+push 3813
+print
+push 3814
+print
+push 3815
+print
+push 3816
+print
+push 3817
+print
+push 3818
+print
+push 3819
+print
+push 3820
+print
+push 3821
+print
+push 3822
+print
+push 3823
+print
+push 3824
+print
+push 3825
+print
+push 3826
+print
+push 3827
+print
+push 3828
+print
+push 3829
+print
+push 3830
+print
+push 3831
+print
+push 3832
+print
+push 3833
+print
+push 3834
+print
+push 3835
+print
+push 3836
+print
+push 3837
+print
+push 3838
+print
+push 3839
+print
+push 3840
+print
+push 3841
+print
+push 3842
+print
+push 3843
+print
+push 3844
+print
+push 3845
+print
+push 3846
+print
+push 3847
+print
+push 3848
+print
+push 3849
+print
+push 3850
+print
+push 3851
+print
+push 3852
+print
+push 3853
+print
+push 3854
+print
+push 3855
+print
+push 3856
+print
+push 3857
+print
+push 3858
+print
+push 3859
+print
+push 3860
+print
+push 3861
+print
+push 3862
+print
+push 3863
+print
+push 3864
+print
+push 3865
+print
+push 3866
+print
+push 3867
+print
+push 3868
+print
+push 3869
+print
+push 3870
+print
+push 3871
+print
+push 3872
+print
+push 3873
+print
+push 3874
+print
+push 3875
+print
+push 3876
+print
+push 3877
+print
+push 3878
+print
+push 3879
+print
+push 3880
+print
+push 3881
+print
+push 3882
+print
+push 3883
+print
+push 3884
+print
+push 3885
+print
+push 3886
+print
+push 3887
+print
+push 3888
+print
+push 3889
+print
+push 3890
+print
+push 3891
+print
+push 3892
+print
+push 3893
+print
+push 3894
+print
+push 3895
+print
+push 3896
+print
+push 3897
+print
+push 3898
+print
+push 3899
+print
+push 3900
+print
+push 3901
+print
+push 3902
+print
+push 3903
+print
+push 3904
+print
+push 3905
+print
+push 3906
+print
+push 3907
+print
+push 3908
+print
+push 3909
+print
+push 3910
+print
+push 3911
+print
+push 3912
+print
+push 3913
+print
+push 3914
+print
+push 3915
+print
+push 3916
+print
+push 3917
+print
+push 3918
+print
+push 3919
+print
+push 3920
+print
+push 3921
+print
+push 3922
+print
+push 3923
+print
+push 3924
+print
+push 3925
+print
+push 3926
+print
+push 3927
+print
+push 3928
+print
+push 3929
+print
+push 3930
+print
+push 3931
+print
+push 3932
+print
+push 3933
+print
+push 3934
+print
+push 3935
+print
+push 3936
+print
+push 3937
+print
+push 3938
+print
+push 3939
+print
+push 3940
+print
+push 3941
+print
+push 3942
+print
+push 3943
+print
+push 3944
+print
+push 3945
+print
+push 3946
+print
+push 3947
+print
+push 3948
+print
+push 3949
+print
+push 3950
+print
+push 3951
+print
+push 3952
+print
+push 3953
+print
+push 3954
+print
+push 3955
+print
+push 3956
+print
+push 3957
+print
+push 3958
+print
+push 3959
+print
+push 3960
+print
+push 3961
+print
+push 3962
+print
+push 3963
+print
+push 3964
+print
+push 3965
+print
+push 3966
+print
+push 3967
+print
+push 3968
+print
+push 3969
+print
+push 3970
+print
+push 3971
+print
+push 3972
+print
+push 3973
+print
+push 3974
+print
+push 3975
+print
+push 3976
+print
+push 3977
+print
+push 3978
+print
+push 3979
+print
+push 3980
+print
+push 3981
+print
+push 3982
+print
+push 3983
+print
+push 3984
+print
+push 3985
+print
+push 3986
+print
+push 3987
+print
+push 3988
+print
+push 3989
+print
+push 3990
+print
+push 3991
+print
+push 3992
+print
+push 3993
+print
+push 3994
+print
+push 3995
+print
+push 3996
+print
+push 3997
+print
+push 3998
+print
+push 3999
+print
+push 4000
+print
+push 4001
+print
+push 4002
+print
+push 4003
+print
+push 4004
+print
+push 4005
+print
+push 4006
+print
+push 4007
+print
+push 4008
+print
+push 4009
+print
+push 4010
+print
+push 4011
+print
+push 4012
+print
+push 4013
+print
+push 4014
+print
+push 4015
+print
+push 4016
+print
+push 4017
+print
+push 4018
+print
+push 4019
+print
+push 4020
+print
+push 4021
+print
+push 4022
+print
+push 4023
+print
+push 4024
+print
+push 4025
+print
+push 4026
+print
+push 4027
+print
+push 4028
+print
+push 4029
+print
+push 4030
+print
+push 4031
+print
+push 4032
+print
+push 4033
+print
+push 4034
+print
+push 4035
+print
+push 4036
+print
+push 4037
+print
+push 4038
+print
+push 4039
+print
+push 4040
+print
+push 4041
+print
+push 4042
+print
+push 4043
+print
+push 4044
+print
+push 4045
+print
+push 4046
+print
+push 4047
+print
+push 4048
+print
+push 4049
+print
+push 4050
+print
+push 4051
+print
+push 4052
+print
+push 4053
+print
+push 4054
+print
+push 4055
+print
+push 4056
+print
+push 4057
+print
+push 4058
+print
+push 4059
+print
+push 4060
+print
+push 4061
+print
+push 4062
+print
+push 4063
+print
+push 4064
+print
+push 4065
+print
+push 4066
+print
+push 4067
+print
+push 4068
+print
+push 4069
+print
+push 4070
+print
+push 4071
+print
+push 4072
+print
+push 4073
+print
+push 4074
+print
+push 4075
+print
+push 4076
+print
+push 4077
+print
+push 4078
+print
+push 4079
+print
+push 4080
+print
+push 4081
+print
+push 4082
+print
+push 4083
+print
+push 4084
+print
+push 4085
+print
+push 4086
+print
+push 4087
+print
+push 4088
+print
+push 4089
+print
+push 4090
+print
+push 4091
+print
+push 4092
+print
+push 4093
+print
+push 4094
+print
+push 4095
+print
+push 4096
+print
+push 4097
+print
+push 4098
+print
+push 4099
+print
+push 4100
+print
+push 4101
+print
+push 4102
+print
+push 4103
+print
+push 4104
+print
+push 4105
+print
+push 4106
+print
+push 4107
+print
+push 4108
+print
+push 4109
+print
+push 4110
+print
+push 4111
+print
+push 4112
+print
+push 4113
+print
+push 4114
+print
+push 4115
+print
+push 4116
+print
+push 4117
+print
+push 4118
+print
+push 4119
+print
+push 4120
+print
+push 4121
+print
+push 4122
+print
+push 4123
+print
+push 4124
+print
+push 4125
+print
+push 4126
+print
+push 4127
+print
+push 4128
+print
+push 4129
+print
+push 4130
+print
+push 4131
+print
+push 4132
+print
+push 4133
+print
+push 4134
+print
+push 4135
+print
+push 4136
+print
+push 4137
+print
+push 4138
+print
+push 4139
+print
+push 4140
+print
+push 4141
+print
+push 4142
+print
+push 4143
+print
+push 4144
+print
+push 4145
+print
+push 4146
+print
+push 4147
+print
+push 4148
+print
+push 4149
+print
+push 4150
+print
+push 4151
+print
+push 4152
+print
+push 4153
+print
+push 4154
+print
+push 4155
+print
+push 4156
+print
+push 4157
+print
+push 4158
+print
+push 4159
+print
+push 4160
+print
+push 4161
+print
+push 4162
+print
+push 4163
+print
+push 4164
+print
+push 4165
+print
+push 4166
+print
+push 4167
+print
+push 4168
+print
+push 4169
+print
+push 4170
+print
+push 4171
+print
+push 4172
+print
+push 4173
+print
+push 4174
+print
+push 4175
+print
+push 4176
+print
+push 4177
+print
+push 4178
+print
+push 4179
+print
+push 4180
+print
+push 4181
+print
+push 4182
+print
+push 4183
+print
+push 4184
+print
+push 4185
+print
+push 4186
+print
+push 4187
+print
+push 4188
+print
+push 4189
+print
+push 4190
+print
+push 4191
+print
+push 4192
+print
+push 4193
+print
+push 4194
+print
+push 4195
+print
+push 4196
+print
+push 4197
+print
+push 4198
+print
+push 4199
+print
+push 4200
+print
+push 4201
+print
+push 4202
+print
+push 4203
+print
+push 4204
+print
+push 4205
+print
+push 4206
+print
+push 4207
+print
+push 4208
+print
+push 4209
+print
+push 4210
+print
+push 4211
+print
+push 4212
+print
+push 4213
+print
+push 4214
+print
+push 4215
+print
+push 4216
+print
+push 4217
+print
+push 4218
+print
+push 4219
+print
+push 4220
+print
+push 4221
+print
+push 4222
+print
+push 4223
+print
+push 4224
+print
+push 4225
+print
+push 4226
+print
+push 4227
+print
+push 4228
+print
+push 4229
+print
+push 4230
+print
+push 4231
+print
+push 4232
+print
+push 4233
+print
+push 4234
+print
+push 4235
+print
+push 4236
+print
+push 4237
+print
+push 4238
+print
+push 4239
+print
+push 4240
+print
+push 4241
+print
+push 4242
+print
+push 4243
+print
+push 4244
+print
+push 4245
+print
+push 4246
+print
+push 4247
+print
+push 4248
+print
+push 4249
+print
+push 4250
+print
+push 4251
+print
+push 4252
+print
+push 4253
+print
+push 4254
+print
+push 4255
+print
+push 4256
+print
+push 4257
+print
+push 4258
+print
+push 4259
+print
+push 4260
+print
+push 4261
+print
+push 4262
+print
+push 4263
+print
+push 4264
+print
+push 4265
+print
+push 4266
+print
+push 4267
+print
+push 4268
+print
+push 4269
+print
+push 4270
+print
+push 4271
+print
+push 4272
+print
+push 4273
+print
+push 4274
+print
+push 4275
+print
+push 4276
+print
+push 4277
+print
+push 4278
+print
+push 4279
+print
+push 4280
+print
+push 4281
+print
+push 4282
+print
+push 4283
+print
+push 4284
+print
+push 4285
+print
+push 4286
+print
+push 4287
+print
+push 4288
+print
+push 4289
+print
+push 4290
+print
+push 4291
+print
+push 4292
+print
+push 4293
+print
+push 4294
+print
+push 4295
+print
+push 4296
+print
+push 4297
+print
+push 4298
+print
+push 4299
+print
+push 4300
+print
+push 4301
+print
+push 4302
+print
+push 4303
+print
+push 4304
+print
+push 4305
+print
+push 4306
+print
+push 4307
+print
+push 4308
+print
+push 4309
+print
+push 4310
+print
+push 4311
+print
+push 4312
+print
+push 4313
+print
+push 4314
+print
+push 4315
+print
+push 4316
+print
+push 4317
+print
+push 4318
+print
+push 4319
+print
+push 4320
+print
+push 4321
+print
+push 4322
+print
+push 4323
+print
+push 4324
+print
+push 4325
+print
+push 4326
+print
+push 4327
+print
+push 4328
+print
+push 4329
+print
+push 4330
+print
+push 4331
+print
+push 4332
+print
+push 4333
+print
+push 4334
+print
+push 4335
+print
+push 4336
+print
+push 4337
+print
+push 4338
+print
+push 4339
+print
+push 4340
+print
+push 4341
+print
+push 4342
+print
+push 4343
+print
+push 4344
+print
+push 4345
+print
+push 4346
+print
+push 4347
+print
+push 4348
+print
+push 4349
+print
+push 4350
+print
+push 4351
+print
+push 4352
+print
+push 4353
+print
+push 4354
+print
+push 4355
+print
+push 4356
+print
+push 4357
+print
+push 4358
+print
+push 4359
+print
+push 4360
+print
+push 4361
+print
+push 4362
+print
+push 4363
+print
+push 4364
+print
+push 4365
+print
+push 4366
+print
+push 4367
+print
+push 4368
+print
+push 4369
+print
+push 4370
+print
+push 4371
+print
+push 4372
+print
+push 4373
+print
+push 4374
+print
+push 4375
+print
+push 4376
+print
+push 4377
+print
+push 4378
+print
+push 4379
+print
+push 4380
+print
+push 4381
+print
+push 4382
+print
+push 4383
+print
+push 4384
+print
+push 4385
+print
+push 4386
+print
+push 4387
+print
+push 4388
+print
+push 4389
+print
+push 4390
+print
+push 4391
+print
+push 4392
+print
+push 4393
+print
+push 4394
+print
+push 4395
+print
+push 4396
+print
+push 4397
+print
+push 4398
+print
+push 4399
+print
+push 4400
+print
+push 4401
+print
+push 4402
+print
+push 4403
+print
+push 4404
+print
+push 4405
+print
+push 4406
+print
+push 4407
+print
+push 4408
+print
+push 4409
+print
+push 4410
+print
+push 4411
+print
+push 4412
+print
+push 4413
+print
+push 4414
+print
+push 4415
+print
+push 4416
+print
+push 4417
+print
+push 4418
+print
+push 4419
+print
+push 4420
+print
+push 4421
+print
+push 4422
+print
+push 4423
+print
+push 4424
+print
+push 4425
+print
+push 4426
+print
+push 4427
+print
+push 4428
+print
+push 4429
+print
+push 4430
+print
+push 4431
+print
+push 4432
+print
+push 4433
+print
+push 4434
+print
+push 4435
+print
+push 4436
+print
+push 4437
+print
+push 4438
+print
+push 4439
+print
+push 4440
+print
+push 4441
+print
+push 4442
+print
+push 4443
+print
+push 4444
+print
+push 4445
+print
+push 4446
+print
+push 4447
+print
+push 4448
+print
+push 4449
+print
+push 4450
+print
+push 4451
+print
+push 4452
+print
+push 4453
+print
+push 4454
+print
+push 4455
+print
+push 4456
+print
+push 4457
+print
+push 4458
+print
+push 4459
+print
+push 4460
+print
+push 4461
+print
+push 4462
+print
+push 4463
+print
+push 4464
+print
+push 4465
+print
+push 4466
+print
+push 4467
+print
+push 4468
+print
+push 4469
+print
+push 4470
+print
+push 4471
+print
+push 4472
+print
+push 4473
+print
+push 4474
+print
+push 4475
+print
+push 4476
+print
+push 4477
+print
+push 4478
+print
+push 4479
+print
+push 4480
+print
+push 4481
+print
+push 4482
+print
+push 4483
+print
+push 4484
+print
+push 4485
+print
+push 4486
+print
+push 4487
+print
+push 4488
+print
+push 4489
+print
+push 4490
+print
+push 4491
+print
+push 4492
+print
+push 4493
+print
+push 4494
+print
+push 4495
+print
+push 4496
+print
+push 4497
+print
+push 4498
+print
+push 4499
+print
+push 4500
+print
+push 4501
+print
+push 4502
+print
+push 4503
+print
+push 4504
+print
+push 4505
+print
+push 4506
+print
+push 4507
+print
+push 4508
+print
+push 4509
+print
+push 4510
+print
+push 4511
+print
+push 4512
+print
+push 4513
+print
+push 4514
+print
+push 4515
+print
+push 4516
+print
+push 4517
+print
+push 4518
+print
+push 4519
+print
+push 4520
+print
+push 4521
+print
+push 4522
+print
+push 4523
+print
+push 4524
+print
+push 4525
+print
+push 4526
+print
+push 4527
+print
+push 4528
+print
+push 4529
+print
+push 4530
+print
+push 4531
+print
+push 4532
+print
+push 4533
+print
+push 4534
+print
+push 4535
+print
+push 4536
+print
+push 4537
+print
+push 4538
+print
+push 4539
+print
+push 4540
+print
+push 4541
+print
+push 4542
+print
+push 4543
+print
+push 4544
+print
+push 4545
+print
+push 4546
+print
+push 4547
+print
+push 4548
+print
+push 4549
+print
+push 4550
+print
+push 4551
+print
+push 4552
+print
+push 4553
+print
+push 4554
+print
+push 4555
+print
+push 4556
+print
+push 4557
+print
+push 4558
+print
+push 4559
+print
+push 4560
+print
+push 4561
+print
+push 4562
+print
+push 4563
+print
+push 4564
+print
+push 4565
+print
+push 4566
+print
+push 4567
+print
+push 4568
+print
+push 4569
+print
+push 4570
+print
+push 4571
+print
+push 4572
+print
+push 4573
+print
+push 4574
+print
+push 4575
+print
+push 4576
+print
+push 4577
+print
+push 4578
+print
+push 4579
+print
+push 4580
+print
+push 4581
+print
+push 4582
+print
+push 4583
+print
+push 4584
+print
+push 4585
+print
+push 4586
+print
+push 4587
+print
+push 4588
+print
+push 4589
+print
+push 4590
+print
+push 4591
+print
+push 4592
+print
+push 4593
+print
+push 4594
+print
+push 4595
+print
+push 4596
+print
+push 4597
+print
+push 4598
+print
+push 4599
+print
+push 4600
+print
+push 4601
+print
+push 4602
+print
+push 4603
+print
+push 4604
+print
+push 4605
+print
+push 4606
+print
+push 4607
+print
+push 4608
+print
+push 4609
+print
+push 4610
+print
+push 4611
+print
+push 4612
+print
+push 4613
+print
+push 4614
+print
+push 4615
+print
+push 4616
+print
+push 4617
+print
+push 4618
+print
+push 4619
+print
+push 4620
+print
+push 4621
+print
+push 4622
+print
+push 4623
+print
+push 4624
+print
+push 4625
+print
+push 4626
+print
+push 4627
+print
+push 4628
+print
+push 4629
+print
+push 4630
+print
+push 4631
+print
+push 4632
+print
+push 4633
+print
+push 4634
+print
+push 4635
+print
+push 4636
+print
+push 4637
+print
+push 4638
+print
+push 4639
+print
+push 4640
+print
+push 4641
+print
+push 4642
+print
+push 4643
+print
+push 4644
+print
+push 4645
+print
+push 4646
+print
+push 4647
+print
+push 4648
+print
+push 4649
+print
+push 4650
+print
+push 4651
+print
+push 4652
+print
+push 4653
+print
+push 4654
+print
+push 4655
+print
+push 4656
+print
+push 4657
+print
+push 4658
+print
+push 4659
+print
+push 4660
+print
+push 4661
+print
+push 4662
+print
+push 4663
+print
+push 4664
+print
+push 4665
+print
+push 4666
+print
+push 4667
+print
+push 4668
+print
+push 4669
+print
+push 4670
+print
+push 4671
+print
+push 4672
+print
+push 4673
+print
+push 4674
+print
+push 4675
+print
+push 4676
+print
+push 4677
+print
+push 4678
+print
+push 4679
+print
+push 4680
+print
+push 4681
+print
+push 4682
+print
+push 4683
+print
+push 4684
+print
+push 4685
+print
+push 4686
+print
+push 4687
+print
+push 4688
+print
+push 4689
+print
+push 4690
+print
+push 4691
+print
+push 4692
+print
+push 4693
+print
+push 4694
+print
+push 4695
+print
+push 4696
+print
+push 4697
+print
+push 4698
+print
+push 4699
+print
+push 4700
+print
+push 4701
+print
+push 4702
+print
+push 4703
+print
+push 4704
+print
+push 4705
+print
+push 4706
+print
+push 4707
+print
+push 4708
+print
+push 4709
+print
+push 4710
+print
+push 4711
+print
+push 4712
+print
+push 4713
+print
+push 4714
+print
+push 4715
+print
+push 4716
+print
+push 4717
+print
+push 4718
+print
+push 4719
+print
+push 4720
+print
+push 4721
+print
+push 4722
+print
+push 4723
+print
+push 4724
+print
+push 4725
+print
+push 4726
+print
+push 4727
+print
+push 4728
+print
+push 4729
+print
+push 4730
+print
+push 4731
+print
+push 4732
+print
+push 4733
+print
+push 4734
+print
+push 4735
+print
+push 4736
+print
+push 4737
+print
+push 4738
+print
+push 4739
+print
+push 4740
+print
+push 4741
+print
+push 4742
+print
+push 4743
+print
+push 4744
+print
+push 4745
+print
+push 4746
+print
+push 4747
+print
+push 4748
+print
+push 4749
+print
+push 4750
+print
+push 4751
+print
+push 4752
+print
+push 4753
+print
+push 4754
+print
+push 4755
+print
+push 4756
+print
+push 4757
+print
+push 4758
+print
+push 4759
+print
+push 4760
+print
+push 4761
+print
+push 4762
+print
+push 4763
+print
+push 4764
+print
+push 4765
+print
+push 4766
+print
+push 4767
+print
+push 4768
+print
+push 4769
+print
+push 4770
+print
+push 4771
+print
+push 4772
+print
+push 4773
+print
+push 4774
+print
+push 4775
+print
+push 4776
+print
+push 4777
+print
+push 4778
+print
+push 4779
+print
+push 4780
+print
+push 4781
+print
+push 4782
+print
+push 4783
+print
+push 4784
+print
+push 4785
+print
+push 4786
+print
+push 4787
+print
+push 4788
+print
+push 4789
+print
+push 4790
+print
+push 4791
+print
+push 4792
+print
+push 4793
+print
+push 4794
+print
+push 4795
+print
+push 4796
+print
+push 4797
+print
+push 4798
+print
+push 4799
+print
+push 4800
+print
+push 4801
+print
+push 4802
+print
+push 4803
+print
+push 4804
+print
+push 4805
+print
+push 4806
+print
+push 4807
+print
+push 4808
+print
+push 4809
+print
+push 4810
+print
+push 4811
+print
+push 4812
+print
+push 4813
+print
+push 4814
+print
+push 4815
+print
+push 4816
+print
+push 4817
+print
+push 4818
+print
+push 4819
+print
+push 4820
+print
+push 4821
+print
+push 4822
+print
+push 4823
+print
+push 4824
+print
+push 4825
+print
+push 4826
+print
+push 4827
+print
+push 4828
+print
+push 4829
+print
+push 4830
+print
+push 4831
+print
+push 4832
+print
+push 4833
+print
+push 4834
+print
+push 4835
+print
+push 4836
+print
+push 4837
+print
+push 4838
+print
+push 4839
+print
+push 4840
+print
+push 4841
+print
+push 4842
+print
+push 4843
+print
+push 4844
+print
+push 4845
+print
+push 4846
+print
+push 4847
+print
+push 4848
+print
+push 4849
+print
+push 4850
+print
+push 4851
+print
+push 4852
+print
+push 4853
+print
+push 4854
+print
+push 4855
+print
+push 4856
+print
+push 4857
+print
+push 4858
+print
+push 4859
+print
+push 4860
+print
+push 4861
+print
+push 4862
+print
+push 4863
+print
+push 4864
+print
+push 4865
+print
+push 4866
+print
+push 4867
+print
+push 4868
+print
+push 4869
+print
+push 4870
+print
+push 4871
+print
+push 4872
+print
+push 4873
+print
+push 4874
+print
+push 4875
+print
+push 4876
+print
+push 4877
+print
+push 4878
+print
+push 4879
+print
+push 4880
+print
+push 4881
+print
+push 4882
+print
+push 4883
+print
+push 4884
+print
+push 4885
+print
+push 4886
+print
+push 4887
+print
+push 4888
+print
+push 4889
+print
+push 4890
+print
+push 4891
+print
+push 4892
+print
+push 4893
+print
+push 4894
+print
+push 4895
+print
+push 4896
+print
+push 4897
+print
+push 4898
+print
+push 4899
+print
+push 4900
+print
+push 4901
+print
+push 4902
+print
+push 4903
+print
+push 4904
+print
+push 4905
+print
+push 4906
+print
+push 4907
+print
+push 4908
+print
+push 4909
+print
+push 4910
+print
+push 4911
+print
+push 4912
+print
+push 4913
+print
+push 4914
+print
+push 4915
+print
+push 4916
+print
+push 4917
+print
+push 4918
+print
+push 4919
+print
+push 4920
+print
+push 4921
+print
+push 4922
+print
+push 4923
+print
+push 4924
+print
+push 4925
+print
+push 4926
+print
+push 4927
+print
+push 4928
+print
+push 4929
+print
+push 4930
+print
+push 4931
+print
+push 4932
+print
+push 4933
+print
+push 4934
+print
+push 4935
+print
+push 4936
+print
+push 4937
+print
+push 4938
+print
+push 4939
+print
+push 4940
+print
+push 4941
+print
+push 4942
+print
+push 4943
+print
+push 4944
+print
+push 4945
+print
+push 4946
+print
+push 4947
+print
+push 4948
+print
+push 4949
+print
+push 4950
+print
+push 4951
+print
+push 4952
+print
+push 4953
+print
+push 4954
+print
+push 4955
+print
+push 4956
+print
+push 4957
+print
+push 4958
+print
+push 4959
+print
+push 4960
+print
+push 4961
+print
+push 4962
+print
+push 4963
+print
+push 4964
+print
+push 4965
+print
+push 4966
+print
+push 4967
+print
+push 4968
+print
+push 4969
+print
+push 4970
+print
+push 4971
+print
+push 4972
+print
+push 4973
+print
+push 4974
+print
+push 4975
+print
+push 4976
+print
+push 4977
+print
+push 4978
+print
+push 4979
+print
+push 4980
+print
+push 4981
+print
+push 4982
+print
+push 4983
+print
+push 4984
+print
+push 4985
+print
+push 4986
+print
+push 4987
+print
+push 4988
+print
+push 4989
+print
+push 4990
+print
+push 4991
+print
+push 4992
+print
+push 4993
+print
+push 4994
+print
+push 4995
+print
+push 4996
+print
+push 4997
+print
+push 4998
+print
+push 4999
+print
+push 1
+push 0
+mod

@@ -1,0 +1,6 @@
+push 1
+print
+call end
+push 2
+print
+end:

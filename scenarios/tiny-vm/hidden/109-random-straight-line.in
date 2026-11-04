@@ -1,0 +1,77 @@
+    push 2
+    push 2
+    store
+    push 1048575
+    load
+    read
+    swap
+    mul
+    print
+    push 7
+    push -55
+    sub
+    print
+    get 6
+    set 1
+    get 2
+    print
+    push 9
+    set 7
+    L1: read
+    push 100
+    store
+    push 7139953918944111416
+    push -9223372036854775807
+    mod
+    push -43
+    get 6
+    lt
+    over
+    add
+    lt
+    push 1
+    store
+    get 7
+    push 1
+    sub
+    dup
+    set 7
+    jnz L1
+    get 5
+    set 4
+    push -29
+    print
+    push -9223372036854775807
+    push 4611686018427387904
+    drop
+    push 589081724838159962
+    push 49
+    le
+    ne
+    push -2147483648
+    mod
+    set 1
+    push -78
+    print
+    push -211300033087916173
+    push -16
+    mod
+    set 6
+    push 255
+    push 9223372036854775807
+    ge
+    print
+    push 200764246995897055
+    set 4
+    read
+    push 255
+    div
+    push 20
+    push -9223372036854775807
+    drop
+    swap
+    add
+    set 0
+    halt
+.input
+-9223372036854775808 -1527426708355528262 -80 -9223372036854775807 -8392675218459594249 4294967296 -87 2508370622511878672 3205734611004554370 -4 1689733389402315403 1870665049916001878 -2147483648 3037000500 2 27

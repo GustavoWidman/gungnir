@@ -1,0 +1,11 @@
+        call f
+        call f
+        call g
+        halt
+f:      get 3
+        print
+        push 77
+        set 3
+        ret
+g:      call f
+        ret

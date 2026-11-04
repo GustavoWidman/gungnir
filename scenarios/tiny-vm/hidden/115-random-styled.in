@@ -1,0 +1,193 @@
+  push 6162672412551996997
+push	-27
+	add
+	push   -99
+Push   -9
+	over
+	ADD
+sub
+	LE
+        jz x1
+	PUSH	1
+	load
+GET 6
+  SUB
+  JNZ   Lab_2
+        push	-46
+        PUSH 100
+	store
+	Push 2147483648
+	print
+Lab_2:	read 
+	set	7 
+	call fn1
+Print
+push   3037000500;x
+	;
+  jnz   L3
+	get	3
+        set	4
+  push -84
+PRINT
+        L3:   x1:   get   1 ; note
+  PRINT
+	Push 5
+	set 7
+  L4:	push	95
+jnz _l5
+        READ
+print
+  _l5:	push	-34
+        push	2907908255886218820
+  mul
+print ; note
+	PUSH   5298056918021530120
+read
+	Swap
+	lt
+	push   1048575
+  LOAD
+	READ
+	over
+        sub
+; comment
+  add
+sub	; .input
+	push   3
+  store
+	read
+        PRINT
+get   7 ; note
+        push	1
+	sub
+DUP
+  set 7
+	jnz	L4
+        get	6
+        print
+  push	-78;x
+	push	2
+        load
+        call	fn0
+	add
+	push 255
+	MOD
+  print
+	GET	2
+set   5
+	push   -71;x
+	push   4294967296
+  swap
+        MUL
+        get 7	; .input
+call   fn1 ; note
+lt
+	swap
+        gt
+	Push 3037000500;x
+        div
+print
+push   2441807479709020772
+	read 
+	gt
+push	-1717038913095624599
+push	-4611686018427387904
+	mod
+  drop
+  print
+PUSH	3
+        load
+        set	2
+        Get   2
+  push 100
+Store
+	read
+        push   9223372036854775806
+  div
+set 5
+  READ
+  push   2
+        store
+	call   fn1
+  push   100
+  store
+        push	92
+        call   fn0
+        dup
+add ; note
+dup
+        sub
+        print
+        halt
+  fn0:	set	0
+	push 0
+push -77
+  SUB
+  get 7
+        dup
+  Mul
+  mul
+	set   5
+        get 5
+	dup
+MUL
+	push   -7172248420912453226
+push	15
+; comment
+	swap 
+	mul
+        drop
+  print
+        get   1
+  print
+	push	6736963919708374772
+        Print
+GET 6
+        push   11
+        sub
+; comment
+	call   fn1
+        get   6 ; note
+        over
+        GT
+mul
+	swap
+LT
+	ret
+  fn1:	push	-1511178952464489316
+  jnz l6
+  push 2
+        print
+	get	6
+	PUSH   0 ; note
+	store
+get 2
+dup
+sub
+  push   -6219638767519140540
+PUSH   -9223372036854775807
+mod
+        sub
+	PRINT
+   
+l6: push 4294967296
+	push 10
+        add
+        push   5
+  get	1
+  drop
+	over
+add
+  eq
+print
+  push 405005271010918175
+	get   2
+over
+  add
+; comment
+  Ge
+        get 1
+  mul
+RET
+.input
+-95 -7281658644455758694 3 0 -32 9223372036854775806 -2147483648 -9223372036854775807 9210202933189811095 1269564199060525711 2147483648 -2925807680136263399 2978699849159583530 -3037000500 255 255 5690453809264066105 -2 4294967296 -2147483648 -3037000500 -59 4301872414908293769 -2147483648 -4611686018427387904 10 -2163864886721555772 -4304253881323529480 -57

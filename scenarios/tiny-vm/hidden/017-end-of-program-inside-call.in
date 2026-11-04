@@ -1,0 +1,5 @@
+        call f
+        push 9
+        print
+f:      push 1
+        print

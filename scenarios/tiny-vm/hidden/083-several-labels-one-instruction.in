@@ -1,0 +1,20 @@
+        push 0
+        set 0
+a: b:   c:  get 0
+        push 1
+        add
+        dup
+        set 0
+        dup
+        print
+        dup
+        push 1
+        eq
+        jnz a
+        dup
+        push 2
+        eq
+        jnz b
+        push 3
+        eq
+        jnz c

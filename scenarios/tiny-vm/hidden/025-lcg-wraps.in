@@ -1,0 +1,24 @@
+        push 1
+        set 0           ; x
+        push 1
+        set 1           ; i
+step:   get 0
+        push 6364136223846793005
+        mul
+        push 1442695040888963407
+        add
+        set 0
+        get 1
+        push 50
+        mod
+        jnz next
+        get 0
+        print
+next:   get 1
+        push 1
+        add
+        dup
+        set 1
+        push 1000
+        le
+        jnz step

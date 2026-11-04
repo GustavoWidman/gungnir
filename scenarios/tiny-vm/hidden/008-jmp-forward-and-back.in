@@ -1,0 +1,11 @@
+        jmp forward
+        push 1
+        print
+forward:
+        push 2
+        print
+        jmp end
+back:   push 3
+        print
+        halt
+end:    jmp back

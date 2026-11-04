@@ -1,0 +1,6 @@
+push 1
+jz missing
+push 0
+jnz missing
+push 3
+print

@@ -1,0 +1,18 @@
+        push 1
+        set 0
+loop:   get 0
+        dup
+        push 3
+        mod
+        jnz keep
+        push -1
+        mul
+keep:   print
+        get 0
+        push 1
+        add
+        dup
+        set 0
+        push 20000
+        le
+        jnz loop

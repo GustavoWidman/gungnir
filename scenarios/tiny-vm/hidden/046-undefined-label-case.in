@@ -1,0 +1,4 @@
+        push 1
+        jnz Loop
+loop:   push 2
+        print

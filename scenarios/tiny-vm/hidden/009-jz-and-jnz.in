@@ -1,0 +1,20 @@
+        push 0
+        jz a
+        push 100
+        print
+a:      push 5
+        jz b
+        push 1
+        print
+b:      push -1
+        jnz c
+        push 200
+        print
+c:      push 0
+        jnz d
+        push 2
+        print
+d:      push 7
+        push 0
+        jz e
+e:      print

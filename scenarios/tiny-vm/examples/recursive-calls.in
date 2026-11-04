@@ -1,0 +1,39 @@
+; Stores the factorials of 0 to 5 in memory, then prints them back in reverse.
+        push 0
+        set 0                   ; n
+fill:   get 0
+        call fact
+        get 0
+        store                   ; memory[n] = n!
+        get 0
+        push 1
+        add
+        dup
+        set 0
+        push 6
+        lt
+        jnz fill
+show:   get 0
+        push 1
+        sub
+        dup
+        set 0
+        load
+        print
+        get 0
+        jnz show
+        halt
+
+; fact(n) returns n! and keeps n in its own local 0 across the recursive call.
+fact:   set 0
+        get 0
+        jz one
+        get 0
+        push 1
+        sub
+        call fact
+        get 0
+        mul
+        ret
+one:    push 1
+        ret

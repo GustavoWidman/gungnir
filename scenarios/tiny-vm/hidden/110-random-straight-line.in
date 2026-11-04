@@ -1,0 +1,131 @@
+    push -89
+    get 3
+    get 1
+    over
+    le
+    add
+    add
+    push 30
+    push -1
+    swap
+    add
+    get 1
+    push 9223372036854775807
+    div
+    swap
+    mul
+    add
+    set 3
+    read
+    jz Lab_1
+    get 0
+    push 2147483648
+    mul
+    dup
+    sub
+    push 3037000500
+    mod
+    print
+    get 4
+    print
+    read
+    dup
+    add
+    push 6105218134342555088
+    get 6
+    over
+    add
+    mul
+    over
+    mul
+    lt
+    print
+    Lab_1: push 255
+    set 6
+    push -7318318139684593476
+    print
+    get 4
+    push 54
+    drop
+    print
+    push 1989601290897443665
+    set 2
+    read
+    push 10
+    div
+    push 3
+    push 3
+    mod
+    swap
+    ge
+    push 3
+    store
+    push 4095
+    load
+    jz l2
+    push 9
+    set 7
+    l3: push -5122409430343539722
+    print
+    drop
+    push -2516353067234061252
+    get 1
+    drop
+    print
+    push 98
+    push 7173586635056201914
+    drop
+    print
+    get 7
+    push 1
+    sub
+    dup
+    set 7
+    jnz l3
+    push -2
+    push -2
+    read
+    over
+    lt
+    sub
+    swap
+    mul
+    set 5
+    l2: get 0
+    push 0
+    load
+    over
+    ge
+    lt
+    dup
+    mul
+    push -9223372036854775808
+    div
+    print
+    push 4611686018427387904
+    push 80
+    sub
+    jnz Lab_4
+    push 9223372036854775807
+    push 1
+    load
+    push -30
+    mod
+    push 4294967296
+    mod
+    add
+    set 3
+    Lab_4: get 5
+    print
+    get 5
+    push 10
+    div
+    print
+    get 0
+    push -9223372036854775808
+    add
+    push 100
+    store
+    halt
+.input
+3037000499 -1223316680235227186

@@ -1,0 +1,21 @@
+push 0
+load
+print
+push 42
+push 7
+store
+push 7
+load
+print
+push -5
+push 1048575
+store
+push 1048575
+load
+print
+push 8
+load
+print
+push 7
+load
+print

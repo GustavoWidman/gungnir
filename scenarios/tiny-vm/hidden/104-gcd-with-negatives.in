@@ -1,0 +1,29 @@
+next:   read
+        dup
+        jz stop
+        read
+        call gcd
+        print
+        jmp next
+stop:   halt
+; gcd(a, b) = b == 0 ? a : gcd(b, a mod b), printing each remainder
+gcd:    dup
+        jz done
+        swap
+        over
+        mod
+        dup
+        print
+        call gcd
+        ret
+done:   drop
+        ret
+.input
+48 -18
+-48 18
+-48 -18
+1071 462
+-9223372036854775808 -1
+-9223372036854775808 6
+7 -9223372036854775808
+0

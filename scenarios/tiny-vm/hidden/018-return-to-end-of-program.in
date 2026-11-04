@@ -1,0 +1,5 @@
+        jmp main
+f:      push 5
+        print
+        ret
+main:   call f

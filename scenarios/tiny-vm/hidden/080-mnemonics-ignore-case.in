@@ -1,0 +1,9 @@
+        PUSH 2
+        Push 3
+        ADD
+        pRiNt
+        PuSh 1
+        JNZ Done
+        push 99
+        print
+Done:   HALT

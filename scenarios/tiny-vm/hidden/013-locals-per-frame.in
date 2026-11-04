@@ -1,0 +1,14 @@
+        push 10
+        set 0
+        call f
+        get 0
+        print
+        call f
+        halt
+f:      get 0
+        print
+        push 99
+        set 0
+        get 0
+        print
+        ret

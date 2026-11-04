@@ -1,0 +1,9 @@
+        jmp target
+        push 1
+        print
+target:
+
+; the label marks the next instruction, even across blank and comment lines
+
+        push 2
+        print

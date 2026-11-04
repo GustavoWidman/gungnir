@@ -1,0 +1,36 @@
+        push 2
+        push 3
+        call ack
+        print
+        push 3
+        push 4
+        call ack
+        print
+        halt
+; ack(m, n) with m pushed first
+ack:    set 1           ; n
+        set 0           ; m
+        get 0
+        jnz m_pos
+        get 1
+        push 1
+        add
+        ret
+m_pos:  get 1
+        jnz both
+        get 0
+        push 1
+        sub
+        push 1
+        call ack
+        ret
+both:   get 0
+        push 1
+        sub
+        get 0
+        get 1
+        push 1
+        sub
+        call ack
+        call ack
+        ret

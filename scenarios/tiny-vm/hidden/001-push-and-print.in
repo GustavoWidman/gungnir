@@ -1,0 +1,12 @@
+push 0
+print
+push 42
+print
+push -17
+print
+push 007
+print
+push -0
+print
+push 0000
+print

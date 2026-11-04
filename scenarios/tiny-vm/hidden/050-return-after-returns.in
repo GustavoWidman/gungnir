@@ -1,0 +1,7 @@
+        call f
+        push 2
+        print
+        ret
+f:      push 1
+        print
+        ret

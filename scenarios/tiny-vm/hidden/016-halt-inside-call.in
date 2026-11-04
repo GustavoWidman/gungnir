@@ -1,0 +1,10 @@
+        push 1
+        print
+        call f
+        push 3
+        print
+f:      push 2
+        print
+        halt
+        push 4
+        print

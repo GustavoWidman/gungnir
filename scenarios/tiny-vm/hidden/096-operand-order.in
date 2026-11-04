@@ -1,0 +1,28 @@
+push 10
+push 3
+sub
+print
+push 10
+push 3
+div
+print
+push 10
+push 3
+mod
+print
+push 10
+push 3
+lt
+print
+push 10
+push 3
+gt
+print
+push 10
+push 3
+le
+print
+push 10
+push 3
+ge
+print

@@ -1,0 +1,7 @@
+        jmp start
+        jmp missing
+        call missing_too
+start:  push 4
+        print
+        halt
+        jmp missing

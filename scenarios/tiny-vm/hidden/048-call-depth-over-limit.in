@@ -1,0 +1,17 @@
+        read
+        call f
+        push 1
+        print
+        halt
+; f(n) recurses n more levels below itself, then calls g.
+f:      dup
+        jz bottom
+        push 1
+        sub
+        call f          ; recurse
+        ret
+bottom: call g
+        ret
+g:      ret
+.input
+99999

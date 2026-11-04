@@ -1,0 +1,32 @@
+        push 0
+        set 0
+loop:   get 0
+        call fib
+        print
+        get 0
+        push 1
+        add
+        dup
+        set 0
+        push 20
+        le
+        jnz loop
+        halt
+fib:    set 0
+        get 0
+        push 2
+        lt
+        jz recurse
+        get 0
+        ret
+recurse:
+        get 0
+        push 1
+        sub
+        call fib
+        get 0
+        push 2
+        sub
+        call fib
+        add
+        ret

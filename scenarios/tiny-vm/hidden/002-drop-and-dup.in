@@ -1,0 +1,18 @@
+push 1
+push 2
+drop
+print
+push 3
+push 4
+push 5
+drop
+drop
+print
+push 5
+dup
+mul
+print
+push -3
+dup
+print
+print

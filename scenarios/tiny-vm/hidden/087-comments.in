@@ -1,0 +1,8 @@
+;;; header
+push 1;no space
+print ; one ; two
+loop:;label then comment
+; .input
+  ;indented
+push 2 ;
+print

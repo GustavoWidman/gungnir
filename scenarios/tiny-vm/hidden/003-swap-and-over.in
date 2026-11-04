@@ -1,0 +1,22 @@
+push 1
+push 2
+swap
+print
+print
+push 10
+push 3
+swap
+sub
+print
+push 1
+push 2
+over
+print
+print
+print
+push 10
+push 3
+over
+sub
+print
+print

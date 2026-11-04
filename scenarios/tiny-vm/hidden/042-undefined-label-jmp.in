@@ -1,0 +1,5 @@
+push 1
+print
+jmp nowhere
+push 2
+print

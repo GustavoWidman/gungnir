@@ -1,0 +1,21 @@
+        read
+        call f
+        print
+        halt
+; f(n) = n*n + f(n-1), f(0) = 0, keeping n in local 0 across the call
+f:      set 0
+        get 0
+        jz zero
+        get 0
+        push 1
+        sub
+        call f          ; recurse
+        get 0
+        get 0
+        mul
+        add
+        ret
+zero:   push 0
+        ret
+.input
+99999

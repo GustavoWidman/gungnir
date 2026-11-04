@@ -1,0 +1,29 @@
+        read
+        call even
+        print
+        read
+        call even
+        print
+        halt
+; even(n) and odd(n) for n >= 0 return 1 or 0
+even:   dup
+        jz yes
+        push 1
+        sub
+        call odd
+        ret
+odd:    dup
+        jz no
+        push 1
+        sub
+        call even
+        ret
+yes:    drop
+        push 1
+        ret
+no:     drop
+        push 0
+        ret
+.input
+4000
+77777

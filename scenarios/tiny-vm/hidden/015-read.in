@@ -1,0 +1,13 @@
+read
+read
+add
+print
+read
+print
+read
+print
+.input
+  1	2
+
+-9223372036854775808   
+ 9223372036854775807

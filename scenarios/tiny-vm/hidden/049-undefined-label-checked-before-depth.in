@@ -1,0 +1,12 @@
+        read
+        call f
+        halt
+f:      dup
+        jz bottom
+        push 1
+        sub
+        call f
+        ret
+bottom: call nowhere
+.input
+99999

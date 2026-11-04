@@ -1,0 +1,44 @@
+push 7
+push 2
+mod
+print
+push -7
+push 2
+mod
+print
+push 7
+push -2
+mod
+print
+push -7
+push -2
+mod
+print
+push 6
+push 3
+mod
+print
+push -6
+push 3
+mod
+print
+push 0
+push 5
+mod
+print
+push 1
+push 2
+mod
+print
+push -1
+push 2
+mod
+print
+push 2
+push 7
+mod
+print
+push -2
+push 7
+mod
+print

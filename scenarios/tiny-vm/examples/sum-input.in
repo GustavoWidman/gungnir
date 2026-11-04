@@ -1,0 +1,21 @@
+; Sums the data up to the first 0, then prints the sum and how many it added.
+        push 0
+        set 0           ; local 0 is the sum
+next:   read
+        dup
+        jz done
+        get 0
+        add
+        set 0
+        get 1           ; local 1 is the count
+        push 1
+        add
+        set 1
+        jmp next
+done:   get 0
+        print
+        get 1
+        print
+.input
+5 -3
+10 0 99

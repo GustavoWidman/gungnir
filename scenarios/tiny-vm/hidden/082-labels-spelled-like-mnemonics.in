@@ -1,0 +1,7 @@
+        jmp print
+push:   push 2
+        print
+        halt
+print:  push 1
+        print
+        jmp push

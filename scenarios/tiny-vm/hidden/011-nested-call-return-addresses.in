@@ -1,0 +1,13 @@
+        call a
+        push 4
+        print
+        halt
+a:      push 1
+        print
+        call b
+        push 3
+        print
+        ret
+b:      push 2
+        print
+        ret

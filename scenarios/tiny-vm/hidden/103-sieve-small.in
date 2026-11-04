@@ -1,0 +1,35 @@
+        push 1000
+        set 0
+        push 2
+        set 1
+outer:  get 1
+        get 0
+        ge
+        jnz done
+        get 1
+        load
+        jnz next
+        get 1
+        print
+        get 1
+        dup
+        add
+        set 2
+mark:   get 2
+        get 0
+        lt
+        jz next
+        push 1
+        get 2
+        store
+        get 2
+        get 1
+        add
+        set 2
+        jmp mark
+next:   get 1
+        push 1
+        add
+        set 1
+        jmp outer
+done:

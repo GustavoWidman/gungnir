@@ -1,0 +1,905 @@
+        push 19
+	set   4
+	Push 10
+  set   1
+	get   1
+  print
+  push	-12
+	jnz L1
+  PUSH	2;x
+PUSH	0
+	store
+	get	3
+        jz Lab_2
+	push	9223372036854775807
+push	2	; .input
+; comment
+load
+        drop
+  print
+push 1026643567860483307
+	call	fn3
+push   650459548697611159
+swap
+	gt
+        read
+	drop
+        Drop
+        Print
+	push	-5205509089967636530
+  set 4
+	Lab_2:	L1:	read
+  push	-63
+push	4095
+	LOAD ; note
+  over
+add ; note
+  Mul
+	;
+get   0
+  over
+	Mul
+        sub
+gt
+        print
+        push -1305616258088935284
+	;
+	push 0 
+        store
+  push 8
+        set   7
+; comment
+l3:	PUSH	-7 
+Call	fn6
+over
+lt
+NE
+PUSH -6146008991179429852
+  Call fn1
+dup
+add
+  sub
+push	1
+  MOD ; note
+print
+read
+        PUSH -1403454560101871241
+        le
+	set	2 
+GET	7
+	push 1
+sub
+dup
+
+        set   7
+        jnz l3
+  push	3037000499
+        print;x
+  push -2
+	set	7	; .input
+        push	55
+get 2;x
+; comment
+drop
+print
+  get 2
+dup
+	eq
+  push   3
+  get   7
+mul
+	Swap
+mul
+  PRINT
+Push	1
+	SET 7
+        Lab_4:   push   -16
+        dup
+  sub
+  push   1
+        load
+push	9223372036854775806
+	over
+        ge
+        LT
+ge
+  push   4294967296
+        div
+        print
+get	7
+push 1
+  Sub
+	dup
+  SET 7
+	jnz   Lab_4
+  push 1
+  load
+	print
+  push   -6073601850808934990
+	dup
+add
+  print
+	get 5
+	PUSH 17	; .input
+  mul
+  print
+get   2
+  print
+	push   29
+        push	3037000499;x
+        swap
+        mul;x
+        PRINT
+	Push	4095
+	load
+	read
+        over
+mul
+        add
+        dup
+	ge	; .input
+  PUSH 97
+        push   47
+push 10
+	mod
+        MUL
+drop
+        print
+get	6
+	PUSH 2147483648
+  Lt	; .input
+  print
+  call	fn0
+  Print
+get   6
+        read
+  push	3	; .input
+  mul
+	lt
+Push	255
+mod
+        print
+  Push   9223372036854775807
+	push 1
+	Load
+	get 7	; .input
+push 2
+load
+        swap
+        mul ; note
+	Add
+        drop
+  print
+	push   -9223372036854775807
+  push 4294967296
+add
+  push	3
+mod
+	print
+        PUSH 48
+	PRINT
+  push   4
+set	7
+        _l5:	read ; note
+  push   -2186677770244580168
+	over
+  mul;x
+        mul
+get   2
+push	0
+  load
+drop
+        over 
+        add;x
+	MUL
+	get 1
+  call	fn2
+ne
+	sub
+  print
+  get   7
+Push	1
+  sub
+        dup
+set 7
+        jnz	_l5
+	PUSH   3
+  load
+	Print
+push	-7987290834355278557
+        print
+read
+  print
+   
+        push -4611686018427387904
+  Print
+  push	3037000500
+push   4294967296
+  le
+push   -3072969163637342332	; .input
+   
+        push	7157908670789374463
+  drop
+mul
+	get 2
+        READ
+  Le
+	push 4294967296
+Mod
+	over
+Add
+	eq
+print
+	PUSH 7
+  push 40
+  Div
+Read
+push   79
+	over
+	ge
+  sub
+ne
+        set 2
+  call fn2
+  push	-3966698913645433614
+	push	1
+        mod
+  lt
+jnz	L6
+
+	Get   6
+        print
+push -8349091391305820187
+        print 
+L6:   get   7
+        JNZ	L7
+get   7
+	print
+  L7: push -4611686018427387904
+dup;x
+sub
+push 2147483648
+	call	fn5
+	push   3971997078178871872
+  over
+  mul
+  add
+        Push 2
+        push 100
+        load
+	DROP
+        sub
+over
+sub ; note
+        sub
+print
+	PUSH   3
+        load 
+	push 100
+Drop
+  push   1
+	store
+  push	0
+        load
+        get 0
+OVER
+  ge
+sub
+        push	9223372036854775807
+	drop
+        print
+        push	2 ; note
+load
+jz Lab_8
+	push   40
+        push -9223372036854775807
+swap
+  add ; note
+	push 7
+  le
+        Push -2854467131132791947
+mul
+	print
+push	88
+	Get   2
+  over
+SUB
+sub
+read ; note
+	get 6
+gt
+        swap
+  gt
+        push 0
+Store
+push 0
+  LOAD
+push	3037000499
+	Div
+  print
+        call	fn4
+  print 
+  Lab_8:   push   -2147483648
+print
+push	3
+        load
+        Jnz	_l9
+  push	0
+        Load
+	dup
+   
+        add
+
+push   9223372036854775806
+gt
+        push 1
+  store
+        push -2
+	print
+        push	4731289625081575039
+push   -63
+        push	-31
+  mul
+push   -2147483648
+	mod
+	SWAP
+        sub
+        set   7
+	get	1
+	print
+_l9: push 1
+Load
+PRINT
+  call fn6
+set 7
+push -2
+  dup
+sub
+; comment
+	push 3
+        store	; .input
+	push   2
+  Set   7 
+	Lab_10: get 6
+  PRINT ; note
+        get   7
+push   1
+        Sub
+	dup
+; comment
+	set   7
+	JNZ Lab_10
+        call   fn4
+  print
+        get   0
+        push   10
+        EQ
+        Jnz	_l11
+  Get	0 
+dup
+   
+        add
+        get 7
+  PUSH 1
+        Mod
+  MUL
+	call fn4
+	SUB
+SET 0
+        get 2
+; comment
+        push	2147483648
+	div
+	JZ   x12
+  push   2147483648;x
+  push	9223372036854775807
+        mod
+	print
+get   0
+  get   6
+  PUSH	75
+	over
+SUB
+  mul
+  OVER
+add
+sub
+        print
+  push 1
+print
+  push 1
+  Push -92
+over
+        SUB
+  add
+	print
+        x12:	push	36
+        push	3037000500 ; note
+  mod	; .input
+	push 3037000500
+div
+        read
+swap
+add
+        print
+        get	3
+call	fn0
+  lt
+	Set   0
+_l11: push 7
+	set 7
+l13: get 1 ; note
+push	4611686018427387904
+	mod
+  Push	2
+        store
+	push   1
+  jz   x14
+	call   fn3
+        Push   1
+store
+	push   -1406885831012173013
+        get	2
+Swap ; note
+	add
+        push   18
+        dup
+        add
+  SUB
+        PUSH	1048575
+	store
+x14:   push   9
+        SET	6;x
+        x15:   read
+	Push	83
+	drop
+  print
+get	6
+	push 1 ; note
+        sub
+Dup
+        Set 6
+  Jnz   x15	; .input
+push   4611686018427387904
+  call	fn1
+  set 2
+        get   7	; .input
+        push 1
+sub
+        Dup
+	set   7
+        jnz l13
+        push	5
+  set   7
+_l16:	GET	1
+  push	7014275719534118323
+
+  swap
+  add
+Push 4095
+	load
+        push	9223372036854775806
+	lt
+  drop
+jnz	L17
+	push	-3037000500
+   
+  push	-86
+  ne
+  print
+        push	1	; .input
+load
+  set   2
+        get 2
+	print
+  L17: push 7
+  set   6
+	L18:	Push	2
+  load
+get   4
+	;
+	lt
+        set	1
+	call   fn3
+	push 0
+        LOAD
+  over
+	Mul
+        mul
+	print
+	;
+        GET	6
+	Push   1
+sub
+	dup
+        set 6
+  jnz	L18	; .input
+	get   7;x
+  push 1
+sub 
+  dup
+  Set	7
+        jnz	_l16
+push 4611686018427387904
+        jz	l19
+READ
+        push 75
+	ADD
+	set	2
+	call   fn0
+        print
+  push   3037000499
+jz	Lab_20
+        read
+	push	-3037000500
+   
+	mod
+  Get   2
+  over
+  GE
+	add
+        set	3
+GET 5
+        get   3
+  drop
+Push 3037000499
+	div
+get	1
+  Push	-1
+  DIV
+  push -66;x
+
+	dup	; .input
+        mul
+	add
+mul
+        PRINT
+Lab_20:   l19:   push   4
+	set 7
+        l21:   push   -3037000500
+  PRINT
+        push -2613585879132970609
+  READ
+	over
+sub
+add
+	print
+        get 2
+        push 2
+        load
+	lt
+        set 2 ; note
+  get	7
+        Push 1
+	;
+	sub
+	dup
+set 7
+        jnz   l21
+get   4
+	print
+push   9223372036854775807
+push	3
+  load
+	sub
+READ
+        drop
+        jnz l22
+	Push	-9223372036854775808
+  get 5
+  add
+  push   -1561900757437126423	; .input
+        PUSH	-56
+  over
+	sub
+        lt
+  sub
+	PUSH	4095
+        Load
+  Push	100
+Load
+sub
+  push	-3037000500
+mod
+  mul
+print
+	l22:	push	85
+; comment
+	set 3
+
+push -9223372036854775808
+	jnz   l23
+        get   4
+jz   l24
+  read
+        push -2147483648
+	div
+  PUSH	3037000500
+  MOD;x
+        print
+	call fn0
+        dup
+	EQ
+  print
+  push   608601210944687268
+	print
+        l24:	Get	2
+call fn1
+  get 5
+        lt
+jnz   x25
+        read
+	push	4080372222013550852
+        over
+eq
+  add
+  print
+	get   6
+	push 7
+over
+  add
+  SUB
+	push	3037000499
+call	fn4
+  swap
+le
+	eq
+	print
+  x25:   push   3
+	set	7
+  _l26: get 0
+        dup
+	add
+GET	1
+        get   6
+over 
+        sub
+; comment
+  lt
+; comment
+drop
+  push	-36
+	mod
+        print
+  PUSH	-1388200096205212066
+        Print
+        get 7
+        push 1
+        sub
+dup
+  set	7
+	Jnz   _l26
+        get	7
+	get	3
+; comment
+Gt
+	get	0
+	get   3
+  Drop
+	add 
+call	fn1	; .input
+set   5
+  l23:	push	-6574862052423924988
+
+  PRINT
+  push	1048575
+	load
+	set   4
+	;
+	read
+        push -3037000500;x
+        drop
+        print
+	push   2
+load
+	print
+        read
+push 4294967296
+        div
+	;
+        PUSH -7308369215594121135
+  push   2147483648
+        SUB
+        add
+        CALL   fn3
+        push   1
+  mod
+  swap
+  sub
+        print ; note
+        push 99
+  Push	0
+        ADD
+set 4
+  Push	7978912575015129921
+call   fn1
+push	-20
+  mod
+        print
+  push	7167742880403120200
+  push	-91
+  SWAP
+ADD
+Push	-71
+        swap
+	gt
+        jz	Lab_27;x
+        get	0
+        print 
+	push	-177915058807778661
+  push 6894141824975275672
+OVER
+SUB
+add
+        jnz	x28
+push	-12
+	print
+	read
+        print
+read
+print;x
+        x28:   Lab_27:   get   5
+jnz x29
+  get 4 
+	Print
+	push   4
+	set 7;x
+  _l30: get 1
+	print
+	push	-8610568678654163647
+call	fn6
+swap
+Lt
+dup
+  sub
+GET   6
+push 2
+div
+        sub
+  set	6
+  push	-4611686018427387904
+   
+	print
+  get   7
+        push	1
+        sub
+	dup
+        SET	7
+	jnz	_l30
+  x29:	Halt
+fn0:   push   4
+	;
+        print
+read
+push	4003667237979421148
+        swap
+        Sub
+	Print
+  call   fn3
+	push   62
+
+DROP
+	print
+        call	fn2
+	;
+	Dup
+  sub
+        get	0
+push   3037000500
+add	; .input
+        mul ; note
+  get	5
+push 1586579668972109654
+sub
+; comment
+        get 7 
+ADD
+  sub
+  print
+	push   -69
+push   7
+	ge
+ret
+fn1:   set   0
+        push	3037000500 ; note
+push	0
+  LOAD
+  push 37
+	DIV
+PUSH   9223372036854775807
+div
+  over	; .input
+        add
+	sub
+print
+push 71 
+set 2
+push -16
+ret
+        fn2: push -51
+  push	4611686018427387904
+        mul
+        SET 7
+  get	2
+get   3
+  push -9223372036854775807
+div
+Call fn3
+  add
+  drop
+  print
+	push -9223372036854775808
+set   6
+        get   2
+	print
+	;
+push 1
+        Ret
+  fn3:	get	2
+read
+; comment
+MUL
+	JZ x31 
+  push	100
+	load
+	print 
+	push	89
+  read
+        over
+Mul
+eq
+  PRINT;x
+  x31:   push   4294967296 
+        set	6
+  get 5
+        print
+  push 46
+        print
+push   3
+        load
+	RET
+	fn4:   push   -97
+  print
+  GET	3
+print
+        get 2
+        call   fn5
+ret
+        fn5:   set   0
+	read
+set   2
+push	4095
+load
+	push -1
+div
+	set	4
+  push   -2
+	ret
+fn6:   push   62
+	print
+  push	-5754677524184738013
+  print
+	push	1048575
+	load
+        read
+mul
+	Push	3
+        push	3237237219789495831
+        Add 
+	drop
+  Push	1
+  load
+        read
+        READ
+	le
+  over
+add
+  GT
+drop
+	print
+  GET	2
+        print
+  PUSH -80
+  ret
+.input
+441376257785091135 -77 10 4611686018427387904 40 255 -3037000500 -5755144157761047767 -21 -2 -50 2 -82 -1 6022017852569343063 -8 -6013071935538183924 84 -30 -3037000500 4294967296 -2 9223372036854775806 -1 9223372036854775807 -70 -1 77 9223372036854775806 -2118797423359101077 9223372036854775806 -35 2923276753083318588 -561284954892400436 3037000499 6463533826411222177 -232950591675110980 85 -3037000500 -69 0 74 96 4611686018427387904 6899896160279543754 4720552830517278853 3037000499 -874048276655131334 0 2 4611686018427387904 -41 -606541583115627676 -26 -25 64 4294967296 3037000499 2147483648 10 8471530017360630687 -4 2147483648 -1 -8758805635782815638 4294967296 -4653545082758636164 0 10 7647455420836901984 -4520910177835940869 4167360140322829554 -6370007410523523103 -1 9223372036854775806 4806945761229721107 3037000499 0 -5 4065639579054108983 -9223372036854775807 -2 10 74 -239531458969528440 -3037000500 -49 -6900968846280350738 99 4294967296 4294967296 -5236066338587803460 90 1 10 -48 3083962511058065530 53 51 2 10 -7 3 15 -76 0 -1222760687082419577 -3037000500 -46 -20 4294967296 -9223372036854775808 1 -82 -7763955392928423394 4294967296 -4611686018427387904 9223372036854775806 -44 10 -3630508104450534492 10 -89 1 -4007693487875449535 -91 -53 1039846095878053546 -65 1625561275885041267 1 -9223372036854775807 -62 -62 -10 -3276880645787005265 -5 0 -13 1 3807740076626530020 0 2 9223372036854775806 4611686018427387904 7 -2841169089537042997 1 -1 -47 -2 -40 10 20 0 -2 -1476247028408698974 -4365757008768159492 -7321206717869836010 10 -2147483648 -99 31 3767632837645512433 2 4271165097800770006 59 2147483648 5 13 -70 -85 2007190908005915905 3037000499 -5939187681419387080 -2 -28 -87 18 -4611686018427387904 -599931439535810520 4294967296 -58 -9223372036854775808 -53 43 10 -9223372036854775808 9223372036854775806 2305099913164869619 -71 -3037000500 9223372036854775807 58 4639571182758220794 8453918926929974444 7 3 62 6144490166546445558 -59 -11 255 71 -4611686018427387904 255 10 -2738361228681609055 -4611686018427387904 7 -47 3037000500 -3037000500 255 9223372036854775807 -9223372036854775808 4294967296 -4611686018427387904 79 7 58 70 -3037000500 -9223372036854775808 4611686018427387904 9223372036854775806 -1 -3037000500 -77 66 -9223372036854775808 90 1 -7144072581712879192 4611686018427387904 -3636476078432188820 -78 3037000499 1 -10 -42 44 -7620483265550631656 -4611686018427387904 -9223372036854775807 255 7251035447952001180 -4611686018427387904 -2004233146621823709 255 -9223372036854775807 9223372036854775806 -2 -1 67 1904883505798644174 -32 -66 3037000499 7 76 -4611686018427387904 74 -4057867184081673844
