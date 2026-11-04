@@ -2,6 +2,7 @@
 //! it, the events in its stdout, and the fold of those events into how the attempt ended.
 //! Each driver is pure, so it is tested against captured transcripts with no process.
 mod claude_code;
+mod codex;
 mod fold;
 
 pub use fold::{AgentOutcome, Ending, Exit, Fold, ProcessEnd, QuotaSpan};
@@ -13,6 +14,7 @@ use crate::{
 };
 use chrono::{DateTime, Utc};
 use claude_code::ClaudeCode;
+use codex::Codex;
 use eyre::{Result, eyre};
 use std::{
     fmt,
@@ -36,7 +38,7 @@ trait Driver: Sync {
     }
 }
 
-static DRIVERS: &[&dyn Driver] = &[&ClaudeCode];
+static DRIVERS: &[&dyn Driver] = &[&ClaudeCode, &Codex];
 
 /// A registered harness driver. Only [`Harness::all`] and [`Harness::named`] hand one out.
 #[derive(Clone, Copy)]

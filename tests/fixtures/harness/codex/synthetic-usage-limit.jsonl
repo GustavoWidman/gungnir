@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"00000000-0000-4000-8000-000000000031"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc ls","aggregated_output":"main.py\n","exit_code":0,"status":"completed"}}
+{"type":"error","message":"Reconnecting... 2/5 (unexpected status 429 Too Many Requests: rate_limit_exceeded)"}
+{"type":"error","message":"You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 3:05 PM."}
+{"type":"turn.failed","error":{"message":"You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 3:05 PM."}}
