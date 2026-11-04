@@ -1,7 +1,7 @@
 # The OpenAI extension: every effort level of the larger GPT models, on the pilot's matrix.
 name = "openai-ext"
 results = "../runs/openai-ext"
-repetitions = 3
+repetitions = 5
 scenarios = ["interval-cover", "word-freq"]
 languages = ["python", "rust", "zig"]
 
