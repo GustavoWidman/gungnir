@@ -63,7 +63,7 @@ Identifiers are slugs (`[a-z0-9][a-z0-9.-]*`) behind one macro, one newtype per 
 
 `Effort` is a closed enum: `None`, `Minimal`, `Low`, `Medium`, `High`, `Xhigh`, `Max`, ordered by rank. The catalog lists the levels each model accepts. Each driver declares which levels its CLI flag can carry. A `System` is constructed only by `Catalog::systems`, which rejects an effort outside the intersection, so a `System` value is always runnable.
 
-`TokenUsage` keeps disjoint buckets: `input`, `cache_read`, `cache_write`, `output`, and `reasoning: Option<u64>` as a subset of `output`. Each driver normalizes its vendor's semantics at the parse boundary (Anthropic's `input_tokens` excludes cache reads, OpenAI's includes them). Usage is stored per sample at the finest grain the CLI reports, each sample tagged with the model that served it. Totals are derived, never stored.
+`TokenUsage` keeps disjoint buckets: `input`, `cache_read`, `cache_write` (the default cache), `cache_write_long` (Anthropic's one-hour cache), `output`, and `reasoning: Option<u64>` as a subset of `output`. Each driver normalizes its vendor's semantics at the parse boundary (Anthropic's `input_tokens` excludes cache reads, OpenAI's includes them). Usage is stored per sample at the finest grain the CLI reports, each sample tagged with the request and model when the CLI names them (Codex names neither). Totals are derived, never stored.
 
 `Brief` is the agent-visible part of a scenario: the spec and the visible examples. The run phase receives a `Brief`, never a `Scenario`, so it cannot name a hidden path.
 
@@ -132,7 +132,7 @@ pub struct Harness(&'static dyn Driver);           // obtainable only from DRIVE
 
 `Launch` is argv, environment (plain and secret values), files to place in the isolated home, and the prompt delivered on stdin. Stdin is always closed after the prompt, because Codex otherwise waits for more input.
 
-`Event` is the harness-neutral vocabulary: `Init { model, tools }`, `Usage { request, model, tokens }`, `Quota { window, utilization, resets_at, allowed }`, `RateLimited { resets_at }`, `Refused`, `Finished { turns, api_time, error }`, `Noise`, and `Unrecognised(kind)`. Unrecognised kinds are counted into the run record so format drift is visible.
+`Event` is the harness-neutral vocabulary: `Init { model, tools }`, `Usage(sample)`, `SessionUsage { model, tokens }`, `Quota { window, utilization, resets_at, allowed }`, `RateLimited { resets_at }`, `Refused`, `Finished { turns, api_time, error }`, `Noise`, and `Unrecognised(kind)`. Unrecognised kinds are counted into the run record so format drift is visible. Claude Code reports each response's usage as of its first token, so its per-request samples undercount output; its final `result` line carries per-model session totals, and the fold adds one sample without a request id that tops the per-request samples up to those totals.
 
 A pure `Fold` turns events into an `Ending`:
 
