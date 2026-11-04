@@ -1,0 +1,37 @@
+# The study's GLM arm: every effort level of both GLM models on the full suite, through Claude Code.
+name = "study-glm"
+results = "../runs/study-glm"
+repetitions = 5
+scenarios = [
+  "bigint-calc",
+  "exact-cover",
+  "json-path",
+  "ledger",
+  "line-diff",
+  "regex-lite",
+  "route-fuel",
+  "tiny-vm",
+]
+languages = ["python", "rust", "zig", "go", "c", "cpp", "javascript", "typescript"]
+
+[machine]
+cpu = "13th Gen Intel(R) Core(TM) i9-13900K"
+host = "11b301add99fa61a4eb9f0a36eae41f1"
+
+[pins]
+claude-code = "2.1.316"
+
+[budget]
+wall = "4h"
+idle = "30m"
+
+[concurrency]
+zai = 6
+
+[[systems]]
+model = "glm-5.3"
+efforts = "all"
+
+[[systems]]
+model = "glm-5.3-flash"
+efforts = "all"
