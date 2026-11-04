@@ -1,0 +1,33 @@
+# The study's OpenAI arm: every effort level of the cheaper GPT models on the full suite.
+name = "study-openai"
+results = "../runs/study-openai"
+repetitions = 1
+scenarios = [
+  "bigint-calc",
+  "exact-cover",
+  "json-path",
+  "ledger",
+  "line-diff",
+  "regex-lite",
+  "route-fuel",
+  "tiny-vm",
+]
+languages = ["python", "rust", "zig", "go", "c", "cpp", "javascript", "typescript"]
+
+[pins]
+codex = "0.166.0"
+
+[budget]
+wall = "4h"
+idle = "30m"
+
+[concurrency]
+openai = 5
+
+[[systems]]
+model = "gpt-6-luna"
+efforts = "all"
+
+[[systems]]
+model = "gpt-6.1-terra"
+efforts = "all"
