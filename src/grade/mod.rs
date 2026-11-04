@@ -9,7 +9,7 @@ mod judgement;
 mod record;
 #[cfg(test)]
 mod tests;
-mod tree;
+pub(crate) mod tree;
 
 pub use complexity::{Complexity, FileComplexity, Function};
 pub use judgement::{
@@ -65,7 +65,6 @@ pub async fn judge(
     stop: &Stop,
     evidence: &Path,
 ) -> Result<Judgement> {
-    let toolchain = toolchains.language(language.id().as_str())?;
     let scratch = tempfile::Builder::new()
         .prefix("gungnir-judge-")
         .tempdir()
@@ -74,18 +73,7 @@ pub async fn judge(
     tree::copy(workspace, &work, language.ignore())?;
     let complexity = complexity::measure(language, &work).await?;
 
-    let offline = Offline {
-        backend,
-        stop,
-        closure: toolchain.closure().clone(),
-        path: vec![toolchain.bin(), toolchains.base().bin()],
-        env: language
-            .env()
-            .iter()
-            .map(|(name, value)| (name.clone(), EnvValue::Plain(value.clone())))
-            .collect(),
-        work,
-    };
+    let offline = Offline::new(language, toolchains, work, backend, stop)?;
     let (build, log) = offline.build(language.build()).await?;
     write(&evidence.join("build.log"), &log)?;
     let cases = match build.outcome {
@@ -97,7 +85,7 @@ pub async fn judge(
 
 /// Runs commands in offline sandboxes over one scratch copy of a workspace, with the
 /// language's toolchain and environment.
-struct Offline<'a> {
+pub(crate) struct Offline<'a> {
     backend: &'a dyn Backend,
     stop: &'a Stop,
     closure: Closure,
@@ -106,8 +94,32 @@ struct Offline<'a> {
     work: PathBuf,
 }
 
-impl Offline<'_> {
-    fn spec(&self, writable: bool, limits: Limits) -> Spec {
+impl<'a> Offline<'a> {
+    /// Sandboxes over `work`, a scratch copy of a `language` workspace.
+    pub(crate) fn new(
+        language: &Language,
+        toolchains: &Toolchains,
+        work: PathBuf,
+        backend: &'a dyn Backend,
+        stop: &'a Stop,
+    ) -> Result<Self> {
+        let toolchain = toolchains.language(language.id().as_str())?;
+        Ok(Self {
+            backend,
+            stop,
+            closure: toolchain.closure().clone(),
+            path: vec![toolchain.bin(), toolchains.base().bin()],
+            env: language
+                .env()
+                .iter()
+                .map(|(name, value)| (name.clone(), EnvValue::Plain(value.clone())))
+                .collect(),
+            work,
+        })
+    }
+
+    /// An offline sandbox whose working directory is the workspace, mounted at [`WORK`].
+    pub(crate) fn spec(&self, writable: bool, limits: Limits) -> Spec {
         let workspace = if writable {
             Mount::writable(&self.work, WORK)
         } else {
@@ -149,7 +161,7 @@ impl Offline<'_> {
 
     /// Runs the build steps in order over a writable workspace, stopping at the first that
     /// does not exit 0. Returns the build and its log.
-    async fn build(&self, steps: &[Argv]) -> Result<(Build, Vec<u8>)> {
+    pub(crate) async fn build(&self, steps: &[Argv]) -> Result<(Build, Vec<u8>)> {
         let spec = self.spec(true, BUILD_LIMITS);
         let mut log = Vec::new();
         let mut wall = Duration::ZERO;

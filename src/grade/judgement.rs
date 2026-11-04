@@ -137,7 +137,7 @@ pub enum Abnormal {
 impl Abnormal {
     /// How a program that gungnir did not interrupt ended, or `None` when it exited 0. A
     /// program gungnir killed has no ending to judge, so that is an error.
-    pub(super) fn of(exit: Exit) -> Result<Option<Self>> {
+    pub(crate) fn of(exit: Exit) -> Result<Option<Self>> {
         Ok(Some(match exit {
             Exit::Code(0) => return Ok(None),
             Exit::Code(code) => Self::Crashed(Crash::Code(code)),

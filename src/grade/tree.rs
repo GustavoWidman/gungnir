@@ -9,7 +9,7 @@ use std::{
 
 /// Copies the files and symlinks under `from` that `ignore` does not match to `to`, so two
 /// workspaces with the same digest copy the same. Symlinks are copied, never followed.
-pub(super) fn copy(from: &Path, to: &Path, ignore: &GlobSet) -> Result<()> {
+pub(crate) fn copy(from: &Path, to: &Path, ignore: &GlobSet) -> Result<()> {
     fs::create_dir_all(to).wrap_err_with(|| format!("creating {}", to.display()))?;
     for (rel, kind) in files(from, ignore)? {
         let (source, target) = (from.join(&rel), to.join(&rel));
