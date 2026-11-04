@@ -78,6 +78,13 @@ impl Grant {
     pub fn socket(&self) -> &Path {
         &self.socket
     }
+
+    #[cfg(test)]
+    pub(crate) fn at(socket: impl Into<PathBuf>) -> Self {
+        Self {
+            socket: socket.into(),
+        }
+    }
 }
 
 /// A proxy listening on one attempt's socket.

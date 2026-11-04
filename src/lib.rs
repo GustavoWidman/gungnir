@@ -8,6 +8,7 @@ pub mod experiment;
 pub mod id;
 pub mod language;
 pub mod provenance;
+pub mod sandbox;
 pub mod scenario;
 pub mod secret;
 pub mod stop;

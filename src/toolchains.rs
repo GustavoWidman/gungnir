@@ -93,6 +93,11 @@ impl Toolchain {
         Ok(Self { root, closure })
     }
 
+    /// The env's store path. Everything under it resolves inside a sandbox that binds the closure.
+    pub(crate) fn root(&self) -> &Path {
+        &self.root
+    }
+
     pub fn bin(&self) -> PathBuf {
         self.root.join("bin")
     }
