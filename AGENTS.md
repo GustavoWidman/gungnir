@@ -11,12 +11,13 @@ This file is guidance for contributors and coding agents. It describes the repos
 ## Repository map
 
 - `Cargo.toml` and `Cargo.lock` hold the package metadata and the locked dependencies.
-- `flake.nix` and `flake.lock` define the dev shell, the crane package, and the clippy, rustfmt and package checks.
+- `flake.nix` and `flake.lock` define the dev shell, the crane package wrapped with `GUNGNIR_TOOLCHAINS`, the toolchains package, and the clippy, rustfmt and package checks.
+- `nix/toolchains.nix` builds the sandbox environments (`base/`, `language/<id>/`, `harness/<name>/`, each with `bin/` and a `closure` file) from `gungnir.toml` and `languages/*/language.toml`.
 - `rust-toolchain.toml` pins the nightly toolchain and its components.
 - `.envrc` loads the flake for direnv users.
 - `gungnir.toml` is the catalog. It lists the sandbox base packages, the harness packages, the backends with their credentials and egress hosts, and the models with their efforts and dated prices.
 - `languages/<id>/` is a toolchain profile. The loader requires `language.toml`, `preamble.md` and a `template/` directory.
-- `scenarios/<id>/` is a task. The loader requires `scenario.toml`, `spec.md`, `examples/`, `hidden/`, `workloads/` and `reference/<language>/`.
+- `scenarios/<id>/` is a task. The loader requires `scenario.toml`, `spec.md`, `examples/`, `hidden/`, `workloads.sha256` and `reference/<language>/`. `gen/gen.py` writes the cases and, on demand, the gitignored `workloads/`.
 - `experiments/<name>.toml` is a matrix to run. `pilot.toml` is the pilot study and `smoke.toml` runs each pilot model once.
 - `docs/architecture.md` is the design contract.
 - `paper/` holds the manuscript and the research notes behind it.
@@ -26,7 +27,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 
 - `src/main.rs` parses the command line and calls `Cli::run`.
 - `src/lib.rs` declares the modules in sorted order.
-- `src/cli.rs` defines the clap commands. `plan` loads an experiment and prints its trial matrix.
+- `src/cli.rs` defines the clap commands. `plan` loads an experiment and prints its trial matrix. `check` grades every reference solution and regenerates missing workloads.
 - `src/id.rs` holds the identifiers every module shares. The `slug!` macro makes the validated newtypes `LanguageId`, `ScenarioId`, `ModelId`, `BackendId`, `HarnessName`, `HarnessVersion`, `CaseId` and `WorkloadId`. `Rep`, `AttemptNo` and the rank-ordered `Effort` enum live there too.
 - `src/catalog.rs` loads `gungnir.toml` into `Catalog`, `Backend`, `Credential`, `Model` and dated price tiers. `Catalog::system` is the only constructor of `System`, and `System::id` derives the `SystemId`.
 - `src/language.rs` loads `languages/` into `Language` profiles. `Language::prompt` renders the agent's prompt from a `Brief`.
@@ -35,9 +36,17 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/trial.rs` defines `Phase`, `TrialKey`, `ResultsDir` and `TrialDir`. Paths under `results/<experiment>/` are named there and nowhere else.
 - `src/store.rs` and `src/store/` hold the file mechanics: `Digest`, atomic writes, `read_json`, the `PartialDir` commit protocol and the `Lock` used for phase locks.
 - `src/provenance.rs` records one `Session` per invocation in `sessions/<id>.json`.
+- `src/secret.rs` holds `Secret<T>`, whose `Debug` prints nothing, `EnvValue` for sandbox environments, and redaction of secret values from bytes and files.
+- `src/stop.rs` is the two-stage interruption: the first Ctrl-C drains, the second kills in-flight sandboxes.
+- `src/toolchains.rs` loads `GUNGNIR_TOOLCHAINS` into `Closure` sets and `bin` directories, refusing any closure that contains a flake source path.
+- `src/sandbox/` defines `Spec`, `Network`, `Finished`, `Fault` and the object-safe `Backend` trait, with the bubblewrap backend. It is the only place untrusted code is spawned.
+- `src/egress/` is the host-side CONNECT proxy that tunnels only allowlisted hosts on port 443 and logs every connection.
+- `src/harness/` holds the `Driver` registry (`DRIVERS`), the `Harness` handle, the Claude Code and Codex drivers, the harness-neutral `Event` and `TokenUsage`, and the pure `Fold` into an `Ending`. Captured transcripts for its tests live in `tests/fixtures/harness/`.
+- `src/grade/` judges a workspace: an offline build, every hidden case in its own sandbox compared on the host, lizard complexity, and the `GradeRecord` with its `GradeInputs`.
+- `src/workload.rs` regenerates a scenario's workloads in a sandbox and verifies them against `workloads.sha256`.
 - `src/testing.rs` holds the fixture writers the unit tests share. It compiles only for tests.
 
-The contract also specifies parts that are not in the crate yet: the harness drivers, the sandbox, the egress proxy, the credential vault and the phases. Give each its own module and update this map when it lands.
+The contract also specifies parts that are not in the crate yet: the credential vault, the run, grade and measure phases over trials, and the report. Give each its own module and update this map when it lands.
 
 ## How `gungnir plan` loads an experiment
 
