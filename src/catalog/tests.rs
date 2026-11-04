@@ -9,6 +9,9 @@ packages = ["coreutils"]
 [measure]
 packages = ["hyperfine"]
 
+[profile]
+packages = ["perf"]
+
 [harnesses.claude-code]
 package = "claude-code"
 
@@ -216,7 +219,12 @@ fn systems_need_an_effort_the_harness_can_carry() {
 
 #[test]
 fn package_lists_must_be_non_empty() {
-    for (table, package) in [("sandbox", "coreutils"), ("measure", "hyperfine")] {
+    let tables = [
+        ("sandbox", "coreutils"),
+        ("measure", "hyperfine"),
+        ("profile", "perf"),
+    ];
+    for (table, package) in tables {
         rejects(
             &format!("[{table}]\npackages = [\"{package}\"]"),
             &format!("[{table}]\npackages = []"),

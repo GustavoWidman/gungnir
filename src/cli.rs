@@ -115,6 +115,20 @@ enum Command {
     /// the run and grade locks, unless --allow-busy. The first Ctrl-C lets the comparison in
     /// progress finish, the second kills it.
     Measure(Measure),
+    /// Run one trial's candidate and the reference in its language once each under perf on one
+    /// workload, and keep the samples, the folded stacks and a flame graph of each under the
+    /// trial's profile/<workload>/. Explains an outlier; never part of a measurement.
+    Profile {
+        /// The experiment file, such as experiments/pilot.toml.
+        experiment: PathBuf,
+        /// The trial, as <system>/<scenario>/<language>/r<k>.
+        #[arg(long, value_name = "TRIAL")]
+        trial: String,
+        /// The workload to run. Defaults to the one whose wall-time ratio was worst, or the
+        /// first before the trial is measured.
+        #[arg(long, value_name = "ID")]
+        workload: Option<WorkloadId>,
+    },
     /// Count each system's trials by stage, and the stale ones.
     Status {
         /// The experiment file, such as experiments/smoke.toml.
@@ -167,6 +181,11 @@ impl Cli {
             }
             Command::Grade { experiment, jobs } => grade_trials(&experiment, jobs),
             Command::Measure(measure) => measure.run(),
+            Command::Profile {
+                experiment,
+                trial,
+                workload,
+            } => profile(&experiment, &trial, workload.as_ref()),
             Command::Status { experiment } => {
                 let experiment = Experiment::load(&experiment)?;
                 let runtime = runtime()?;
@@ -467,6 +486,56 @@ impl Measure {
         );
         Ok(())
     }
+}
+
+/// Profiles the trial named `name` and prints where the profile went, each program's hottest
+/// functions, and what a profile of the language can show.
+fn profile(path: &Path, name: &str, workload: Option<&WorkloadId>) -> Result<()> {
+    log_progress();
+    let experiment = Experiment::load(path)?;
+    let trial = experiment
+        .trials()
+        .into_iter()
+        .find(|trial| trial.to_string() == name)
+        .ok_or_else(|| {
+            eyre!(
+                "{} has no trial {name:?}; name one as <system>/<scenario>/<language>/r<k>",
+                experiment.name()
+            )
+        })?;
+    let repo = repository_of(path)?;
+    let runtime = runtime()?;
+    let (toolchains, backend) = probed(experiment.languages(), &runtime)?;
+    let profiled = runtime.block_on(async {
+        let stop = Stop::on_ctrl_c()?;
+        measure::profile_trial(
+            &experiment,
+            &repo,
+            &toolchains,
+            &backend,
+            &trial,
+            workload,
+            &stop,
+        )
+        .await
+    })?;
+    println!(
+        "profiled {trial} on {} into {}",
+        profiled.workload,
+        profiled.dir.display()
+    );
+    for (side, hottest) in &profiled.hottest {
+        let functions: Vec<String> = hottest
+            .iter()
+            .map(|(function, share)| format!("{:.1}% {function}", share * 100.0))
+            .collect();
+        println!(
+            "{side}: {side}/flame.svg; most samples in {}",
+            functions.join(", ")
+        );
+    }
+    println!("{}: {}", trial.language, profiled.shows);
+    Ok(())
 }
 
 /// Parses a repetition as `3` or `r3`.

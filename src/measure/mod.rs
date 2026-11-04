@@ -4,6 +4,7 @@
 mod hyperfine;
 mod machine;
 mod phase;
+mod profile;
 mod record;
 mod rusage;
 mod stats;
@@ -13,6 +14,7 @@ mod timing;
 
 pub use machine::{Load, Machine};
 pub use phase::{Measured, Quiet, Request, Selection, measure_trials};
+pub use profile::{Profiled, profile_trial};
 pub use record::{MeasureInputs, MeasureRecord};
 pub use stats::{Ratio, Spread};
 pub use timing::{Block, PeakMemory, Sample, Side, Summary, Timed, schedule};

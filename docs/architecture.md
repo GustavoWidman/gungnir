@@ -17,7 +17,7 @@ gungnir runs a benchmark of AI coding agents. It drives each vendor's own CLI he
 ```text
 gungnir.toml                  catalog: sandbox base packages, harness packages, backends, models, prices
 languages/<id>/
-  language.toml               packages, build, run, version, sources, ignore, lizard, env
+  language.toml               packages, build, run, version, sources, ignore, lizard, env, profile
   preamble.md                 per-language prompt preamble; {build}, {run} and {version} placeholders
   template/                   files scaffolded into every workspace
 scenarios/<id>/
@@ -53,6 +53,7 @@ Each catalog is one list in one place.
 $GUNGNIR_TOOLCHAINS/
   base/bin, base/closure                 sandbox base packages from gungnir.toml [sandbox]
   measure/bin, measure/closure           hyperfine and GNU time, from [measure]
+  profile/bin, profile/closure           perf and inferno, from [profile]
   language/<id>/bin, language/<id>/closure
   harness/<name>/bin, harness/<name>/closure
 ```
@@ -61,7 +62,7 @@ Each `closure` file is the `closureInfo` store-path list of that environment. A 
 
 A language's packages are nixpkgs attributes, or packages nixpkgs lacks that `toolchains.nix` defines under `local`. Anything a toolchain reads at build time must reach the sandbox through that closure, never through the workspace. TypeScript is the example: `typescript-bun` is `tsc` wrapped to pass `--typeRoots` into a store path holding Bun's type declarations, pinned to the Bun version nixpkgs ships, so a TypeScript workspace holds no `node_modules` and its type check runs offline.
 
-Each preamble states its language's version through `{version}`, and the loader refuses a preamble without it. The text comes from the toolchain. Every command that renders a prompt (`run`, `grade`, `measure`, `status`, `report`) and `check` run the language's `version` command once per invocation, in an offline sandbox holding the language's environment over the base with the language's variables, and take the one line it prints. A prompt is a function of the preamble, the brief and the toolchain, so it never names a version other than the one the agent's compiler reports, and one toolchain always renders the same bytes. A command that fails or prints anything but one line is an error naming the language.
+Each preamble states its language's version through `{version}`, and the loader refuses a preamble without it. The text comes from the toolchain. Every command that renders a prompt (`run`, `grade`, `measure`, `profile`, `status`, `report`) and `check` run the language's `version` command once per invocation, in an offline sandbox holding the language's environment over the base with the language's variables, and take the one line it prints. A prompt is a function of the preamble, the brief and the toolchain, so it never names a version other than the one the agent's compiler reports, and one toolchain always renders the same bytes. A command that fails or prints anything but one line is an error naming the language.
 
 A toolchain directory needs only the environments of the languages an experiment uses. gungnir looks a language up, and probes its version, only when an experiment uses it, so a set built before the checkout gained a language still serves the experiments that ran on it.
 
@@ -98,6 +99,7 @@ results/<experiment>/
     run/      record.json  prompt.md  final/      the committed attempt and its workspace
     grade/    record.json  build.log  cases/<case>.out
     measure/  record.json  hyperfine/<workload>/<block>-<side>.json
+    profile/<workload>/  record.json  {candidate,reference}/{perf.data,perf.log,folded.txt,flame.svg}
 ```
 
 A report spans experiments, so it lives outside any results directory, in `runs/report/` unless told otherwise.
@@ -116,11 +118,11 @@ enum Stage {
 struct Lifecycle { stage: Stage, stale: Option<Phase> }
 ```
 
-The records are boxed in the code. A grade whose run is not committed, left behind when a run is withdrawn, does not count: the trial is pending. Only a passing grade leads to `Measured`. A failing grade is final, and a measurement left under a grade that later failed does not count.
+The records are boxed in the code. A grade whose run is not committed, left behind when a run is withdrawn, does not count: the trial is pending. Only a passing grade leads to `Measured`. A failing grade is final, and a measurement left under a grade that later failed does not count. `profile/` is not a phase: no stage reads it.
 
 Every record embeds the inputs it was made from (`RunInputs`, `GradeInputs`, `MeasureInputs`): digests of the prompt, initial workspace, hidden suite, workloads and reference, the closure store paths, the build argv, and the grader version. `MeasureInputs` also holds the timing protocol (blocks, runs and warmup) and the scenario's memory limit, so a measurement made under another protocol is stale; the CPU it was pinned to is provenance in its `Machine`, not an input. `RunInputs` holds the system id, the API model, the endpoint, the digests of the prompt and of the workspace the agent starts in, and the store paths of the base, language and harness environments. It also records the wall and idle budgets the attempt ran under, which `RunInputs::is_stale` leaves out: a budget only bounds how long gungnir waits for a session to end on its own, the only kind of session that is a sample, so raising one changes no sample already taken. `stale` names the first phase whose stored inputs differ from what it would use now. Editing a hidden case regrades exactly the affected trials. A stale run is never redone automatically: `run` refuses and names the trials, because rerunning spends quota and changes the sample. The parser version is not an input: a run record stores the version that folded its outcome, and an older one is reparsed rather than refused. A record also names the session that produced it.
 
-**Writers.** Each phase writes only its own directories, so `grade` can run while `run` is still going. The one exception is a run that `run` withdraws as no sample: it withdraws the `grade/` and `measure/` built on it first, so that nothing derived from it outlives it. A phase lock stops two copies of the same phase. `measure` takes all three locks because it needs a quiet machine, and refuses to start while the one-minute load average is 1.0 or more. `--allow-busy` waives both, for a measurement taken beside other work; each record keeps the load averages it ran under.
+**Writers.** Each phase writes only its own directories, so `grade` can run while `run` is still going. The one exception is a run that `run` withdraws as no sample: it withdraws the `grade/` and `measure/` built on it first, so that nothing derived from it outlives it. A phase lock stops two copies of the same phase. `measure` takes all three locks because it needs a quiet machine, and refuses to start while the one-minute load average is 1.0 or more. `--allow-busy` waives both, for a measurement taken beside other work; each record keeps the load averages it ran under. `profile` takes the measure lock, so it never runs beside a measurement.
 
 ## Harness adapters
 
@@ -224,6 +226,7 @@ All phases are safe to rerun and safe to interrupt. The first Ctrl-C drains: not
   - each program's peak resident memory in its output check, from GNU time's `ru_maxrss`. hyperfine reports the same figure for each run but never below its own footprint, about 3 MiB, because the kernel counts the spawning process's peak into the child's.
 
   A sandbox fault is reported and not committed. The first Ctrl-C lets the comparison in progress finish; the second kills it, and nothing is committed.
+- **profile.** Not a phase. `gungnir profile --trial <system>/<scenario>/<language>/r<k>` runs a passing trial's candidate and the reference once each under `perf record` on one workload (by default the one whose wall-time ratio was worst), in an offline sandbox, then folds the samples with `inferno-collapse-perf` and draws them with `inferno-flamegraph` in the same sandbox, so perf finds the symbol maps a runtime writes to `/tmp`. Each language's `[profile]` table names the call-graph method (frame pointers, or DWARF for Rust release builds, which omit them), the environment that exposes interpreted frames (`PYTHONPERFSUPPORT` for CPython's perf trampolines), and what its flame graph can and cannot show, which the profile record keeps. Kernel frames show as `[unknown]` while `kernel.kptr_restrict` hides kernel symbols, so time spent in system calls appears under the user-space call that made them. It refuses when `kernel.perf_event_paranoid` is above 2. A toolchain set built before the profiling tools has no `profile/`; it still loads, and only `profile` refuses it. Profiles explain outliers and are never taken for every trial.
 - **report.** Reads the committed records of one or more experiments through `Lifecycle` and folds them into CSV tables of model samples only: `trials.csv`, one row per trial whose committed run is a sample (a committed run that is no sample, which `run` has not withdrawn yet, is left out); `quota.csv`, the first and last utilization of each quota window a run saw; `usage.csv`, one row per usage sample of a committed run; `cases.csv`; `functions.csv`, each function lizard found; `workloads.csv`, one row per measured workload; and `timings.csv`, one row per timed run. Each table's columns are the fields of one row struct, and every row names its trial by experiment, system, scenario, language and repetition. A cell is empty where a value is missing, and units are in column names, never in cells. Cost is computed at report time, in exact picodollars, from the dated price table at one date for the whole report: today unless `--prices` names another. A sample that is one request is priced at the tier its prompt reaches. A per-turn sample, as Codex reports, or the remainder of a session total that no request accounts for, as Claude Code reports, does not tell each request's prompt size, so it is priced at the base tier and flagged in `cost_base_tier_assumed` when a higher tier could apply. A token in a bucket the vendor lists no rate for, or served by a model the catalog does not list, leaves `cost_usd` empty and is counted in `unpriced_tokens`, because leaving it out would understate the cost by an unknown amount. Attempts that committed nothing are internal bookkeeping of the run phase and never appear in a report: no table, column or count says how many attempts a trial took. The report replaces its output directory as a whole, building it beside the old one and swapping it in, refuses a directory that is neither empty nor a report, and writes `manifest.json` last: the experiments, the sessions that wrote the records read, the report's own session with the gungnir version and git revision, the price date, and each table's row count.
 
 ## Decisions

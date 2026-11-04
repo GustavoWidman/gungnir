@@ -125,14 +125,16 @@ impl Toolchain {
     }
 }
 
-/// Every environment built for a checkout: the sandbox base, the measurement tools, one per
-/// language, one per harness. A language without an environment is an error only when used,
-/// so an experiment runs on the set it was made with even after the checkout gains languages.
-/// Holds the version each probed language's toolchain reports.
+/// Every environment built for a checkout: the sandbox base, the measurement tools, the
+/// profiling tools, one per language, one per harness. A language without an environment, or a
+/// set without the profiling tools, is an error only when used, so an experiment runs on the set
+/// it was made with even after the checkout gains environments. Holds the version each probed
+/// language's toolchain reports.
 #[derive(Clone, Debug)]
 pub struct Toolchains {
     base: Toolchain,
     measure: Toolchain,
+    profile: Option<Toolchain>,
     languages: BTreeMap<String, Toolchain>,
     harnesses: BTreeMap<String, Toolchain>,
     versions: BTreeMap<LanguageId, Version>,
@@ -150,6 +152,7 @@ impl Toolchains {
         Ok(Self {
             base: Toolchain::load(&dir.join("base"))?,
             measure: Toolchain::load(&dir.join("measure"))?,
+            profile: load_optional(&dir.join("profile"))?,
             languages: load_all(&dir.join("language"))?,
             harnesses: load_all(&dir.join("harness"))?,
             versions: BTreeMap::new(),
@@ -163,6 +166,14 @@ impl Toolchains {
     /// The tools that time programs, bound only into measurement sandboxes.
     pub fn measure(&self) -> &Toolchain {
         &self.measure
+    }
+
+    /// perf and the flame graph tools, bound only into the sandboxes of `gungnir profile`.
+    pub fn profile(&self) -> Result<&Toolchain> {
+        self.profile.as_ref().wrap_err(
+            "this toolchain set has no profiling tools; profile with a set built since they were \
+             added",
+        )
     }
 
     pub fn language(&self, id: &str) -> Result<&Toolchain> {
@@ -277,6 +288,15 @@ fn load_all(dir: &Path) -> Result<BTreeMap<String, Toolchain>> {
         .collect()
 }
 
+/// The environment at `dir`, or `None` when the set was built before it existed.
+fn load_optional(dir: &Path) -> Result<Option<Toolchain>> {
+    match fs::symlink_metadata(dir) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error).wrap_err_with(|| format!("reading {}", dir.display())),
+        Ok(_) => Toolchain::load(dir).map(Some),
+    }
+}
+
 fn lookup<'a>(
     toolchains: &'a BTreeMap<String, Toolchain>,
     kind: &str,
@@ -319,6 +339,11 @@ mod tests {
             &["/nix/store/8888-gungnir-measure", libc],
         )?;
         write_env(
+            &dir.path().join("profile"),
+            "9999-gungnir-profile",
+            &["/nix/store/9999-gungnir-profile", libc],
+        )?;
+        write_env(
             &dir.path().join("language/zig"),
             "3333-gungnir-language-zig",
             &["/nix/store/3333-gungnir-language-zig", libc],
@@ -344,6 +369,10 @@ mod tests {
             toolchains.measure().bin(),
             Path::new("/nix/store/8888-gungnir-measure/bin")
         );
+        assert_eq!(
+            toolchains.profile()?.bin(),
+            Path::new("/nix/store/9999-gungnir-profile/bin")
+        );
         let zig = toolchains.language("zig")?;
         assert_eq!(
             zig.bin(),
@@ -355,6 +384,17 @@ mod tests {
         );
         assert!(toolchains.harness("codex").is_ok());
         assert!(toolchains.language("cobol").is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn a_set_without_profiling_tools_loads_and_fails_only_when_profiling() -> Result<()> {
+        let dir = layout()?;
+        fs::remove_dir_all(dir.path().join("profile"))?;
+        let toolchains = Toolchains::load(dir.path())?;
+        assert!(toolchains.language("zig").is_ok());
+        let error = toolchains.profile().unwrap_err().to_string();
+        assert!(error.contains("no profiling tools"), "{error}");
         Ok(())
     }
 

@@ -6,7 +6,7 @@ use crate::{
 };
 use eyre::{Result, WrapErr, bail, ensure};
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     fmt, fs, mem,
@@ -25,8 +25,55 @@ pub struct Language {
     ignore: GlobSet,
     lizard: Option<String>,
     env: BTreeMap<String, String>,
+    profile: Profiling,
     preamble: Vec<Piece>,
     template: PathBuf,
+}
+
+/// How `gungnir profile` samples a program in one language, and what the result can show.
+#[derive(Debug)]
+pub struct Profiling {
+    call_graph: CallGraph,
+    env: BTreeMap<String, String>,
+    shows: String,
+}
+
+impl Profiling {
+    /// How perf walks the stack of each sample.
+    pub fn call_graph(&self) -> CallGraph {
+        self.call_graph
+    }
+
+    /// Environment variables set for the profiled run, on top of the language's own.
+    pub fn env(&self) -> &BTreeMap<String, String> {
+        &self.env
+    }
+
+    /// What a profile of this language shows and what it cannot.
+    pub fn shows(&self) -> &str {
+        &self.shows
+    }
+}
+
+/// How perf finds the callers of each sampled instruction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CallGraph {
+    /// Follows frame pointers: cheap, and complete only where the code keeps them.
+    Fp,
+    /// Unwinds a copy of the stack with DWARF call frame information, for code built without
+    /// frame pointers.
+    Dwarf,
+}
+
+impl CallGraph {
+    /// The value of `perf record --call-graph`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Fp => "fp",
+            Self::Dwarf => "dwarf",
+        }
+    }
 }
 
 impl Language {
@@ -98,6 +145,10 @@ impl Language {
     /// Environment variables set for every build and run.
     pub fn env(&self) -> &BTreeMap<String, String> {
         &self.env
+    }
+
+    pub fn profile(&self) -> &Profiling {
+        &self.profile
     }
 
     /// The files scaffolded into every workspace.
@@ -263,6 +314,16 @@ struct RawLanguage {
     lizard: Option<String>,
     #[serde(default)]
     env: BTreeMap<String, String>,
+    profile: RawProfile,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+struct RawProfile {
+    call_graph: CallGraph,
+    #[serde(default)]
+    env: BTreeMap<String, String>,
+    shows: String,
 }
 
 impl RawLanguage {
@@ -279,6 +340,12 @@ impl RawLanguage {
         if let Some(lizard) = &self.lizard {
             ensure!(!lizard.is_empty(), "lizard is empty");
         }
+        let RawProfile {
+            call_graph,
+            env,
+            shows,
+        } = self.profile;
+        ensure!(!shows.trim().is_empty(), "profile.shows is empty");
         Ok(Language {
             id,
             build,
@@ -288,6 +355,11 @@ impl RawLanguage {
             ignore: globs("ignore", &self.ignore)?,
             lizard: self.lizard,
             env: self.env,
+            profile: Profiling {
+                call_graph,
+                env,
+                shows: shows.trim().to_owned(),
+            },
             preamble,
             template,
         })

@@ -5,3 +5,9 @@ version = ["sh", "-c", 'set -eu; clang=$(clang++ --version | sed -nE "s/^clang v
 sources = ["src/**/*.cpp", "src/**/*.hpp", "src/**/*.h"]
 ignore = ["solution"]
 lizard = "cpp"
+
+# How `gungnir profile` samples a program. Clang omits frame pointers at -O3, so a frame pointer
+# walk stops at the sampled function; DWARF unwinding recovers the whole stack.
+[profile]
+call-graph = "dwarf"
+shows = "Native functions with their full call stacks, the C library's among them. Inlined functions fold into the function they were inlined into, and a stack deeper than the 8 KiB perf copies per sample is cut short."

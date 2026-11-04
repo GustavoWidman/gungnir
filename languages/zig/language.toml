@@ -9,3 +9,9 @@ lizard = "zig"
 [env]
 ZIG_GLOBAL_CACHE_DIR = "/tmp/zig-global-cache"
 ZIG_LOCAL_CACHE_DIR = "/tmp/zig-local-cache"
+
+# How `gungnir profile` samples a program. ReleaseFast builds of this Zig keep frame pointers,
+# so the cheap frame pointer walk recovers whole stacks.
+[profile]
+call-graph = "fp"
+shows = "Native functions with their full call stacks, generic code named by its instantiation, such as hash_map.Custom. Inlined functions fold into the function they were inlined into, and a caller whose last call never returns can carry the name of the code after it, such as process.exit above main.main."

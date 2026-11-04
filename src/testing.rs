@@ -12,6 +12,9 @@ packages = ["coreutils"]
 [measure]
 packages = ["hyperfine"]
 
+[profile]
+packages = ["perf"]
+
 [harnesses.claude-code]
 package = "claude-code"
 
@@ -122,6 +125,11 @@ lizard = "python"
 
 [env]
 PYTHONDONTWRITEBYTECODE = "1"
+
+[profile]
+call-graph = "fp"
+env = { PYTHONPERFSUPPORT = "1" }
+shows = "Python functions."
 "#;
 
 /// Writes a valid profile for language `id` under `root/languages/`.

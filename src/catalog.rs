@@ -339,6 +339,7 @@ fn is_env_var(name: &str) -> bool {
 struct RawCatalog {
     sandbox: RawPackages,
     measure: RawPackages,
+    profile: RawPackages,
     harnesses: BTreeMap<HarnessName, RawHarness>,
     backends: BTreeMap<BackendId, RawBackend>,
     models: Vec<RawModel>,
@@ -404,6 +405,10 @@ impl RawCatalog {
         ensure!(
             !self.measure.packages.is_empty(),
             "[measure] packages is empty"
+        );
+        ensure!(
+            !self.profile.packages.is_empty(),
+            "[profile] packages is empty"
         );
         for (name, harness) in &self.harnesses {
             ensure!(

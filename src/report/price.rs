@@ -202,6 +202,9 @@ packages = ["coreutils"]
 [measure]
 packages = ["hyperfine"]
 
+[profile]
+packages = ["perf"]
+
 [harnesses.claude-code]
 package = "claude-code"
 

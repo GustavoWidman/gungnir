@@ -10,3 +10,11 @@ lizard = "python"
 UV_CACHE_DIR = "/tmp/uv-cache"
 UV_PYTHON_DOWNLOADS = "never"
 UV_NO_MANAGED_PYTHON = "1"
+
+# How `gungnir profile` samples a program. With PYTHONPERFSUPPORT, CPython enters each Python
+# function through a trampoline named in /tmp/perf-<pid>.map, which perf script reads in the
+# same sandbox. The trampolines unwind only by frame pointer; DWARF loses every Python frame.
+[profile]
+call-graph = "fp"
+env = { PYTHONPERFSUPPORT = "1" }
+shows = "Python functions as py::<function>:<file> frames between CPython's interpreter frames, with the interpreter loop (_PyEval_EvalFrameDefault) and the C code of builtins such as dict lookups and regex matching beneath them. It cannot show lines within a function or which bytecode the interpreter loop was running."

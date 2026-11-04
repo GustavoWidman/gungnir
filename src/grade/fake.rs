@@ -67,16 +67,18 @@ pub(crate) fn finished(exit: Exit, stdout: &[u8]) -> Finished {
     }
 }
 
-/// Writes a `$GUNGNIR_TOOLCHAINS` layout under `dir` with the base, the measurement tools and
-/// one environment per language, and loads it as if each language had reported version 1.0.
+/// Writes a `$GUNGNIR_TOOLCHAINS` layout under `dir` with the base, the measurement and
+/// profiling tools and one environment per language, and loads it as if each language had
+/// reported version 1.0.
 pub(crate) fn toolchains(dir: &Path, languages: &[&str]) -> Toolchains {
     let base = ("base".to_owned(), "aaaa-gungnir-base".to_owned());
     let measure = ("measure".to_owned(), "cccc-gungnir-measure".to_owned());
+    let profile = ("profile".to_owned(), "dddd-gungnir-profile".to_owned());
     let environments = languages.iter().map(|language| {
         let env = format!("bbbb-gungnir-language-{language}");
         (format!("language/{language}"), env)
     });
-    for (layout, env) in [base, measure].into_iter().chain(environments) {
+    for (layout, env) in [base, measure, profile].into_iter().chain(environments) {
         write(
             dir,
             &format!("{layout}/closure"),

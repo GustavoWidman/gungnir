@@ -8,3 +8,9 @@ lizard = "rust"
 
 [env]
 CARGO_HOME = "/tmp/cargo-home"
+
+# How `gungnir profile` samples a program. Release builds omit frame pointers, so a frame
+# pointer walk stops at the sampled function; DWARF unwinding recovers the whole stack.
+[profile]
+call-graph = "dwarf"
+shows = "Native functions with their full call stacks, the standard library's generic code named by its instantiation, such as HashMap::rustc_entry. Inlined functions fold into the function they were inlined into, and a stack deeper than the 8 KiB perf copies per sample is cut short."

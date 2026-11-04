@@ -2,7 +2,7 @@
 //! `results/<experiment>/` are named here and nowhere else.
 use crate::{
     catalog::System,
-    id::{AttemptNo, LanguageId, Rep, ScenarioId},
+    id::{AttemptNo, LanguageId, Rep, ScenarioId, WorkloadId},
     provenance::SessionId,
     store::Lock,
 };
@@ -190,6 +190,12 @@ impl TrialDir {
         self.phase(Phase::Run).join(FINAL)
     }
 
+    /// `profile/<workload>/`, a profile of the candidate and the reference on `workload`,
+    /// committed through [`crate::store::PartialDir`]. Not a phase: no trial's stage reads it.
+    pub fn profile(&self, workload: &WorkloadId) -> PathBuf {
+        self.0.join("profile").join(workload.as_str())
+    }
+
     /// `<phase>/record.json`, the record [`crate::store::PartialDir`] commits last. Only a
     /// record re-derived from what its directory already holds is ever rewritten in place.
     pub fn record(&self, phase: Phase) -> PathBuf {
@@ -283,6 +289,10 @@ mod tests {
         assert_eq!(trial.phase(Phase::Grade), Path::new(dir).join("grade"));
         assert_eq!(trial.phase(Phase::Measure), Path::new(dir).join("measure"));
         assert_eq!(trial.final_workspace(), Path::new(dir).join("run/final"));
+        assert_eq!(
+            trial.profile(&testing::id("zipf")),
+            Path::new(dir).join("profile/zipf")
+        );
         assert_eq!(
             results.reference(&testing::id("word-freq"), &testing::id("zig")),
             Path::new("/runs/pilot/references/word-freq/zig")

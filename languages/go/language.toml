@@ -12,3 +12,9 @@ GOCACHE = "/tmp/go-cache"
 GOPATH = "/tmp/go-path"
 GOPROXY = "off"
 GOTOOLCHAIN = "local"
+
+# How `gungnir profile` samples a program. Go keeps frame pointers on amd64, so the cheap frame
+# pointer walk recovers whole stacks.
+[profile]
+call-graph = "fp"
+shows = "Go functions with their full call stacks, named by package, such as main.main and runtime.mapassign_faststr, the runtime's allocator and garbage collector among them. Inlined functions fold into the function they were inlined into."
