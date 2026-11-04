@@ -19,7 +19,7 @@ use eyre::Result;
 use std::collections::BTreeMap;
 
 /// One trial with a committed run, as the report reads it: its records in phase order. A
-/// measurement is read only beside a grade.
+/// measurement is read only beside a passing grade.
 pub struct Trial {
     pub key: TrialKey,
     pub run: RunRecord,
@@ -39,6 +39,12 @@ impl Trial {
         ]
         .into_iter()
         .flatten()
+    }
+
+    /// The measurement, when it is current. The lifecycle compares a measurement's inputs only
+    /// once the run and grade are current, so beside a stale one it is not known to be.
+    fn current_measure(&self) -> Option<&MeasureRecord> {
+        self.measure.as_ref().filter(|_| self.stale.is_none())
     }
 }
 
@@ -281,7 +287,7 @@ impl Tables {
         if let Some(grade) = &trial.grade {
             self.add_grade(&key, grade);
         }
-        if let Some(measure) = &trial.measure {
+        if let Some(measure) = trial.current_measure() {
             self.add_workloads(&key, measure.workloads());
         }
         Ok(())
