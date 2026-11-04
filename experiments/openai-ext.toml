@@ -9,8 +9,8 @@ languages = ["python", "rust", "zig"]
 codex = "0.166.0"
 
 [budget]
-wall = "40m"
-idle = "10m"
+wall = "4h"
+idle = "30m"
 
 [concurrency]
 openai = 5

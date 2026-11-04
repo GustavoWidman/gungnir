@@ -10,8 +10,8 @@ claude-code = "2.1.316"
 codex = "0.166.0"
 
 [budget]
-wall = "40m"
-idle = "10m"
+wall = "4h"
+idle = "30m"
 
 [concurrency]
 anthropic = 2

@@ -9,8 +9,8 @@ languages = ["python", "rust", "zig"]
 claude-code = "2.1.316"
 
 [budget]
-wall = "40m"
-idle = "10m"
+wall = "4h"
+idle = "30m"
 
 [concurrency]
 anthropic = 3
