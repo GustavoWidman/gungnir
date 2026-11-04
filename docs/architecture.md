@@ -31,6 +31,7 @@ scenarios/<id>/
   reference/<language>/       a complete reference solution per supported language
 experiments/<name>.toml       the matrix to run
 nix/toolchains.nix            sandbox environments derived from gungnir.toml and languages/
+nix/typescript-bun.nix        tsc with Bun's type declarations, a package nixpkgs lacks
 src/                          the gungnir crate
 docs/architecture.md          this file
 AGENTS.md                     repository map for contributors and coding agents
@@ -56,6 +57,8 @@ $GUNGNIR_TOOLCHAINS/
 ```
 
 Each `closure` file is the `closureInfo` store-path list of that environment. A sandbox bind-mounts exactly the union of the closures it needs, read-only, and never the whole `/nix/store`. This matters because the flake's own source copy in the store contains `scenarios/*/hidden/`. A test asserts that no mounted closure contains a flake source path. gungnir never runs `nix` at runtime. Adding a language means re-entering the dev shell.
+
+A language's packages are nixpkgs attributes, or packages nixpkgs lacks that `toolchains.nix` defines under `local`. Anything a toolchain reads at build time must reach the sandbox through that closure, never through the workspace. TypeScript is the example: `typescript-bun` is `tsc` wrapped to pass `--typeRoots` into a store path holding Bun's type declarations, pinned to the Bun version nixpkgs ships, so a TypeScript workspace holds no `node_modules` and its type check runs offline.
 
 ## Data shapes
 

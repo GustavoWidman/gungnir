@@ -20,7 +20,12 @@ let
     lib.filterAttrs (_: type: type == "directory") (builtins.readDir (root + "/languages"))
   );
 
-  package = attrPath: lib.getAttrFromPath (lib.splitString "." attrPath) pkgs;
+  # Packages nixpkgs lacks, named in language.toml like any nixpkgs attribute.
+  local = {
+    typescript-bun = import ./typescript-bun.nix { inherit pkgs lib; };
+  };
+
+  package = attrPath: lib.getAttrFromPath (lib.splitString "." attrPath) (pkgs // local);
 
   environment = dir: packages: {
     inherit dir;
