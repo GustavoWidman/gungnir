@@ -1,6 +1,7 @@
 //! Everything vendor-specific about driving an agent CLI headless: the command that launches
 //! it, the events in its stdout, and the fold of those events into how the attempt ended.
 //! Each driver is pure, so it is tested against captured transcripts with no process.
+mod claude_code;
 mod fold;
 
 pub use fold::{AgentOutcome, Ending, Exit, Fold, ProcessEnd, QuotaSpan};
@@ -11,7 +12,8 @@ use crate::{
     secret::{EnvValue, Secret},
 };
 use chrono::{DateTime, Utc};
-use eyre::Result;
+use claude_code::ClaudeCode;
+use eyre::{Result, eyre};
 use std::{
     fmt,
     iter::Sum,
@@ -34,7 +36,7 @@ trait Driver: Sync {
     }
 }
 
-static DRIVERS: &[&dyn Driver] = &[];
+static DRIVERS: &[&dyn Driver] = &[&ClaudeCode];
 
 /// A registered harness driver. Only [`Harness::all`] and [`Harness::named`] hand one out.
 #[derive(Clone, Copy)]
@@ -262,6 +264,26 @@ pub struct HomeFile {
     pub contents: Secret<String>,
 }
 
+/// What a decoder names a line that is not a JSON object with a type.
+const UNPARSABLE: &str = "unparsable";
+
+fn plain(name: &str, value: impl Into<String>) -> (String, EnvValue) {
+    (name.to_owned(), EnvValue::Plain(value.into()))
+}
+
+/// A guest path as text, for argv and the environment.
+fn utf8(path: &Path) -> Result<String> {
+    path.to_str()
+        .map(str::to_owned)
+        .ok_or_else(|| eyre!("guest path {} is not UTF-8", path.display()))
+}
+
+/// Whether `text` contains any of the lowercase `phrases`, ignoring case.
+fn mentions(text: &str, phrases: &[&str]) -> bool {
+    let text = text.to_lowercase();
+    phrases.iter().any(|phrase| text.contains(phrase))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -286,5 +308,23 @@ mod tests {
         .sum();
         assert_eq!(total, tokens(6, 60, Some(12)));
         assert_eq!(tokens(1, 1, None) + tokens(1, 1, None), tokens(2, 2, None));
+    }
+
+    #[test]
+    fn every_driver_is_found_by_its_slug_name() {
+        for harness in Harness::all() {
+            let name: HarnessName = harness.name().parse().unwrap();
+            assert_eq!(
+                Harness::named(&name).map(Harness::name),
+                Some(harness.name())
+            );
+        }
+        assert!(Harness::named(&"gemini-cli".parse().unwrap()).is_none());
+    }
+
+    #[test]
+    fn phrases_match_regardless_of_case() {
+        assert!(mentions("You've hit your Usage Limit.", &["usage limit"]));
+        assert!(!mentions("context window exceeded", &["usage limit"]));
     }
 }
