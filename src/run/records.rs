@@ -153,6 +153,18 @@ pub struct DiscardedAttempt {
 }
 
 impl DiscardedAttempt {
+    pub fn session(&self) -> &SessionId {
+        &self.session
+    }
+
+    pub fn started(&self) -> DateTime<Utc> {
+        self.started
+    }
+
+    pub fn process(&self) -> &Process {
+        &self.process
+    }
+
     pub fn usage(&self) -> &[Sample] {
         &self.usage
     }

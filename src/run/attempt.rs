@@ -2,7 +2,7 @@
 //! own egress proxy, its stdout streamed into the transcript and decoded as it arrives, and
 //! the trial's run directory or the attempt's discard record committed from how it ended.
 use super::{
-    Cut, DiscardedAttempt, Process, RunInputs, RunRecord, Task, records::samples, workspace,
+    Cut, DiscardedAttempt, Process, RunInputs, RunRecord, Sample, Task, records::samples, workspace,
 };
 use crate::{
     egress::{Allowlist, Proxy},
@@ -27,7 +27,7 @@ use std::{
     ffi::OsString,
     fs::{self, File},
     future::Future,
-    io::{Read, Seek, SeekFrom, Write},
+    io::{ErrorKind, Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -383,6 +383,25 @@ pub(super) fn conclude(harness: Harness, attempt: &AttemptDir, end: ProcessEnd) 
     let mut fold = harness.replay(&transcript, &artifacts);
     fold.push(diagnosis);
     Ok(fold.finish(end))
+}
+
+/// What the attempt in `attempt`, which committed nothing, spent as far as its stored transcript
+/// and artifacts tell. An attempt that has not written a transcript yet spent nothing visible.
+pub fn replay_usage(harness: Harness, attempt: &AttemptDir) -> Result<Vec<Sample>> {
+    let path = attempt.transcript();
+    let bytes = match fs::read(&path) {
+        Ok(bytes) => bytes,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(err) => return Err(err).wrap_err_with(|| format!("reading {}", path.display())),
+    };
+    let artifacts = stored_artifacts(&attempt.artifacts())?;
+    let artifacts: Vec<&str> = artifacts.iter().map(String::as_str).collect();
+    let fold = harness.replay(&String::from_utf8_lossy(&bytes), &artifacts);
+    let usage = match fold.finish(ProcessEnd::Killed) {
+        Ending::Finished(outcome) => outcome.usage,
+        Ending::RateLimited { usage, .. } => usage,
+    };
+    Ok(samples(usage))
 }
 
 /// Copies every file under `home` that matches one of the harness's artifact patterns into
@@ -755,6 +774,19 @@ mod tests {
         assert!(!attempt.discarded().exists());
         assert!(!trial.phase(Phase::Run).exists());
         bench.assert_clean();
+
+        let claude = Harness::named(&"claude-code".parse().unwrap()).unwrap();
+        let spent: Vec<(u64, u64, u64)> = replay_usage(claude, &attempt)
+            .unwrap()
+            .iter()
+            .map(|sample| {
+                let tokens = sample.tokens;
+                (tokens.cache_read, tokens.cache_write_long, tokens.output)
+            })
+            .collect();
+        assert_eq!(spent, [(11_160, 6042, 16)]);
+        let unstarted = trial.attempt(AttemptNo::FIRST.next());
+        assert!(replay_usage(claude, &unstarted).unwrap().is_empty());
     }
 
     #[tokio::test]
