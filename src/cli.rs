@@ -3,11 +3,12 @@ use crate::{
     catalog::SystemId,
     experiment::Experiment,
     grade::{self, Graded, Judgement, Outcome, Verdict},
-    id::{BackendId, LanguageId, ScenarioId, WorkloadId},
+    id::{BackendId, LanguageId, Rep, ScenarioId, WorkloadId},
     language::Language,
     lifecycle::{self, Current, Lifecycle},
     measure::{
-        self, Machine, MeasureInputs, MeasureRecord, Program, Protocol, Settings, Spread, Summary,
+        self, Machine, MeasureInputs, MeasureRecord, Measured, Program, Protocol, Quiet, Selection,
+        Settings, Spread, Summary,
     },
     provenance::Session,
     report,
@@ -109,6 +110,11 @@ enum Command {
         #[arg(long, value_name = "N", default_value_t = default_jobs())]
         jobs: NonZeroUsize,
     },
+    /// Time each passing trial without a current measurement against the reference in its
+    /// language, one comparison at a time on one pinned core. Refuses a busy machine, and holds
+    /// the run and grade locks, unless --allow-busy. The first Ctrl-C lets the comparison in
+    /// progress finish, the second kills it.
+    Measure(Measure),
     /// Count each system's trials by stage, and the stale ones.
     Status {
         /// The experiment file, such as experiments/smoke.toml.
@@ -160,6 +166,7 @@ impl Cli {
                 run_trials(&experiment, &guard, dry_run)
             }
             Command::Grade { experiment, jobs } => grade_trials(&experiment, jobs),
+            Command::Measure(measure) => measure.run(),
             Command::Status { experiment } => {
                 let experiment = Experiment::load(&experiment)?;
                 let runtime = runtime()?;
@@ -384,6 +391,92 @@ fn grade_trials(path: &Path, jobs: NonZeroUsize) -> Result<()> {
     let left = faulted + errors + unstarted;
     ensure!(left == 0, "{left} runs are still ungraded; grade again");
     Ok(())
+}
+
+#[derive(Args)]
+struct Measure {
+    /// The experiment file, such as experiments/pilot.toml.
+    experiment: PathBuf,
+    /// Measure only this repetition, such as 1 or r1. Repeat for several.
+    #[arg(long = "rep", value_name = "N", value_parser = rep)]
+    reps: Vec<Rep>,
+    /// Measure only the systems whose id matches this glob, such as '*luna*'. Repeat for
+    /// several.
+    #[arg(long = "system", value_name = "GLOB")]
+    systems: Vec<String>,
+    /// ABBA blocks per workload. An even count puts each program first equally often.
+    #[arg(long, value_name = "B", default_value_t = Protocol::DEFAULT.blocks)]
+    blocks: NonZeroU32,
+    /// Timed runs of each program in each block.
+    #[arg(long, value_name = "R", default_value_t = Protocol::DEFAULT.runs)]
+    runs: NonZeroU32,
+    /// Untimed runs of each program before its timed runs in each block.
+    #[arg(long, value_name = "W", default_value_t = Protocol::DEFAULT.warmup)]
+    warmup: u32,
+    /// The CPU every run is pinned to. Defaults to the last one gungnir may run on.
+    #[arg(long, value_name = "N")]
+    core: Option<u32>,
+    /// Measure while other work runs: skip the load check, and do not hold the run and grade
+    /// locks. Each record still keeps the load averages it ran under.
+    #[arg(long)]
+    allow_busy: bool,
+}
+
+impl Measure {
+    /// Measures the selected trials, logging each committed measurement to stderr. Fails while
+    /// any trial it set out to measure is left unmeasured.
+    fn run(self) -> Result<()> {
+        log_progress();
+        let experiment = Experiment::load(&self.experiment)?;
+        let repo = repository_of(&self.experiment)?;
+        let request = measure::Request {
+            selection: Selection::new(&experiment, &self.reps, &self.systems)?,
+            core: pinned_core(self.core)?,
+            protocol: Protocol {
+                blocks: self.blocks,
+                runs: self.runs,
+                warmup: self.warmup,
+            },
+            quiet: if self.allow_busy {
+                Quiet::Waived
+            } else {
+                Quiet::Required
+            },
+        };
+        let runtime = runtime()?;
+        let (toolchains, backend) = probed(experiment.languages(), &runtime)?;
+        let measured = runtime.block_on(async {
+            let stop = Stop::on_ctrl_c()?;
+            measure::measure_trials(&experiment, &repo, &toolchains, &backend, &request, &stop)
+                .await
+        })?;
+        let Measured {
+            committed,
+            faulted,
+            errors,
+            unstarted,
+        } = measured;
+        println!(
+            "committed {committed}, environment faults {faulted}, errors {errors}, not started \
+             {unstarted}"
+        );
+        let left = faulted + errors + unstarted;
+        ensure!(
+            left == 0,
+            "{left} trials are still unmeasured; measure again"
+        );
+        Ok(())
+    }
+}
+
+/// Parses a repetition as `3` or `r3`.
+fn rep(arg: &str) -> Result<Rep> {
+    let number: u32 = arg
+        .strip_prefix('r')
+        .unwrap_or(arg)
+        .parse()
+        .wrap_err_with(|| format!("{arg:?} is not a repetition such as 1 or r1"))?;
+    Rep::new(number).ok_or_else(|| eyre!("repetitions count from 1, got {arg:?}"))
 }
 
 /// Logs the phases' progress to stderr, in color only on a terminal.
@@ -692,13 +785,13 @@ struct Bench {
     #[arg(long, value_name = "N")]
     core: Option<u32>,
     /// ABBA blocks per workload. An even count puts each program first equally often.
-    #[arg(long, value_name = "B", default_value = "6")]
+    #[arg(long, value_name = "B", default_value_t = Protocol::DEFAULT.blocks)]
     blocks: NonZeroU32,
     /// Timed runs of each program in each block.
-    #[arg(long, value_name = "R", default_value = "5")]
+    #[arg(long, value_name = "R", default_value_t = Protocol::DEFAULT.runs)]
     runs: NonZeroU32,
     /// Untimed runs of each program before its timed runs in each block.
-    #[arg(long, value_name = "W", default_value_t = 1)]
+    #[arg(long, value_name = "W", default_value_t = Protocol::DEFAULT.warmup)]
     warmup: u32,
 }
 
