@@ -10,7 +10,7 @@ use gungnir::{
     experiment::Experiment,
     id::AttemptNo,
     provenance::Session,
-    run::{AgentExit, Attempted, Rig, RunRecord, Task},
+    run::{Attempted, Reason, Rig, RunRecord, Task},
     sandbox::Bubblewrap,
     stop::Stop,
     store::read_record,
@@ -83,18 +83,22 @@ async fn attempt(model: &str, credential: &str, contents: &str) -> Result<Attemp
 }
 
 impl Attempt {
-    /// Checks that the attempt committed a run whose agent ended in an error.
-    fn assert_errored_run(&self) {
-        let Attempted::Committed(record) = &self.attempted else {
-            panic!("expected a committed run, got {:?}", self.attempted);
-        };
+    /// Checks that the attempt was discarded because the CLI reported an error, and that no
+    /// run was committed: an errored session is no sample.
+    fn assert_discarded_error(&self) {
         assert!(
-            matches!(record.outcome().exit, AgentExit::Errored { .. }),
-            "{:?}",
-            record.outcome().exit
+            matches!(
+                &self.attempted,
+                Attempted::Discarded {
+                    reason: Reason::Errored { .. },
+                    ..
+                }
+            ),
+            "expected a discarded errored attempt, got {:?}",
+            self.attempted
         );
         let committed = read_record::<RunRecord>(&self.trial.phase(Phase::Run)).unwrap();
-        assert_eq!(committed.as_ref(), Some(&**record));
+        assert_eq!(committed, None);
     }
 
     /// Whether the agent reached `host` through the proxy.
@@ -123,18 +127,18 @@ impl Attempt {
 
 #[tokio::test]
 #[ignore = "needs bwrap, GUNGNIR_TOOLCHAINS and the network"]
-async fn claude_code_refused_by_anthropic_commits_an_errored_run() -> Result<()> {
+async fn claude_code_refused_by_anthropic_discards_the_attempt() -> Result<()> {
     let attempt = attempt("claude-haiku-5-5", "claude/oauth_token", CLAUDE_TOKEN).await?;
-    attempt.assert_errored_run();
+    attempt.assert_discarded_error();
     assert!(attempt.reached("api.anthropic.com")?);
     attempt.assert_clean(CLAUDE_TOKEN)
 }
 
 #[tokio::test]
 #[ignore = "needs bwrap, GUNGNIR_TOOLCHAINS and the network"]
-async fn codex_refused_by_openai_commits_an_errored_run() -> Result<()> {
+async fn codex_refused_by_openai_discards_the_attempt() -> Result<()> {
     let attempt = attempt("gpt-6-luna", "codex/auth.json", CODEX_LOGIN).await?;
-    attempt.assert_errored_run();
+    attempt.assert_discarded_error();
     assert!(attempt.reached("chatgpt.com")?);
     attempt.assert_clean("gungnir-test-access-not-a-token")
 }
