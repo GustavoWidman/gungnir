@@ -1,0 +1,4 @@
+a[0-9]*|ab
+ab a12 ba
+xyz
+a7a7

@@ -1,0 +1,6 @@
+(a|ab)(c|bcd)(d*)
+abcd
+abcdd
+abcbcd
+acd
+abcdabcd

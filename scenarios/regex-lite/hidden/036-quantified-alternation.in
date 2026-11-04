@@ -1,0 +1,6 @@
+(a|bc)+d
+abcad
+bcbcd
+ad
+d
+abcbd

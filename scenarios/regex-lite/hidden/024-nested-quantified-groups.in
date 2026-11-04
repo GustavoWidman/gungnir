@@ -1,0 +1,7 @@
+((a|b)+c)*d
+abcbacd
+d
+abd
+cd
+acbcdabd
+ccd
