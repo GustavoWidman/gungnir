@@ -17,7 +17,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `rust-toolchain.toml` pins the nightly toolchain and its components.
 - `.envrc` loads the flake for direnv users.
 - `gungnir.toml` is the catalog. It lists the sandbox base packages, the measurement tools (`[measure]`), the profiling tools (`[profile]`), the harness packages, the backends with their credentials and egress hosts, and the models with their efforts and dated prices.
-- `languages/<id>/` is a toolchain profile. The loader requires `language.toml`, `preamble.md` and a `template/` directory. The `version` command in `language.toml` prints the version that `{version}` in the preamble states. The `[profile]` table of `language.toml` says how `gungnir profile` samples the language and what its flame graphs can show.
+- `languages/<id>/` is a toolchain profile. The loader requires `language.toml`, `preamble.md` and a `template/` directory. The `version` command in `language.toml` prints the version that `{version}` in the preamble states. The `[profile]` table of `language.toml` says how `gungnir profile` builds and samples the language and what its flame graphs can show.
 - `scenarios/<id>/` is a task. The loader requires `scenario.toml`, `spec.md`, `examples/`, `hidden/`, `workloads.sha256` and `reference/<language>/`. `gen/gen.py` writes the cases and, on demand, the gitignored `workloads/`.
 - `experiments/<name>.toml` is a matrix to run. `pilot.toml` is the pilot study and `smoke.toml` runs each pilot model once.
 - `docs/architecture.md` is the design contract.

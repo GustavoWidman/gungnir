@@ -17,8 +17,9 @@ BUN_OPTIONS = "--no-install"
 BUN_RUNTIME_TRANSPILER_CACHE_PATH = "0"
 DO_NOT_TRACK = "1"
 
-# How `gungnir profile` samples a program. JavaScriptCore names the code it compiles only in a
-# JITDump, which perf cannot read without injecting it, so JIT frames are unnamed.
+# How `gungnir profile` samples a program. JavaScriptCore keeps frame pointers, so the walk
+# recovers whole stacks, but it names its compiled code only in a JITDump whose file name this perf
+# does not recognise, and the packaged Bun is stripped, so neither has names.
 [profile]
 call-graph = "fp"
-shows = "Bun's and JavaScriptCore's native functions, such as the garbage collector and the interpreter (LLInt). JavaScript functions, once compiled, show as unnamed [unknown] frames."
+shows = "How a run's time splits between compiled JavaScript, as [perf-<pid>.map] frames, Bun's and JavaScriptCore's native code, as [bun] frames, and the C library's functions, which are named, with the garbage collector and JIT compiler threads (HeapHelper, JITWorker) as stacks of their own. It cannot name a JavaScript function or a function of Bun's runtime."

@@ -107,13 +107,33 @@ impl<'a> Program<'a> {
         backend: &'a dyn Backend,
         stop: &'a Stop,
     ) -> Result<Self> {
+        Self::build_with(
+            language,
+            toolchains,
+            workspace,
+            &BTreeMap::new(),
+            backend,
+            stop,
+        )
+        .await
+    }
+
+    /// The same, building with `env` set on top of the language's variables.
+    pub async fn build_with(
+        language: &Language,
+        toolchains: &Toolchains,
+        workspace: &Path,
+        env: &BTreeMap<String, String>,
+        backend: &'a dyn Backend,
+        stop: &'a Stop,
+    ) -> Result<Self> {
         let scratch = tempfile::Builder::new()
             .prefix("gungnir-measure-")
             .tempdir()
             .wrap_err("creating measurement scratch")?;
         let work = scratch.path().join("work");
         tree::copy(workspace, &work, language.ignore())?;
-        let offline = Offline::new(language, toolchains, work, backend, stop)?;
+        let offline = Offline::new(language, toolchains, work, backend, stop)?.with_env(env);
         let (build, log) = offline.build(language.build()).await?;
         if build.outcome != BuildOutcome::Built {
             let tail = String::from_utf8_lossy(&log[log.len().saturating_sub(LOG_TAIL)..]);

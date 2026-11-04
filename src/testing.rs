@@ -128,6 +128,7 @@ PYTHONDONTWRITEBYTECODE = "1"
 
 [profile]
 call-graph = "fp"
+build-env = { PYTHONOPTIMIZE = "1" }
 env = { PYTHONPERFSUPPORT = "1" }
 shows = "Python functions."
 "#;

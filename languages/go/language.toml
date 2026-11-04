@@ -17,4 +17,4 @@ GOTOOLCHAIN = "local"
 # pointer walk recovers whole stacks.
 [profile]
 call-graph = "fp"
-shows = "Go functions with their full call stacks, named by package, such as main.main and runtime.mapassign_faststr, the runtime's allocator and garbage collector among them. Inlined functions fold into the function they were inlined into."
+shows = "Go functions with their full call stacks, named by package, such as main.main and runtime.mapassign_faststr, the runtime's map, allocator and garbage collector code among them, with the collector's workers as stacks of their own. Inlined functions fold into the function they were inlined into, and a caller can carry the name of a function inlined at its call, such as internal/runtime/atomic.(*Uint32).Load between runtime.main and main.main."

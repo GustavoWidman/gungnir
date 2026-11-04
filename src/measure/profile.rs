@@ -125,12 +125,27 @@ pub async fn profile_trial(
     let reference = scenario
         .reference(language.id())
         .ok_or_else(|| eyre!("{} has no {} reference", scenario.id(), language.id()))?;
-    let reference = Program::build(language, toolchains, reference.dir(), backend, stop)
-        .await
-        .wrap_err("building the reference")?;
-    let candidate = Program::build(language, toolchains, &dir.final_workspace(), backend, stop)
-        .await
-        .wrap_err("building the candidate")?;
+    let build_env = language.profile().build_env();
+    let reference = Program::build_with(
+        language,
+        toolchains,
+        reference.dir(),
+        build_env,
+        backend,
+        stop,
+    )
+    .await
+    .wrap_err("building the reference")?;
+    let candidate = Program::build_with(
+        language,
+        toolchains,
+        &dir.final_workspace(),
+        build_env,
+        backend,
+        stop,
+    )
+    .await
+    .wrap_err("building the candidate")?;
 
     let target = dir.profile(&workload);
     results.retract(Phase::Measure, &target)?;
@@ -359,6 +374,17 @@ mod tests {
             .map(|(spec, _)| spec)
             .collect();
         assert_eq!(profiled_runs.len(), 2);
+        let builds: Vec<Spec> = backend
+            .calls()
+            .into_iter()
+            .filter(|(_, argv)| argv.iter().any(|arg| arg == "compileall"))
+            .map(|(spec, _)| spec)
+            .collect();
+        assert_eq!(builds.len(), 2);
+        for spec in builds {
+            let optimize = spec.env.iter().find(|(name, _)| name == "PYTHONOPTIMIZE");
+            assert!(matches!(optimize, Some((_, EnvValue::Plain(value))) if value == "1"));
+        }
         for spec in profiled_runs {
             assert!(matches!(spec.network, crate::sandbox::Network::Offline));
             assert!(

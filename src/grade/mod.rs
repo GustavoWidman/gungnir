@@ -121,6 +121,19 @@ impl<'a> Offline<'a> {
         })
     }
 
+    /// The same, with `env` set on top of the language's variables.
+    pub(crate) fn with_env<'e>(
+        mut self,
+        env: impl IntoIterator<Item = (&'e String, &'e String)>,
+    ) -> Self {
+        for (name, value) in env {
+            self.env.retain(|(set, _)| set != name);
+            self.env
+                .push((name.clone(), EnvValue::Plain(value.clone())));
+        }
+        self
+    }
+
     /// An offline sandbox whose working directory is the workspace, mounted at [`WORK`].
     pub(crate) fn spec(&self, writable: bool, limits: Limits) -> Spec {
         let workspace = if writable {

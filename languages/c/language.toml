@@ -10,4 +10,4 @@ lizard = "c"
 # walk stops at the sampled function; DWARF unwinding recovers the whole stack.
 [profile]
 call-graph = "dwarf"
-shows = "Native functions with their full call stacks, the C library's among them. Inlined functions fold into the function they were inlined into, and a stack deeper than the 8 KiB perf copies per sample is cut short."
+shows = "Native functions with their full call stacks, the C library's among them, such as __memcmp_avx2_movbe and qsort. Inlined functions fold into the function they were inlined into, and a stack deeper than the 8 KiB perf copies per sample is cut short."

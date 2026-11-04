@@ -10,4 +10,4 @@ lizard = "cpp"
 # walk stops at the sampled function; DWARF unwinding recovers the whole stack.
 [profile]
 call-graph = "dwarf"
-shows = "Native functions with their full call stacks, the C library's among them. Inlined functions fold into the function they were inlined into, and a stack deeper than the 8 KiB perf copies per sample is cut short."
+shows = "Native functions with their full call stacks, the standard library's templates named by their instantiation, such as std::unordered_map's _Map_base::operator[]. Inlined functions fold into the function they were inlined into, and a stack deeper than the 8 KiB perf copies per sample is cut short."

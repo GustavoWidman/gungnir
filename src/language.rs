@@ -34,6 +34,7 @@ pub struct Language {
 #[derive(Debug)]
 pub struct Profiling {
     call_graph: CallGraph,
+    build_env: BTreeMap<String, String>,
     env: BTreeMap<String, String>,
     shows: String,
 }
@@ -42,6 +43,13 @@ impl Profiling {
     /// How perf walks the stack of each sample.
     pub fn call_graph(&self) -> CallGraph {
         self.call_graph
+    }
+
+    /// Environment variables set for the builds `gungnir profile` makes, on top of the
+    /// language's own, such as flags that keep frame pointers. Measurement never builds with
+    /// them.
+    pub fn build_env(&self) -> &BTreeMap<String, String> {
+        &self.build_env
     }
 
     /// Environment variables set for the profiled run, on top of the language's own.
@@ -322,6 +330,8 @@ struct RawLanguage {
 struct RawProfile {
     call_graph: CallGraph,
     #[serde(default)]
+    build_env: BTreeMap<String, String>,
+    #[serde(default)]
     env: BTreeMap<String, String>,
     shows: String,
 }
@@ -342,6 +352,7 @@ impl RawLanguage {
         }
         let RawProfile {
             call_graph,
+            build_env,
             env,
             shows,
         } = self.profile;
@@ -357,6 +368,7 @@ impl RawLanguage {
             env: self.env,
             profile: Profiling {
                 call_graph,
+                build_env,
                 env,
                 shows: shows.trim().to_owned(),
             },
