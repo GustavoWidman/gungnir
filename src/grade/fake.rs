@@ -1,13 +1,16 @@
-//! A backend that runs nothing: a script decides how each command ends, and every call is
-//! kept for the test to inspect.
+//! Test doubles for sandboxed work: a backend whose script decides how each command ends, and
+//! toolchains that name store paths no sandbox ever binds.
 use crate::{
     sandbox::{Backend, BoxFuture, Collected, Exit, Fault, Finished, Io, Spec},
     stop::Stop,
+    testing::write,
+    toolchains::Toolchains,
 };
-use std::{ffi::OsString, sync::Mutex, time::Duration};
+use std::{ffi::OsString, os::unix::fs::symlink, path::Path, sync::Mutex, time::Duration};
 
 type Script = dyn Fn(&Spec, &[String], Io) -> Result<Finished, Fault> + Send + Sync;
 
+/// Runs nothing. Every call is kept for the test to inspect.
 pub(crate) struct Scripted {
     script: Box<Script>,
     calls: Mutex<Vec<(Spec, Vec<String>)>>,
@@ -62,4 +65,27 @@ pub(crate) fn finished(exit: Exit, stdout: &[u8]) -> Finished {
         },
         stderr: Collected::default(),
     }
+}
+
+/// Writes a `$GUNGNIR_TOOLCHAINS` layout under `dir` with the base and one environment per
+/// language, and loads it.
+pub(crate) fn toolchains(dir: &Path, languages: &[&str]) -> Toolchains {
+    let base = ("base".to_owned(), "aaaa-gungnir-base".to_owned());
+    let languages = languages.iter().map(|language| {
+        let env = format!("bbbb-gungnir-language-{language}");
+        (format!("language/{language}"), env)
+    });
+    for (layout, env) in std::iter::once(base).chain(languages) {
+        write(
+            dir,
+            &format!("{layout}/closure"),
+            format!("/nix/store/{env}\n"),
+        );
+        symlink(
+            format!("/nix/store/{env}/bin"),
+            dir.join(layout).join("bin"),
+        )
+        .unwrap();
+    }
+    Toolchains::load(dir).unwrap()
 }

@@ -17,6 +17,7 @@ pub mod stop;
 pub mod store;
 pub mod toolchains;
 pub mod trial;
+pub mod workload;
 
 #[cfg(test)]
 mod testing;

@@ -1,5 +1,5 @@
 use super::{
-    scripted::{Scripted, finished},
+    fake::{self, Scripted, finished},
     *,
 };
 use crate::{
@@ -35,24 +35,9 @@ fn fixture() -> Fixture {
         testing::LANGUAGE_TOML.replace("lizard = \"python\"\n", ""),
     );
     testing::scenario(root.path(), "echo", &["python"]);
-    for (dir, env) in [
-        ("toolchains/base", "aaaa-gungnir-base"),
-        ("toolchains/language/python", "bbbb-gungnir-language-python"),
-    ] {
-        write(
-            root.path(),
-            &format!("{dir}/closure"),
-            format!("/nix/store/{env}\n"),
-        );
-        symlink(
-            format!("/nix/store/{env}/bin"),
-            root.path().join(dir).join("bin"),
-        )
-        .unwrap();
-    }
     let languages = Language::load_all(&root.path().join("languages")).unwrap();
     let scenarios = Scenario::load_all(&root.path().join("scenarios"), &languages).unwrap();
-    let toolchains = Toolchains::load(&root.path().join("toolchains")).unwrap();
+    let toolchains = fake::toolchains(&root.path().join("toolchains"), &["python"]);
     Fixture {
         root,
         languages,

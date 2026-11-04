@@ -3,10 +3,10 @@
 //! expected outputs never enter a sandbox. Lizard measures the sources' complexity.
 mod compare;
 mod complexity;
+#[cfg(test)]
+pub(crate) mod fake;
 mod judgement;
 mod record;
-#[cfg(test)]
-pub(crate) mod scripted;
 #[cfg(test)]
 mod tests;
 mod tree;
