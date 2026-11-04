@@ -13,9 +13,8 @@ use crate::{
     lifecycle::{Current, Lifecycle, Stage},
     provenance::{Session, SessionId},
     run::Reason,
-    store::{read_record, write_atomic, write_json},
+    store::{write_atomic, write_json},
     toolchains::Toolchains,
-    trial::Phase,
 };
 use chrono::{DateTime, NaiveDate, Utc};
 use eyre::{Result, WrapErr, ensure, eyre};
@@ -134,7 +133,18 @@ fn read(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<Trial>> 
                 key,
                 run: *run,
                 grade: Some(*grade),
-                measure: read_record(&dir.phase(Phase::Measure))?,
+                measure: None,
+                stale,
+            },
+            Stage::Measured {
+                run,
+                grade,
+                measure,
+            } => Trial {
+                key,
+                run: *run,
+                grade: Some(*grade),
+                measure: Some(*measure),
                 stale,
             },
         };

@@ -788,8 +788,11 @@ impl Bench {
 struct Counts {
     pending: usize,
     ran: usize,
+    /// Trials whose grade passed, measured or not.
     passed: usize,
     failed: usize,
+    /// The passing trials with a committed measurement.
+    measured: usize,
     /// Trials with a committed record made from other inputs than the current ones.
     stale: usize,
 }
@@ -803,6 +806,7 @@ impl Add for Counts {
             ran: self.ran + other.ran,
             passed: self.passed + other.passed,
             failed: self.failed + other.failed,
+            measured: self.measured + other.measured,
             stale: self.stale + other.stale,
         }
     }
@@ -833,6 +837,10 @@ fn status(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<(Syste
                 counts.passed += 1;
             }
             lifecycle::Stage::Graded { .. } => counts.failed += 1,
+            lifecycle::Stage::Measured { .. } => {
+                counts.passed += 1;
+                counts.measured += 1;
+            }
         }
         counts.stale += usize::from(lifecycle.stale.is_some());
     }
@@ -844,7 +852,9 @@ struct StatusTable<'a>(&'a [(SystemId, Counts)]);
 
 impl fmt::Display for StatusTable<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let header = ["system", "pending", "ran", "pass", "fail", "stale"];
+        let header = [
+            "system", "pending", "ran", "pass", "fail", "measured", "stale",
+        ];
         let total = self
             .0
             .iter()
@@ -857,10 +867,19 @@ impl fmt::Display for StatusTable<'_> {
                 ran,
                 passed,
                 failed,
+                measured,
                 stale,
             } = counts;
             let n = |count: usize| count.to_string();
-            rows.push([system, n(pending), n(ran), n(passed), n(failed), n(stale)]);
+            rows.push([
+                system,
+                n(pending),
+                n(ran),
+                n(passed),
+                n(failed),
+                n(measured),
+                n(stale),
+            ]);
         }
         write_rows(f, &rows)
     }
@@ -1332,9 +1351,11 @@ mod tests {
         let header: Vec<&str> = table.lines().next().unwrap().split_whitespace().collect();
         assert_eq!(
             header,
-            ["system", "pending", "ran", "pass", "fail", "stale"]
+            [
+                "system", "pending", "ran", "pass", "fail", "measured", "stale"
+            ]
         );
         let total: Vec<&str> = table.lines().last().unwrap().split_whitespace().collect();
-        assert_eq!(total, ["total", "1", "0", "1", "0", "1"]);
+        assert_eq!(total, ["total", "1", "0", "1", "0", "0", "1"]);
     }
 }

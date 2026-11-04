@@ -3,8 +3,9 @@
 //! tells a stale record.
 use crate::{
     experiment::Experiment,
-    grade::{GradeInputs, GradeRecord},
+    grade::{GradeInputs, GradeRecord, Verdict},
     language::Language,
+    measure::{MeasureInputs, MeasureRecord, Protocol},
     run::{RunInputs, RunRecord, Task},
     scenario::Scenario,
     store::read_record,
@@ -22,9 +23,16 @@ pub enum Stage {
     Ran {
         run: Box<RunRecord>,
     },
+    /// Graded. A failing grade is final, and a passing one waits to be measured.
     Graded {
         run: Box<RunRecord>,
         grade: Box<GradeRecord>,
+    },
+    /// A passing grade, timed against the reference.
+    Measured {
+        run: Box<RunRecord>,
+        grade: Box<GradeRecord>,
+        measure: Box<MeasureRecord>,
     },
 }
 
@@ -53,13 +61,31 @@ impl Lifecycle {
                 stale,
             });
         };
-        if stale.is_none() && grade.inputs() != &current.grade(&dir.final_workspace())? {
+        let workspace = dir.final_workspace();
+        if stale.is_none() && grade.inputs() != &current.grade(&workspace)? {
             stale = Some(Phase::Grade);
         }
+        let measure = match grade.judgement().verdict() {
+            Verdict::Pass => read_record::<MeasureRecord>(&dir.phase(Phase::Measure))?,
+            Verdict::Fail(_) => None,
+        };
+        let Some(measure) = measure else {
+            return Ok(Self {
+                stage: Stage::Graded {
+                    run: run.into(),
+                    grade: grade.into(),
+                },
+                stale,
+            });
+        };
+        if stale.is_none() && measure.inputs() != &current.measure(&workspace)? {
+            stale = Some(Phase::Measure);
+        }
         Ok(Self {
-            stage: Stage::Graded {
+            stage: Stage::Measured {
                 run: run.into(),
                 grade: grade.into(),
+                measure: measure.into(),
             },
             stale,
         })
@@ -69,17 +95,21 @@ impl Lifecycle {
     pub fn run(&self) -> Option<&RunRecord> {
         match &self.stage {
             Stage::Pending => None,
-            Stage::Ran { run } | Stage::Graded { run, .. } => Some(run),
+            Stage::Ran { run } | Stage::Graded { run, .. } | Stage::Measured { run, .. } => {
+                Some(run)
+            }
         }
     }
 }
 
-/// What each phase would use for one trial now.
+/// What each phase would use for one trial now. A measurement is current only when made under
+/// [`Protocol::DEFAULT`], unless [`Current::with_protocol`] names another protocol.
 pub struct Current<'a> {
     run: RunInputs,
     language: &'a Language,
     scenario: &'a Scenario,
     toolchains: &'a Toolchains,
+    protocol: Protocol,
 }
 
 impl<'a> Current<'a> {
@@ -99,7 +129,13 @@ impl<'a> Current<'a> {
             language: task.language,
             scenario,
             toolchains,
+            protocol: Protocol::DEFAULT,
         })
+    }
+
+    /// The same, with measurements current only when made under `protocol`.
+    pub fn with_protocol(self, protocol: Protocol) -> Self {
+        Self { protocol, ..self }
     }
 
     /// The inputs of running the trial now.
@@ -119,6 +155,17 @@ impl<'a> Current<'a> {
     pub fn grade(&self, workspace: &Path) -> Result<GradeInputs> {
         GradeInputs::new(self.language, self.toolchains, self.scenario, workspace)
     }
+
+    /// The inputs of measuring the committed workspace `workspace` now.
+    pub fn measure(&self, workspace: &Path) -> Result<MeasureInputs> {
+        MeasureInputs::new(
+            self.language,
+            self.toolchains,
+            self.scenario,
+            workspace,
+            &self.protocol,
+        )
+    }
 }
 
 #[cfg(test)]
@@ -126,6 +173,7 @@ mod tests {
     use super::*;
     use crate::{
         run::fixture::{self, Repo},
+        store::PartialDir,
         testing::write,
     };
     use std::fs;
@@ -142,6 +190,7 @@ mod tests {
             Stage::Pending => "pending",
             Stage::Ran { .. } => "ran",
             Stage::Graded { .. } => "graded",
+            Stage::Measured { .. } => "measured",
         }
     }
 
@@ -191,5 +240,61 @@ mod tests {
         fs::remove_dir_all(experiment.results().trial(&trial).phase(Phase::Grade)).unwrap();
         let ran = read(&repo, "opus");
         assert_eq!((stage(&ran), ran.stale), ("ran", Some(Phase::Run)));
+    }
+
+    /// Commits a measurement of `trial` that timed nothing, made from the inputs of measuring
+    /// it now under `protocol`.
+    fn commit_measure(repo: &Repo, trial: &TrialKey, protocol: Protocol) {
+        let experiment = repo.experiment();
+        let current = Current::of(&experiment, trial, &repo.toolchains)
+            .unwrap()
+            .with_protocol(protocol);
+        let dir = experiment.results().trial(trial);
+        let record = serde_json::json!({
+            "session": fixture::session(),
+            "inputs": current.measure(&dir.final_workspace()).unwrap(),
+            "machine": {
+                "cpu": null, "cpus": 1, "core": 0, "governor": null, "kernel": "7.3.0",
+                "perf_event_paranoid": 1, "load": {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0]},
+            },
+            "workloads": {},
+        });
+        let partial = PartialDir::begin(&dir.phase(Phase::Measure)).unwrap();
+        partial.commit(&record).unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_measurement_counts_under_a_passing_grade_made_with_the_current_protocol() {
+        let repo = Repo::new();
+        let experiment = repo.experiment();
+        let trial = fixture::trial(&experiment, "opus");
+        fixture::commit_run(&repo, &trial, &[("main.py", "print(input())\n")]);
+        fixture::commit_grade(&repo, &trial).await;
+        commit_measure(&repo, &trial, Protocol::DEFAULT);
+        let measured = read(&repo, "opus");
+        assert_eq!((stage(&measured), measured.stale), ("measured", None));
+        assert!(measured.run().is_some());
+
+        let longer = Protocol {
+            warmup: Protocol::DEFAULT.warmup + 1,
+            ..Protocol::DEFAULT
+        };
+        let current = Current::of(&experiment, &trial, &repo.toolchains)
+            .unwrap()
+            .with_protocol(longer);
+        let dir = experiment.results().trial(&trial);
+        let remeasure = Lifecycle::read(&dir, &current).unwrap();
+        assert_eq!(remeasure.stale, Some(Phase::Measure));
+
+        write(repo.root.path(), "scenarios/echo/hidden/edge.out", "x\n");
+        let regrade = read(&repo, "opus");
+        assert_eq!(
+            (stage(&regrade), regrade.stale),
+            ("measured", Some(Phase::Grade))
+        );
+        fs::remove_dir_all(dir.phase(Phase::Grade)).unwrap();
+        fixture::commit_grade(&repo, &trial).await;
+        let failed = read(&repo, "opus");
+        assert_eq!((stage(&failed), failed.stale), ("graded", None));
     }
 }

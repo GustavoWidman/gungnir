@@ -4,7 +4,7 @@ use crate::{
     run::fixture::{self, Repo},
     store::{Digest, PartialDir},
     testing::write,
-    trial::{FINAL, TrialKey},
+    trial::{FINAL, Phase, TrialKey},
 };
 use serde_json::{Value, json};
 use std::path::Path;

@@ -66,7 +66,8 @@ pub async fn grade_runs(
         let current = Current::of(experiment, trial, toolchains)?;
         let lifecycle = Lifecycle::read(&dir, &current)?;
         match (lifecycle.stage, lifecycle.stale) {
-            (Stage::Ran { .. }, _) | (Stage::Graded { .. }, Some(Phase::Grade)) => {
+            (Stage::Ran { .. }, _)
+            | (Stage::Graded { .. } | Stage::Measured { .. }, Some(Phase::Grade)) => {
                 due.push((trial, dir, current));
             }
             _ => {}
