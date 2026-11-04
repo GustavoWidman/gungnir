@@ -40,7 +40,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/secret.rs` holds `Secret<T>`, whose `Debug` prints nothing, `EnvValue` for sandbox environments, and redaction of secret values from bytes and files.
 - `src/vault.rs` reads each backend's credential into a `Key` (the material a driver launches with, the endpoint, and the exact strings to redact) and stages launch files into an isolated `Home` under `$XDG_RUNTIME_DIR/gungnir/`, writing a refreshed Codex login back to its master under a lock.
 - `src/stop.rs` is the two-stage interruption: the first Ctrl-C drains, the second kills in-flight sandboxes.
-- `src/toolchains.rs` loads `GUNGNIR_TOOLCHAINS` into `Closure` sets and `bin` directories, refusing any closure that contains a flake source path.
+- `src/toolchains.rs` loads `GUNGNIR_TOOLCHAINS` into `Closure` sets and `bin` directories, refusing any closure that contains a flake source path. `Toolchains::probe` asks a tool what it is in an offline sandbox holding only its environment over the base.
 - `src/sandbox/` defines `Spec`, `Network`, `Finished`, `Fault` and the object-safe `Backend` trait, with the bubblewrap backend. It is the only place untrusted code is spawned.
 - `src/egress/` is the host-side CONNECT proxy that tunnels only allowlisted hosts on port 443 and logs every connection.
 - `src/harness/` holds the `Driver` registry (`DRIVERS`), the `Harness` handle, the Claude Code and Codex drivers, the harness-neutral `Event` and `TokenUsage`, and the pure `Fold` into an `Ending`. Captured transcripts for its tests live in `tests/fixtures/harness/`.

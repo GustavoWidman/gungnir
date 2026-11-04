@@ -25,11 +25,11 @@ use crate::{
     language::Language,
     lifecycle::{Current, Lifecycle},
     provenance::{Session, SessionId},
-    sandbox::{self, HOME, Input, Io, Kill, Limits, Network, Output, Spec, WORK},
+    sandbox::{self, HOME, WORK},
     scenario::{Brief, Scenario},
     stop::Stop,
     store::{Digest, PartialDir, read_record, sweep_partial, write_json},
-    toolchains::{Closure, Toolchain, Toolchains},
+    toolchains::{Toolchain, Toolchains},
     trial::{Phase, ResultsDir, TrialKey},
     vault::Vault,
 };
@@ -39,21 +39,10 @@ use schedule::schedule;
 use serde::Serialize;
 use std::{
     collections::{BTreeMap, BTreeSet},
-    ffi::OsString,
     os::unix::ffi::OsStrExt,
     path::{Path, PathBuf},
-    time::Duration,
 };
 use tracing::info;
-
-/// What a harness CLI may use to print its version.
-const PROBE_LIMITS: Limits = Limits {
-    wall: Duration::from_secs(60),
-    memory: 1 << 30,
-    tasks: 256,
-    cpu: None,
-};
-const PROBE_OUTPUT: u64 = 64 << 10;
 
 /// One trial as the run phase sees it: the system, and what its agent is given. It holds the
 /// scenario's brief and never the scenario, so nothing in it leads to a hidden case.
@@ -333,38 +322,14 @@ async fn probe_versions(
             .argv
             .first()
             .ok_or_else(|| eyre!("harness {name} launches no program"))?;
-        let (base, toolchain) = (
-            host.toolchains.base(),
-            host.toolchains.harness(name.as_str())?,
-        );
-        let spec = Spec {
-            network: Network::Offline,
-            closure: Closure::union([base.closure(), toolchain.closure()]),
-            mounts: Vec::new(),
-            path: vec![toolchain.bin(), base.bin()],
-            env: Vec::new(),
-            cwd: HOME.into(),
-            limits: PROBE_LIMITS,
-        };
-        let io = Io {
-            stdin: Input::Null,
-            stdout: Output::Capture { cap: PROBE_OUTPUT },
-            stderr: Output::Capture { cap: PROBE_OUTPUT },
-            kill: Kill::default(),
-        };
-        let argv = [program.as_str(), "--version"].map(OsString::from);
-        let finished = host
-            .backend
-            .exec(&spec, &argv, io, stop)
+        let toolchain = host.toolchains.harness(name.as_str())?;
+        let argv = [program.as_str(), "--version"];
+        let printed = host
+            .toolchains
+            .probe(toolchain, Vec::new(), &argv, host.backend, stop)
             .await
             .wrap_err_with(|| format!("running {program} --version"))?;
-        ensure!(
-            finished.exit.success(),
-            "{program} --version ended with {:?}: {}",
-            finished.exit,
-            String::from_utf8_lossy(&finished.stderr.bytes).trim()
-        );
-        let version = harness.parse_version(&String::from_utf8_lossy(&finished.stdout.bytes))?;
+        let version = harness.parse_version(&printed)?;
         ensure!(
             &version == system.harness_version(),
             "harness {name} is at version {version}, but the experiment pins {}; rebuild the \
@@ -483,6 +448,7 @@ mod tests {
     use super::*;
     use crate::{
         grade::tree,
+        sandbox::Spec,
         testing::{id, write},
         trial::FINAL,
     };

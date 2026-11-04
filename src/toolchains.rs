@@ -3,14 +3,30 @@
 
 use std::{
     collections::{BTreeMap, BTreeSet},
+    ffi::{OsStr, OsString},
     fs, io,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use eyre::{Context, ContextCompat, Result, bail, ensure};
 
+use crate::{
+    sandbox::{Backend, HOME, Input, Io, Kill, Limits, Network, Output, Spec},
+    secret::EnvValue,
+    stop::Stop,
+};
+
 const VARIABLE: &str = "GUNGNIR_TOOLCHAINS";
 const STORE: &str = "/nix/store";
+/// What a tool may use to say what it is.
+const PROBE_LIMITS: Limits = Limits {
+    wall: Duration::from_secs(60),
+    memory: 1 << 30,
+    tasks: 256,
+    cpu: None,
+};
+const PROBE_OUTPUT: u64 = 64 << 10;
 
 /// Store paths a sandbox binds read-only. Never holds a flake source path, because the flake's
 /// copy of this repository in the store contains every scenario's hidden tests.
@@ -149,6 +165,42 @@ impl Toolchains {
 
     pub fn harness(&self, name: &str) -> Result<&Toolchain> {
         lookup(&self.harnesses, "harness", name)
+    }
+
+    /// Runs `argv` with `env` in an offline sandbox holding only `toolchain` over the base, and
+    /// returns what it printed. For asking a tool what it is, never for running a program.
+    pub async fn probe(
+        &self,
+        toolchain: &Toolchain,
+        env: Vec<(String, EnvValue)>,
+        argv: &[impl AsRef<OsStr>],
+        backend: &dyn Backend,
+        stop: &Stop,
+    ) -> Result<String> {
+        let spec = Spec {
+            network: Network::Offline,
+            closure: Closure::union([self.base.closure(), toolchain.closure()]),
+            mounts: Vec::new(),
+            path: vec![toolchain.bin(), self.base.bin()],
+            env,
+            cwd: HOME.into(),
+            limits: PROBE_LIMITS,
+        };
+        let io = Io {
+            stdin: Input::Null,
+            stdout: Output::Capture { cap: PROBE_OUTPUT },
+            stderr: Output::Capture { cap: PROBE_OUTPUT },
+            kill: Kill::default(),
+        };
+        let argv: Vec<OsString> = argv.iter().map(|arg| arg.as_ref().to_owned()).collect();
+        let finished = backend.exec(&spec, &argv, io, stop).await?;
+        ensure!(
+            finished.exit.success(),
+            "ended with {:?}: {}",
+            finished.exit,
+            String::from_utf8_lossy(&finished.stderr.bytes).trim()
+        );
+        Ok(String::from_utf8_lossy(&finished.stdout.bytes).into_owned())
     }
 }
 
