@@ -43,12 +43,14 @@ pub struct Sample {
     pub user: f64,
     /// CPU seconds in the kernel.
     pub system: f64,
+    /// Peak resident memory in bytes.
+    pub peak_memory: u64,
     /// Instructions retired, when the kernel let hyperfine count them.
     pub instructions: Option<u64>,
 }
 
 /// The timed runs of each program in one block, which ran back to back.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Block {
     pub reference: Vec<Sample>,
     pub candidate: Vec<Sample>,
@@ -59,6 +61,13 @@ impl Block {
         match side {
             Side::Reference => &self.reference,
             Side::Candidate => &self.candidate,
+        }
+    }
+
+    pub(super) fn side_mut(&mut self, side: Side) -> &mut Vec<Sample> {
+        match side {
+            Side::Reference => &mut self.reference,
+            Side::Candidate => &mut self.candidate,
         }
     }
 
@@ -110,6 +119,7 @@ mod tests {
                 wall,
                 user: wall,
                 system: 0.0,
+                peak_memory: 1 << 20,
                 instructions: None,
             })
             .collect()
