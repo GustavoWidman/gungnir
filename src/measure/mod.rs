@@ -2,11 +2,15 @@
 //! language. On each workload the candidate must first print exactly what the reference
 //! prints; then hyperfine times both in ABBA blocks, in offline sandboxes pinned to one core.
 mod hyperfine;
+mod machine;
+mod record;
 mod stats;
 #[cfg(test)]
 mod tests;
 mod timing;
 
+pub use machine::{Load, Machine};
+pub use record::{MeasureInputs, MeasureRecord};
 pub use stats::{Ratio, Spread};
 pub use timing::{Block, Sample, Side, Summary, Timed, schedule};
 
@@ -118,9 +122,11 @@ impl<'a> Program<'a> {
     }
 }
 
-/// What timing a candidate against its reference found on each workload.
+/// What timing a candidate against its reference found on each workload, and the host it ran
+/// on.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Comparison {
+    pub machine: Machine,
     pub workloads: BTreeMap<WorkloadId, Outcome>,
 }
 
@@ -187,6 +193,7 @@ pub async fn compare(
         backend,
         stop,
     };
+    let load = machine::load_average()?;
     let mut outcomes = BTreeMap::new();
     for (id, workload) in workloads {
         let evidence = evidence.join("hyperfine").join(id.as_str());
@@ -197,6 +204,7 @@ pub async fn compare(
         outcomes.insert(id.clone(), outcome);
     }
     Ok(Comparison {
+        machine: Machine::probe(settings.core, load)?,
         workloads: outcomes,
     })
 }

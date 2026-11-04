@@ -2,7 +2,9 @@ use super::*;
 use crate::{
     grade::fake::{self, Scripted, finished},
     id::LanguageId,
+    provenance::SessionId,
     sandbox::{Collected, Exit, Fault, Network, WORK},
+    store::{PartialDir, read_record},
     testing::{self, id, write},
 };
 use eyre::eyre;
@@ -417,4 +419,92 @@ async fn a_program_that_does_not_build_is_an_error_quoting_its_log() {
     let message = format!("{:#}", built.await.err().unwrap());
     assert!(message.contains("did not build"), "{message}");
     assert!(message.ends_with("$ true\nerror: no"), "{message}");
+}
+
+#[tokio::test]
+async fn a_committed_measurement_reads_back_beside_its_evidence() {
+    let fixture = fixture();
+    let (backend, stop) = (Scripted::new(script), Stop::default());
+    let reference = fixture.program(&backend, &stop, "echo").await;
+    let candidate = fixture.program(&backend, &stop, "slow-echo").await;
+    let results = TempDir::new().unwrap();
+    let target = results.path().join("r1/measure");
+
+    let partial = PartialDir::begin(&target).unwrap();
+    let workloads = &fixture.workloads;
+    let comparison = compare(
+        &reference,
+        &candidate,
+        workloads,
+        &SETTINGS,
+        &backend,
+        &stop,
+        partial.path(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(comparison.machine.core, CORE);
+    assert!(comparison.machine.cpus >= 1 && !comparison.machine.kernel.is_empty());
+    let inputs = MeasureInputs::new(
+        &fixture.language,
+        &fixture.toolchains,
+        &reference,
+        &candidate,
+        workloads,
+        &SETTINGS,
+    )
+    .unwrap();
+    let session: SessionId = serde_json::from_str("\"20261103T120000Z-42\"").unwrap();
+    let record = MeasureRecord::new(session, inputs, comparison.clone());
+    partial.commit(&record).unwrap();
+
+    let stored = read_record::<MeasureRecord>(&target).unwrap().unwrap();
+    assert_eq!(stored, record);
+    assert_eq!(stored.workloads(), &comparison.workloads);
+    assert_eq!(stored.machine(), &comparison.machine);
+    for workload in ["large", "small"] {
+        let kept = fs::read_dir(target.join("hyperfine").join(workload)).unwrap();
+        assert_eq!(kept.count(), 4, "{workload}");
+    }
+    assert!(target.join("record.json").is_file());
+}
+
+#[tokio::test]
+async fn stored_inputs_go_stale_exactly_when_timing_could_change() {
+    let fixture = fixture();
+    let (backend, stop) = (Scripted::new(script), Stop::default());
+    let reference = fixture.program(&backend, &stop, "echo").await;
+    let inputs = |candidate: &Program<'_>, workloads: &BTreeMap<_, _>, settings: &Settings| {
+        let (language, toolchains) = (&fixture.language, &fixture.toolchains);
+        MeasureInputs::new(
+            language, toolchains, &reference, candidate, workloads, settings,
+        )
+        .unwrap()
+    };
+    let candidate = fixture.program(&backend, &stop, "echo").await;
+    let json = serde_json::to_string(&inputs(&candidate, &fixture.workloads, &SETTINGS));
+    let stored: MeasureInputs = serde_json::from_str(&json.unwrap()).unwrap();
+    assert_eq!(stored, inputs(&candidate, &fixture.workloads, &SETTINGS));
+
+    let rebuilt = fixture.program(&backend, &stop, "echo").await;
+    assert_eq!(stored, inputs(&rebuilt, &fixture.workloads, &SETTINGS));
+    write(
+        &fixture.workspace("echo"),
+        "__pycache__/main.pyc",
+        "build output",
+    );
+    let with_output = fixture.program(&backend, &stop, "echo").await;
+    assert_eq!(stored, inputs(&with_output, &fixture.workloads, &SETTINGS));
+
+    let edited = fixture.program(&backend, &stop, "slow-echo").await;
+    assert_ne!(stored, inputs(&edited, &fixture.workloads, &SETTINGS));
+    let mut workloads = fixture.workloads.clone();
+    let large = workloads.get_mut(&id::<WorkloadId>("large")).unwrap();
+    large.digest = Digest::of_bytes(b"other");
+    assert_ne!(stored, inputs(&candidate, &workloads, &SETTINGS));
+    let more_blocks = Settings {
+        blocks: NonZeroU32::new(4).unwrap(),
+        ..SETTINGS
+    };
+    assert_ne!(stored, inputs(&candidate, &fixture.workloads, &more_blocks));
 }

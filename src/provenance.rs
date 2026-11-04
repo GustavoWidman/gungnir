@@ -102,7 +102,7 @@ fn read_proc(path: &str) -> Result<String> {
 }
 
 /// The first `model name` in `/proc/cpuinfo`, which some architectures do not report.
-fn cpu_model(cpuinfo: &str) -> Option<String> {
+pub(crate) fn cpu_model(cpuinfo: &str) -> Option<String> {
     cpuinfo.lines().find_map(|line| {
         let (key, value) = line.split_once(':')?;
         (key.trim() == "model name").then(|| value.trim().to_owned())
