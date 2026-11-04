@@ -1,0 +1,24 @@
+# The Claude extension: every effort level of Sonnet 5.5 and Opus 5.5, on the pilot's matrix.
+name = "claude-ext"
+results = "../runs/claude-ext"
+repetitions = 3
+scenarios = ["interval-cover", "word-freq"]
+languages = ["python", "rust", "zig"]
+
+[pins]
+claude-code = "2.1.316"
+
+[budget]
+wall = "40m"
+idle = "10m"
+
+[concurrency]
+anthropic = 2
+
+[[systems]]
+model = "claude-sonnet-5-5"
+efforts = "all"
+
+[[systems]]
+model = "claude-opus-5-5"
+efforts = "all"

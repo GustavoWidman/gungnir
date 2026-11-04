@@ -1,0 +1,28 @@
+# The OpenAI extension: every effort level of the larger GPT models, on the pilot's matrix.
+name = "openai-ext"
+results = "../runs/openai-ext"
+repetitions = 3
+scenarios = ["interval-cover", "word-freq"]
+languages = ["python", "rust", "zig"]
+
+[pins]
+codex = "0.166.0"
+
+[budget]
+wall = "40m"
+idle = "10m"
+
+[concurrency]
+openai = 3
+
+[[systems]]
+model = "gpt-6.1-terra"
+efforts = "all"
+
+[[systems]]
+model = "gpt-6.1-sol"
+efforts = "all"
+
+[[systems]]
+model = "gpt-6-astra"
+efforts = "all"

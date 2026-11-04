@@ -15,8 +15,8 @@ idle = "10m"
 
 [concurrency]
 anthropic = 2
-openai = 2
-zai = 3
+openai = 3
+zai = 4
 
 [[systems]]
 model = "claude-haiku-5-5"
