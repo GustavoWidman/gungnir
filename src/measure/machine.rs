@@ -15,6 +15,9 @@ pub struct Machine {
     /// The frequency governor of that CPU, when the kernel exposes one.
     pub governor: Option<String>,
     pub kernel: String,
+    /// `kernel.perf_event_paranoid`, when readable. Above 2 the kernel refuses hyperfine's
+    /// user-space counters, so no run has an instruction count.
+    pub perf_event_paranoid: Option<i32>,
     /// The 1, 5 and 15 minute load averages when timing started and when it ended.
     pub load: Load,
 }
@@ -41,12 +44,22 @@ impl Machine {
                 .ok()
                 .map(|governor| governor.trim().to_owned()),
             kernel: read("/proc/sys/kernel/osrelease")?.trim().to_owned(),
+            perf_event_paranoid: perf_event_paranoid(),
             load: Load {
                 start,
                 end: load_average()?,
             },
         })
     }
+}
+
+/// `kernel.perf_event_paranoid` now, when readable.
+pub fn perf_event_paranoid() -> Option<i32> {
+    fs::read_to_string("/proc/sys/kernel/perf_event_paranoid")
+        .ok()?
+        .trim()
+        .parse()
+        .ok()
 }
 
 /// The 1, 5 and 15 minute load averages now.

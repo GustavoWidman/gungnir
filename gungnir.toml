@@ -7,9 +7,10 @@
 [sandbox]
 packages = ["bashInteractive", "coreutils", "diffutils", "findutils", "gawk", "gnugrep", "gnused", "which", "socat", "cacert"]
 
-# Bound beside a language only in the sandboxes that time programs.
+# Bound beside a language only in the sandboxes that time programs. GNU time reads the peak
+# resident memory of each program's output check.
 [measure]
-packages = ["hyperfine"]
+packages = ["hyperfine", "time"]
 
 [harnesses.claude-code]
 package = "claude-code"

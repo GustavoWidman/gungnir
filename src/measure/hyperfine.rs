@@ -10,6 +10,9 @@ const SCHEMA: u32 = 2;
 /// program cannot tell a timed run from a checked one by looking at its stdout, as it could
 /// with `/dev/null`.
 const OUTPUT: &str = "--output=pipe";
+/// Every metric hyperfine can collect, the user-space instruction count among them. hyperfine
+/// leaves out a counter the kernel refuses (`perf_event_paranoid` above 2) instead of failing.
+const METRICS: &str = "--metrics=all";
 
 /// Times `run` without a shell, with the workload on stdin, `protocol.warmup` untimed runs and
 /// `protocol.runs` timed ones. hyperfine prints only its export, on stdout.
@@ -21,6 +24,7 @@ pub(super) fn argv(run: &[String], protocol: &Protocol) -> Vec<OsString> {
         "hyperfine",
         "-N",
         "--style=none",
+        METRICS,
         "--input",
         WORKLOAD,
         OUTPUT,
@@ -252,6 +256,7 @@ mod tests {
                 "hyperfine",
                 "-N",
                 "--style=none",
+                "--metrics=all",
                 "--input",
                 "/workload",
                 "--output=pipe",

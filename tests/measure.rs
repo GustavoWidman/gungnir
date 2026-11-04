@@ -35,6 +35,14 @@ fn settings() -> Settings {
     }
 }
 
+/// Whether the kernel lets hyperfine count user-space instructions.
+fn counters_allowed() -> bool {
+    fs::read_to_string("/proc/sys/kernel/perf_event_paranoid")
+        .ok()
+        .and_then(|level| level.trim().parse::<i32>().ok())
+        .is_some_and(|level| level <= 2)
+}
+
 /// The Python language, a short and a longer word-freq workload, and the real backend.
 struct Rig {
     dir: TempDir,
@@ -144,11 +152,23 @@ async fn two_builds_of_the_reference_are_timed_in_every_block() -> Result<()> {
             }
             assert_eq!((block.reference.len(), block.candidate.len()), (3, 3));
         }
-        let ratio = timed.summary().ratio;
+        let summary = timed.summary();
+        let ratio = summary.ratio;
         let (low, high) = ratio.interval.expect("two blocks give an interval");
         assert!(
             low.is_finite() && high.is_finite() && low <= ratio.geomean && ratio.geomean <= high
         );
+        let peaks = summary.peak_memory;
+        for peak in [peaks.reference, peaks.candidate] {
+            let peak = peak.expect("GNU time reports every output check");
+            assert!((1 << 20..512 << 20).contains(&peak), "{peaks:?}");
+        }
+        if counters_allowed() {
+            let instructions = summary.instructions.expect("counted instructions");
+            assert!((0.95..1.05).contains(&instructions), "{instructions}");
+        } else {
+            assert_eq!(summary.instructions, None);
+        }
         for name in ["0-reference", "0-candidate", "1-candidate", "1-reference"] {
             let export = evidence
                 .path()
@@ -174,6 +194,26 @@ async fn a_candidate_that_sleeps_is_measured_slower() -> Result<()> {
     assert!(summary.ratio.geomean > 2.0, "{summary:?}");
     assert!(low > 1.5, "{summary:?}");
     assert!(summary.candidate.min > 0.25, "{summary:?}");
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs bwrap and GUNGNIR_TOOLCHAINS"]
+async fn a_candidate_that_holds_more_memory_peaks_higher() -> Result<()> {
+    let rig = Rig::new()?;
+    let reference = rig.workspace("reference", unchanged)?;
+    let hoarder = rig.workspace("hoarder", |source| {
+        format!("hoard = bytearray(64 << 20)\n{source}")
+    })?;
+    let (comparison, _evidence) = rig.compare(&reference, &hoarder).await?;
+
+    let peaks = timed(&comparison, "short").peak_memory;
+    let (reference, hoarder) = (
+        peaks.reference.expect("a reference peak"),
+        peaks.candidate.expect("a candidate peak"),
+    );
+    let grown = hoarder - reference;
+    assert!((60 << 20..72 << 20).contains(&grown), "{peaks:?}");
     Ok(())
 }
 

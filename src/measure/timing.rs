@@ -78,34 +78,74 @@ impl Block {
     }
 }
 
-/// Both programs timed on one workload, block by block in the order of [`schedule`].
+/// Both programs timed on one workload, block by block in the order of [`schedule`], and the
+/// peak memory of each in its output check.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(transparent)]
 pub struct Timed {
     pub blocks: Vec<Block>,
+    pub peak_memory: PeakMemory,
+}
+
+/// Each program's peak resident memory in bytes during its output check, as GNU time read it
+/// from the kernel. `None` when GNU time reported none.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PeakMemory {
+    pub reference: Option<u64>,
+    pub candidate: Option<u64>,
+}
+
+/// `12.5MiB (reference 48.0MiB)`, the candidate's first, with `-` for a peak not reported.
+impl fmt::Display for PeakMemory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mebibytes = |bytes: Option<u64>| {
+            bytes.map_or_else(
+                || "-".to_owned(),
+                |bytes| format!("{:.1}MiB", bytes as f64 / f64::from(1 << 20)),
+            )
+        };
+        write!(
+            f,
+            "{} (reference {})",
+            mebibytes(self.candidate),
+            mebibytes(self.reference)
+        )
+    }
 }
 
 impl Timed {
     pub fn summary(&self) -> Summary {
-        let walls = |side| {
-            let samples = self.blocks.iter().flat_map(move |block| block.side(side));
-            samples.map(|sample| sample.wall)
+        let samples = |side| self.blocks.iter().flat_map(move |block| block.side(side));
+        let walls = |side| samples(side).map(|sample| sample.wall);
+        let instructions = |side| {
+            let counts: Option<Vec<f64>> = samples(side)
+                .map(|sample| sample.instructions.map(|count| count as f64))
+                .collect();
+            counts.filter(|counts| !counts.is_empty()).map(median)
         };
         let logs: Vec<f64> = self.blocks.iter().map(Block::log_ratio).collect();
         Summary {
             reference: Spread::of(walls(Side::Reference)),
             candidate: Spread::of(walls(Side::Candidate)),
             ratio: Ratio::of(&logs),
+            instructions: instructions(Side::Candidate)
+                .zip(instructions(Side::Reference))
+                .map(|(candidate, reference)| candidate / reference),
+            peak_memory: self.peak_memory,
         }
     }
 }
 
-/// Each program's wall times over every block, and how many times longer the candidate takes.
+/// Each program's wall times over every block, how many times longer the candidate takes, and
+/// how many times more instructions it retires.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Summary {
     pub reference: Spread,
     pub candidate: Spread,
     pub ratio: Ratio,
+    /// The candidate's median user-space instruction count over the reference's, pooling every
+    /// timed run. `None` unless the kernel let hyperfine count every run of both.
+    pub instructions: Option<f64>,
+    pub peak_memory: PeakMemory,
 }
 
 #[cfg(test)]
@@ -147,28 +187,63 @@ mod tests {
         assert!((outlier.log_ratio() - 2f64.ln()).abs() < 1e-12);
     }
 
+    fn timed(blocks: Vec<Block>) -> Timed {
+        Timed {
+            blocks,
+            peak_memory: PeakMemory {
+                reference: Some(4 << 20),
+                candidate: None,
+            },
+        }
+    }
+
     #[test]
     fn the_summary_pools_runs_per_side_and_ratios_per_block() {
-        let timed = Timed {
-            blocks: vec![
-                block(&[1.0, 1.5], &[2.0, 3.0]),
-                block(&[1.25, 0.75], &[2.5, 3.5]),
-            ],
-        };
+        let timed = timed(vec![
+            block(&[1.0, 1.5], &[2.0, 3.0]),
+            block(&[1.25, 0.75], &[2.5, 3.5]),
+        ]);
         let summary = timed.summary();
         assert_eq!(summary.reference, Spread::of([0.75, 1.0, 1.25, 1.5]));
         assert_eq!(summary.candidate, Spread::of([2.0, 2.5, 3.0, 3.5]));
         assert_eq!(summary.ratio, Ratio::of(&[2f64.ln(), 3f64.ln()]));
+        assert_eq!(summary.instructions, None);
+        assert_eq!(summary.peak_memory, timed.peak_memory);
+    }
+
+    #[test]
+    fn the_instruction_ratio_compares_pooled_medians_and_needs_every_count() {
+        let counted = |counts: &[u64]| -> Vec<Sample> {
+            counts
+                .iter()
+                .map(|&count| Sample {
+                    instructions: Some(count),
+                    ..runs(&[1.0])[0]
+                })
+                .collect()
+        };
+        let mut timed = timed(vec![
+            Block {
+                reference: counted(&[100, 900]),
+                candidate: counted(&[150, 160]),
+            },
+            Block {
+                reference: counted(&[100, 100]),
+                candidate: counted(&[150, 140]),
+            },
+        ]);
+        assert_eq!(timed.summary().instructions, Some(1.5));
+
+        timed.blocks[1].candidate[0].instructions = None;
+        assert_eq!(timed.summary().instructions, None);
     }
 
     #[test]
     fn timed_runs_read_back_from_json() {
-        let timed = Timed {
-            blocks: vec![block(&[0.5], &[0.25])],
-        };
+        let timed = timed(vec![block(&[0.5], &[0.25])]);
         let json = serde_json::to_string(&timed).unwrap();
         assert!(
-            json.starts_with("[{\"reference\":[{\"wall\":0.5,"),
+            json.starts_with("{\"blocks\":[{\"reference\":[{\"wall\":0.5,"),
             "{json}"
         );
         assert_eq!(serde_json::from_str::<Timed>(&json).unwrap(), timed);

@@ -144,9 +144,21 @@ fn export(wall: f64, runs: usize) -> Vec<u8> {
     serde_json::to_vec(&export).unwrap()
 }
 
+/// The peak memory in KiB that GNU time reports for a check run of `behaviour`, which a
+/// program that ends abnormally never gets to report.
+fn peak_kib(behaviour: &str) -> Option<u64> {
+    match behaviour {
+        "echo" => Some(2048),
+        "slow-echo" => Some(6144),
+        "crash" | "hang" | "hog" => None,
+        _ => Some(1024),
+    }
+}
+
 /// Builds cleanly. `echo` programs print their input and time as 1 second, `slow-echo` ones
 /// as 2. `wrong` prints something else, `flood` more than the check keeps, `crash`, `hang`
-/// and `hog` end abnormally, and `flaky` passes its check but fails under hyperfine.
+/// and `hog` end abnormally, and `flaky` passes its check but fails under hyperfine. Check
+/// runs report their peak memory as GNU time would, into the mount at [`RUSAGE`].
 fn script(spec: &Spec, argv: &[String], io: Io) -> Result<Finished, Fault> {
     let behaviour = behaviour(spec);
     match argv[0].as_str() {
@@ -171,6 +183,14 @@ fn script(spec: &Spec, argv: &[String], io: Io) -> Result<Finished, Fault> {
                 panic!("a check run reads its workload from a host file");
             };
             let input = fs::read(input).unwrap();
+            let report = spec
+                .mounts
+                .iter()
+                .find(|mount| mount.guest == Path::new(RUSAGE) && mount.writable)
+                .expect("a check run has somewhere to report");
+            if let Some(kib) = peak_kib(&behaviour) {
+                fs::write(report.host.join("peak"), format!("{kib}\n")).unwrap();
+            }
             Ok(match behaviour.as_str() {
                 "wrong" => finished(Exit::Code(0), b"nope\n"),
                 "crash" => finished(Exit::Code(3), &input),
@@ -240,6 +260,12 @@ async fn matching_outputs_are_timed_in_abba_blocks() {
             (low - 2.0).abs() < 1e-12 && (high - 2.0).abs() < 1e-12,
             "{id}"
         );
+        let peaks = PeakMemory {
+            reference: Some(2 << 20),
+            candidate: Some(6 << 20),
+        };
+        assert_eq!(summary.peak_memory, peaks, "{id}");
+        assert_eq!(summary.instructions, None, "{id}");
     }
     let abba = ["echo", "slow-echo", "slow-echo", "echo"].map(String::from);
     for (workload, order) in timings.lock().unwrap().iter() {
@@ -288,7 +314,7 @@ async fn every_run_is_offline_read_only_and_pinned_with_hyperfine_beside_the_lan
         let workload = &spec.mounts[1].host;
         assert!(fixture.workloads.values().any(|w| &w.path == workload));
         assert_eq!(
-            spec.mounts,
+            spec.mounts[..2],
             [
                 Mount::read_only(&spec.mounts[0].host, WORK),
                 Mount::read_only(workload, WORKLOAD),
@@ -296,18 +322,25 @@ async fn every_run_is_offline_read_only_and_pinned_with_hyperfine_beside_the_lan
         );
         assert!(spec.closure.contains(measure.root()));
         assert!(spec.path.contains(&measure.bin()));
-        if argv[0] == "hyperfine" {
-            let expected = hyperfine::argv(&["python3".into(), "main.py".into()], &PROTOCOL);
-            let expected: Vec<String> = expected
-                .into_iter()
-                .map(|arg| arg.into_string().unwrap())
-                .collect();
-            assert_eq!(argv, expected);
+        let run = ["python3".to_owned(), "main.py".to_owned()];
+        let expected = if argv[0] == "hyperfine" {
+            assert_eq!(spec.mounts.len(), 2);
             assert!(spec.limits.memory > SETTINGS.memory);
+            hyperfine::argv(&run, &PROTOCOL)
         } else {
-            assert_eq!(argv, ["python3", "main.py"]);
+            let report = &spec.mounts[2];
+            assert_eq!(
+                (report.guest.as_path(), report.writable),
+                (Path::new(RUSAGE), true)
+            );
             assert_eq!(spec.limits.memory, SETTINGS.memory);
-        }
+            rusage::argv(&run)
+        };
+        let expected: Vec<String> = expected
+            .into_iter()
+            .map(|arg| arg.into_string().unwrap())
+            .collect();
+        assert_eq!(argv, expected);
     }
     assert_eq!(
         runs,

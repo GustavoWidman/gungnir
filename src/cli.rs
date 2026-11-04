@@ -888,8 +888,9 @@ fn pinned_core(core: Option<u32>) -> Result<u32> {
     }
 }
 
-/// One row per workload: each program's median wall time and range, and the ratio of the
-/// candidate's time to the reference's with its 95% interval. Then the machine it ran on.
+/// One row per workload: each program's median wall time and range, the ratio of the
+/// candidate's time to the reference's with its 95% interval, the ratio of their instruction
+/// counts, and their peak memory. Then the machine it ran on.
 struct BenchTable<'a> {
     machine: &'a Machine,
     workloads: &'a BTreeMap<WorkloadId, measure::Outcome>,
@@ -905,6 +906,8 @@ impl fmt::Display for BenchTable<'_> {
             "range",
             "ratio",
             "95% interval",
+            "instructions",
+            "peak memory",
         ];
         let mut rows = vec![header.map(String::from)];
         for (id, outcome) in self.workloads {
@@ -915,6 +918,8 @@ impl fmt::Display for BenchTable<'_> {
                         reference,
                         candidate,
                         ratio,
+                        instructions,
+                        peak_memory,
                     } = timed.summary();
                     let interval = ratio
                         .interval
@@ -927,6 +932,8 @@ impl fmt::Display for BenchTable<'_> {
                         range(candidate),
                         format!("{:.3}", ratio.geomean),
                         interval,
+                        instructions.map_or_else(none, |ratio| format!("{ratio:.3}")),
+                        peak_memory.to_string(),
                     ]
                 }
                 measure::Outcome::CandidateFailed(failure) => [
@@ -934,6 +941,8 @@ impl fmt::Display for BenchTable<'_> {
                     none(),
                     none(),
                     format!("failed: {failure}"),
+                    none(),
+                    none(),
                     none(),
                     none(),
                     none(),
@@ -1046,7 +1055,7 @@ mod tests {
     use super::*;
     use crate::{
         grade::fake::{self, Scripted, finished},
-        measure::{Block, Failure, Load, Sample, Timed},
+        measure::{Block, Failure, Load, PeakMemory, Sample, Timed},
         sandbox::{Exit, Input},
         testing::{self, id, write},
     };
@@ -1061,7 +1070,7 @@ mod tests {
                 user: wall,
                 system: 0.0,
                 peak_memory: 1 << 20,
-                instructions: None,
+                instructions: Some((wall * 1e9) as u64),
             };
             vec![sample; 2]
         };
@@ -1071,6 +1080,10 @@ mod tests {
         };
         let timed = Timed {
             blocks: vec![block(1.0, 2.0), block(0.5, 1.0)],
+            peak_memory: PeakMemory {
+                reference: Some(48 << 20),
+                candidate: None,
+            },
         };
         let workloads = BTreeMap::from([
             (id("full-range"), measure::Outcome::Timed(timed)),
@@ -1085,6 +1098,7 @@ mod tests {
             core: 15,
             governor: None,
             kernel: "7.3.0".into(),
+            perf_event_paranoid: Some(1),
             load: Load {
                 start: [6.65, 4.26, 3.28],
                 end: [7.0, 5.0, 3.5],
@@ -1097,9 +1111,9 @@ mod tests {
 
         assert_eq!(
             table.to_string(),
-            "workload    reference  range              candidate             range             ratio  95% interval\n\
-             full-range  750.0ms    [500.0ms, 1.000s]  1.500s                [1.000s, 2.000s]  2.000  [2.000, 2.000]\n\
-             uniform     -          -                  failed: wrong output  -                 -      -\n\
+            "workload    reference  range              candidate             range             ratio  95% interval    instructions  peak memory\n\
+             full-range  750.0ms    [500.0ms, 1.000s]  1.500s                [1.000s, 2.000s]  2.000  [2.000, 2.000]  2.000         - (reference 48.0MiB)\n\
+             uniform     -          -                  failed: wrong output  -                 -      -               -             -\n\
              pinned to CPU 15 of 16 (AMD Ryzen 7 5800U), governor unknown\n\
              load average 6.65 4.26 3.28 at the start, 7.00 5.00 3.50 at the end\n"
         );

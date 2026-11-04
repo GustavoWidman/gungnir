@@ -4,6 +4,7 @@
 mod hyperfine;
 mod machine;
 mod record;
+mod rusage;
 mod stats;
 #[cfg(test)]
 mod tests;
@@ -12,7 +13,7 @@ mod timing;
 pub use machine::{Load, Machine};
 pub use record::{MeasureInputs, MeasureRecord};
 pub use stats::{Ratio, Spread};
-pub use timing::{Block, Sample, Side, Summary, Timed, schedule};
+pub use timing::{Block, PeakMemory, Sample, Side, Summary, Timed, schedule};
 
 use crate::{
     grade::{Abnormal, BuildOutcome, Crash, Offline, tree},
@@ -31,6 +32,8 @@ use tempfile::TempDir;
 
 /// Where the workload appears in every sandbox that runs a program on it.
 const WORKLOAD: &str = "/workload";
+/// Where GNU time writes its report in the sandbox of an output check.
+const RUSAGE: &str = "/rusage";
 /// The longest one run of a program may take.
 const RUN_TIMEOUT: Duration = Duration::from_secs(60);
 /// Memory for hyperfine itself, on top of the program it times.
@@ -172,10 +175,10 @@ impl fmt::Display for Failure {
 /// Times `candidate` against `reference` on every workload and writes hyperfine's export of
 /// each timing as `hyperfine/<workload>/<block>-<side>.json` under `evidence`.
 ///
-/// On each workload both programs first run once, and a candidate that does not print exactly
-/// what the reference prints fails the workload untimed. An error means there is no
-/// comparison: the reference failed, a sandbox could not run, the host failed, or the stop
-/// interrupted it.
+/// On each workload both programs first run once under GNU time, which reports their peak
+/// resident memory, and a candidate that does not print exactly what the reference prints
+/// fails the workload untimed. An error means there is no comparison: the reference failed, a
+/// sandbox could not run, the host failed, or the stop interrupted it.
 pub async fn compare(
     reference: &Program<'_>,
     candidate: &Program<'_>,
@@ -232,11 +235,11 @@ impl Bench<'_> {
     }
 
     async fn workload(&self, workload: &Path, evidence: &Path) -> Result<Outcome> {
-        let expected = self.check(Side::Reference, workload).await?;
+        let (expected, reference_peak) = self.check(Side::Reference, workload).await?;
         if let Some(failure) = unusable(&expected)? {
             bail!("the reference failed its check run: {failure}");
         }
-        let actual = self.check(Side::Candidate, workload).await?;
+        let (actual, candidate_peak) = self.check(Side::Candidate, workload).await?;
         let failure = match unusable(&actual)? {
             None if actual.stdout.bytes != expected.stdout.bytes => Some(Failure::WrongOutput),
             unusable => unusable,
@@ -260,11 +263,19 @@ impl Bench<'_> {
             }
             blocks.push(block);
         }
-        Ok(Outcome::Timed(Timed { blocks }))
+        let peak_memory = PeakMemory {
+            reference: reference_peak,
+            candidate: candidate_peak,
+        };
+        Ok(Outcome::Timed(Timed {
+            blocks,
+            peak_memory,
+        }))
     }
 
-    /// Runs the `side` program once on `workload`, pinned like a timed run, keeping its stdout.
-    async fn check(&self, side: Side, workload: &Path) -> Result<Finished> {
+    /// Runs the `side` program once on `workload` under GNU time, pinned like a timed run,
+    /// keeping its stdout. Also returns its peak resident memory, when GNU time reported it.
+    async fn check(&self, side: Side, workload: &Path) -> Result<(Finished, Option<u64>)> {
         let program = self.program(side);
         let limits = Limits {
             wall: RUN_TIMEOUT,
@@ -278,9 +289,14 @@ impl Bench<'_> {
             stderr: Output::Capture { cap: 0 },
             kill: Kill::default(),
         };
-        let command: Vec<OsString> = program.run.iter().map(OsString::from).collect();
-        self.exec(&program.spec(workload, limits), &command, io)
-            .await
+        let report = tempfile::Builder::new()
+            .prefix("gungnir-rusage-")
+            .tempdir()
+            .wrap_err("creating a directory for GNU time's report")?;
+        let mut spec = program.spec(workload, limits);
+        spec.mounts.push(Mount::writable(report.path(), RUSAGE));
+        let finished = self.exec(&spec, &rusage::argv(&program.run), io).await?;
+        Ok((finished, rusage::peak(report.path())?))
     }
 
     /// Times the `side` program on `workload` with hyperfine and keeps its export at `export`.

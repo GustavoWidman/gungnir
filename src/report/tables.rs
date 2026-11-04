@@ -591,7 +591,7 @@ fn side_name(side: Side) -> &'static str {
 mod tests {
     use super::*;
     use crate::{
-        measure::{Block, Timed},
+        measure::{Block, PeakMemory, Timed},
         testing,
     };
 
@@ -632,7 +632,10 @@ mod tests {
         let workloads = BTreeMap::from([
             (
                 testing::id("large"),
-                measure::Outcome::Timed(Timed { blocks }),
+                measure::Outcome::Timed(Timed {
+                    blocks,
+                    peak_memory: PeakMemory::default(),
+                }),
             ),
             (
                 testing::id("small"),
@@ -723,7 +726,10 @@ mod tests {
         }];
         let workloads = BTreeMap::from([(
             testing::id("large"),
-            measure::Outcome::Timed(Timed { blocks }),
+            measure::Outcome::Timed(Timed {
+                blocks,
+                peak_memory: PeakMemory::default(),
+            }),
         )]);
         let mut tables = Tables::default();
         tables.add_workloads(&key(), &workloads);
