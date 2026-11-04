@@ -79,38 +79,40 @@ pub async fn grade_runs(
         trials.len()
     );
     let session = session.id();
-    let judged: Vec<(&TrialKey, Result<Judged>)> = stream::iter(due)
+    let mut judged = stream::iter(due)
         .map(|(trial, dir, current)| async move {
             let judged = grade(results, &dir, &current, toolchains, backend, session, stop).await;
             (trial, judged)
         })
-        .buffer_unordered(jobs.get())
-        .collect()
-        .await;
-
+        .buffer_unordered(jobs.get());
     let mut graded = Graded::default();
-    for (trial, judged) in judged {
-        match judged {
-            Ok(Judged::Committed(Verdict::Pass)) => {
-                graded.passed += 1;
-                info!("{trial}: pass");
-            }
-            Ok(Judged::Committed(verdict)) => {
-                graded.failed += 1;
-                info!("{trial}: {verdict}");
-            }
-            Ok(Judged::Fault(fault)) => {
-                graded.faulted += 1;
-                warn!("{trial}: not graded, the sandbox could not judge it: {fault}");
-            }
-            Ok(Judged::Unstarted) => graded.unstarted += 1,
-            Err(err) => {
-                graded.errors += 1;
-                error!("{trial}: not graded: {err:#}");
-            }
-        }
+    while let Some((trial, judged)) = judged.next().await {
+        settle(&mut graded, trial, judged);
     }
     Ok(graded)
+}
+
+/// Counts and logs how grading `trial` ended.
+fn settle(graded: &mut Graded, trial: &TrialKey, judged: Result<Judged>) {
+    match judged {
+        Ok(Judged::Committed(Verdict::Pass)) => {
+            graded.passed += 1;
+            info!("{trial}: pass");
+        }
+        Ok(Judged::Committed(verdict)) => {
+            graded.failed += 1;
+            info!("{trial}: {verdict}");
+        }
+        Ok(Judged::Fault(fault)) => {
+            graded.faulted += 1;
+            warn!("{trial}: not graded, the sandbox could not judge it: {fault}");
+        }
+        Ok(Judged::Unstarted) => graded.unstarted += 1,
+        Err(err) => {
+            graded.errors += 1;
+            error!("{trial}: not graded: {err:#}");
+        }
+    }
 }
 
 /// Judges the run committed in `dir` and commits its grade in place of a stale one.
