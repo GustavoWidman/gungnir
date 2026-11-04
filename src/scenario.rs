@@ -25,7 +25,7 @@ pub struct Scenario {
     brief: Brief,
     hidden: BTreeMap<CaseId, CaseFiles>,
     hidden_digest: Digest,
-    workloads: BTreeMap<WorkloadId, PathBuf>,
+    workloads: BTreeMap<WorkloadId, Workload>,
     workloads_digest: Digest,
     references: BTreeMap<LanguageId, Reference>,
 }
@@ -58,7 +58,9 @@ impl Scenario {
             .resolve()
             .wrap_err_with(|| format!("invalid {}", manifest.display()))?;
         let hidden_dir = dir.join("hidden");
-        let workloads_dir = dir.join("workloads");
+        let workloads_manifest = dir.join(WORKLOAD_DIGESTS);
+        let workloads_bytes = fs::read(&workloads_manifest)
+            .wrap_err_with(|| format!("reading {}", workloads_manifest.display()))?;
         Ok(Self {
             id,
             title,
@@ -67,8 +69,9 @@ impl Scenario {
             brief: Brief::load(dir)?,
             hidden: case_files(&hidden_dir)?,
             hidden_digest: Digest::of_tree(&hidden_dir, &GlobSet::empty())?,
-            workloads: workload_files(&workloads_dir)?,
-            workloads_digest: Digest::of_tree(&workloads_dir, &GlobSet::empty())?,
+            workloads: workloads(dir, &workloads_bytes)
+                .wrap_err_with(|| format!("invalid {}", workloads_manifest.display()))?,
+            workloads_digest: Digest::of_bytes(&workloads_bytes),
             references: references(&dir.join("reference"), languages)?,
         })
     }
@@ -103,11 +106,13 @@ impl Scenario {
         self.hidden_digest
     }
 
-    /// The timing inputs. Never empty.
-    pub fn workloads(&self) -> &BTreeMap<WorkloadId, PathBuf> {
+    /// The timing inputs named by `workloads.sha256`. Never empty. Their files are generated
+    /// on demand, so a workload's file may not exist yet.
+    pub fn workloads(&self) -> &BTreeMap<WorkloadId, Workload> {
         &self.workloads
     }
 
+    /// The digest of `workloads.sha256`, which pins every workload's bytes.
     pub fn workloads_digest(&self) -> Digest {
         self.workloads_digest
     }
@@ -177,6 +182,13 @@ impl Brief {
 pub struct Example {
     pub input: Vec<u8>,
     pub output: Vec<u8>,
+}
+
+/// A timing input: where its file lives once generated, and the SHA-256 its bytes must have.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Workload {
+    pub path: PathBuf,
+    pub digest: Digest,
 }
 
 /// A case on disk: the stdin file and the expected stdout file.
@@ -284,21 +296,33 @@ fn case_files(dir: &Path) -> Result<BTreeMap<CaseId, CaseFiles>> {
         .collect())
 }
 
-/// Reads `dir` as `NAME.in` files, rejecting any other entry.
-fn workload_files(dir: &Path) -> Result<BTreeMap<WorkloadId, PathBuf>> {
+/// The manifest, in `sha256sum` format, naming every workload of a scenario.
+const WORKLOAD_DIGESTS: &str = "workloads.sha256";
+
+/// Parses `sha256sum` lines (`<hex digest>  NAME.in`) into workloads under `scenario_dir/workloads`.
+fn workloads(scenario_dir: &Path, manifest: &[u8]) -> Result<BTreeMap<WorkloadId, Workload>> {
+    let text = std::str::from_utf8(manifest).wrap_err("not UTF-8")?;
     let mut workloads = BTreeMap::new();
-    for (path, stem, extension) in plain_files(dir)? {
-        ensure!(
-            extension == "in",
-            "{} is not a NAME.in file",
-            path.display()
-        );
-        let id = stem
+    for (number, line) in text.lines().enumerate().map(|(i, line)| (i + 1, line)) {
+        let (digest, name) = line
+            .split_once("  ")
+            .ok_or_else(|| eyre!("line {number} is not `<sha256>  NAME.in`: {line:?}"))?;
+        let digest: Digest = digest
             .parse()
-            .wrap_err_with(|| format!("{}", path.display()))?;
-        workloads.insert(id, path);
+            .wrap_err_with(|| format!("line {number}: {digest:?}"))?;
+        let stem = name
+            .strip_suffix(".in")
+            .ok_or_else(|| eyre!("line {number}: {name:?} is not a NAME.in file"))?;
+        let id: WorkloadId = stem
+            .parse()
+            .wrap_err_with(|| format!("line {number}: {name:?}"))?;
+        let path = scenario_dir.join("workloads").join(name);
+        ensure!(
+            workloads.insert(id, Workload { path, digest }).is_none(),
+            "line {number}: {name} is listed twice"
+        );
     }
-    ensure!(!workloads.is_empty(), "{} has no workloads", dir.display());
+    ensure!(!workloads.is_empty(), "lists no workloads");
     Ok(workloads)
 }
 
@@ -486,8 +510,10 @@ mod tests {
         let edge = &echo.hidden()[&id::<CaseId>("edge")];
         assert_eq!(fs::read(&edge.output).unwrap(), b"\n");
 
-        let workloads: Vec<&str> = echo.workloads().keys().map(WorkloadId::as_str).collect();
-        assert_eq!(workloads, ["large"]);
+        let large = &echo.workloads()[&id::<WorkloadId>("large")];
+        assert_eq!(echo.workloads().len(), 1);
+        assert!(large.path.ends_with("scenarios/echo/workloads/large.in"));
+        assert_eq!(large.digest, Digest::of_bytes(b"x\n"));
 
         let languages: Vec<&str> = echo.languages().map(LanguageId::as_str).collect();
         assert_eq!(languages, ["python", "rust"]);
@@ -574,7 +600,13 @@ mod tests {
 
     #[test]
     fn every_part_of_the_layout_is_required() {
-        for part in ["spec.md", "examples", "hidden", "workloads", "reference"] {
+        for part in [
+            "spec.md",
+            "examples",
+            "hidden",
+            "workloads.sha256",
+            "reference",
+        ] {
             rejects(
                 |root| {
                     let path = root.join("scenarios/echo").join(part);
@@ -587,6 +619,53 @@ mod tests {
                 &[part],
             );
         }
+    }
+
+    #[test]
+    fn workload_files_are_optional_but_their_digests_are_pinned() {
+        let root = fixture();
+        let before = echo(root.path());
+        fs::remove_dir_all(root.path().join("scenarios/echo/workloads")).unwrap();
+        assert_eq!(
+            echo(root.path()).workloads_digest(),
+            before.workloads_digest()
+        );
+
+        write(
+            root.path(),
+            "scenarios/echo/workloads.sha256",
+            format!("{}  large.in\n", Digest::of_bytes(b"y\n")),
+        );
+        assert_ne!(
+            echo(root.path()).workloads_digest(),
+            before.workloads_digest()
+        );
+    }
+
+    #[test]
+    fn workload_manifest_lines_are_validated() {
+        rejects(
+            |root| write(root, "scenarios/echo/workloads.sha256", "abc  large.in\n"),
+            &["workloads.sha256", "line 1", "\"abc\""],
+        );
+        rejects(
+            |root| {
+                let line = format!("{}  large.txt\n", Digest::of_bytes(b"x"));
+                write(root, "scenarios/echo/workloads.sha256", line)
+            },
+            &["line 1", "large.txt"],
+        );
+        rejects(
+            |root| {
+                let line = format!("{}  large.in\n", Digest::of_bytes(b"x"));
+                write(root, "scenarios/echo/workloads.sha256", line.repeat(2))
+            },
+            &["line 2", "listed twice"],
+        );
+        rejects(
+            |root| write(root, "scenarios/echo/workloads.sha256", ""),
+            &["lists no workloads"],
+        );
     }
 
     #[test]

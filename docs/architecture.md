@@ -25,6 +25,7 @@ scenarios/<id>/
   spec.md                     the language-neutral task
   examples/NAME.in NAME.out   visible to the agent
   hidden/NAME.in NAME.out     never mounted into a sandbox that runs agent code
+  workloads.sha256            the SHA-256 of every workload, in sha256sum format
   workloads/NAME.in           inputs for timing, written on demand by gen/ and never committed
   gen/                        the seeded generator for hidden cases and workloads
   reference/<language>/       a complete reference solution per supported language

@@ -155,6 +155,10 @@ pub fn scenario(root: &Path, id: &str, languages: &[&str]) {
         ("hidden/many.in", "a\nb\n"),
         ("hidden/many.out", "a\nb\n"),
         ("workloads/large.in", "x\n"),
+        (
+            "workloads.sha256",
+            "73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac  large.in\n",
+        ),
     ];
     for (path, contents) in files {
         write(root, &format!("{dir}/{path}"), contents);
