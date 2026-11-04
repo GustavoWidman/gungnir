@@ -4,7 +4,6 @@
 use crate::{
     experiment::Experiment,
     grade::{GradeInputs, GradeRecord},
-    id::AttemptNo,
     language::Language,
     run::{RunInputs, RunRecord, Task},
     scenario::Scenario,
@@ -73,36 +72,6 @@ impl Lifecycle {
             Stage::Ran { run } | Stage::Graded { run, .. } => Some(run),
         }
     }
-
-    /// What became of each attempt made for the trial in `dir`, in order.
-    pub fn attempts(&self, dir: &TrialDir) -> Vec<(AttemptNo, Fate)> {
-        let committed = self.run().map(RunRecord::attempt);
-        dir.attempts()
-            .into_iter()
-            .map(|attempt| {
-                let number = attempt.number();
-                let fate = if attempt.discarded().exists() {
-                    Fate::Discarded
-                } else if committed == Some(number) {
-                    Fate::Committed
-                } else {
-                    Fate::Interrupted
-                };
-                (number, fate)
-            })
-            .collect()
-    }
-}
-
-/// What became of one attempt.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Fate {
-    /// The trial's committed run.
-    Committed,
-    /// A rate limit ended it, so its tokens are overhead.
-    Discarded,
-    /// Neither committed nor discarded: interrupted, or still running.
-    Interrupted,
 }
 
 /// What each phase would use for one trial now.

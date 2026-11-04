@@ -6,7 +6,7 @@ use crate::{
     id::BackendId,
     id::{LanguageId, ScenarioId, WorkloadId},
     language::Language,
-    lifecycle::{self, Current, Fate, Lifecycle},
+    lifecycle::{self, Current, Lifecycle},
     measure::{self, Machine, MeasureInputs, MeasureRecord, Program, Settings, Spread, Summary},
     provenance::Session,
     report,
@@ -99,8 +99,7 @@ enum Command {
         #[arg(long, value_name = "N", default_value_t = default_jobs())]
         jobs: NonZeroUsize,
     },
-    /// Count each system's trials by stage, the stale ones, and the attempts discarded for a
-    /// rate limit or interrupted. An attempt running now counts as interrupted.
+    /// Count each system's trials by stage, and the stale ones.
     Status {
         /// The experiment file, such as experiments/smoke.toml.
         experiment: PathBuf,
@@ -688,7 +687,7 @@ impl Bench {
     }
 }
 
-/// One system's trials by stage, and its attempts by fate.
+/// One system's trials by stage.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct Counts {
     pending: usize,
@@ -697,8 +696,6 @@ struct Counts {
     failed: usize,
     /// Trials with a committed record made from other inputs than the current ones.
     stale: usize,
-    discarded: usize,
-    interrupted: usize,
 }
 
 impl Add for Counts {
@@ -711,13 +708,11 @@ impl Add for Counts {
             passed: self.passed + other.passed,
             failed: self.failed + other.failed,
             stale: self.stale + other.stale,
-            discarded: self.discarded + other.discarded,
-            interrupted: self.interrupted + other.interrupted,
         }
     }
 }
 
-/// Counts each system's trials and attempts, in the order the experiment lists the systems.
+/// Counts each system's trials, in the order the experiment lists the systems.
 fn status(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<(SystemId, Counts)>> {
     let mut systems: Vec<(SystemId, Counts)> = experiment
         .systems()
@@ -744,13 +739,6 @@ fn status(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<(Syste
             lifecycle::Stage::Graded { .. } => counts.failed += 1,
         }
         counts.stale += usize::from(lifecycle.stale.is_some());
-        for (_, fate) in lifecycle.attempts(&dir) {
-            match fate {
-                Fate::Discarded => counts.discarded += 1,
-                Fate::Interrupted => counts.interrupted += 1,
-                Fate::Committed => {}
-            }
-        }
     }
     Ok(systems)
 }
@@ -760,16 +748,7 @@ struct StatusTable<'a>(&'a [(SystemId, Counts)]);
 
 impl fmt::Display for StatusTable<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let header = [
-            "system",
-            "pending",
-            "ran",
-            "pass",
-            "fail",
-            "stale",
-            "discarded",
-            "interrupted",
-        ];
+        let header = ["system", "pending", "ran", "pass", "fail", "stale"];
         let total = self
             .0
             .iter()
@@ -783,20 +762,9 @@ impl fmt::Display for StatusTable<'_> {
                 passed,
                 failed,
                 stale,
-                discarded,
-                interrupted,
             } = counts;
             let n = |count: usize| count.to_string();
-            rows.push([
-                system,
-                n(pending),
-                n(ran),
-                n(passed),
-                n(failed),
-                n(stale),
-                n(discarded),
-                n(interrupted),
-            ]);
+            rows.push([system, n(pending), n(ran), n(passed), n(failed), n(stale)]);
         }
         write_rows(f, &rows)
     }
@@ -1192,7 +1160,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn status_counts_trials_by_stage_and_attempts_by_fate() {
+    async fn status_counts_trials_by_stage_and_never_attempts() {
         use crate::{id::AttemptNo, run::fixture};
         let repo = fixture::Repo::new();
         let experiment = repo.experiment();
@@ -1241,15 +1209,18 @@ mod tests {
                     luna.system.id().to_string(),
                     Counts {
                         pending: 1,
-                        discarded: 1,
-                        interrupted: 1,
                         ..Counts::default()
                     }
                 ),
             ]
         );
         let table = StatusTable(&rows).to_string();
+        let header: Vec<&str> = table.lines().next().unwrap().split_whitespace().collect();
+        assert_eq!(
+            header,
+            ["system", "pending", "ran", "pass", "fail", "stale"]
+        );
         let total: Vec<&str> = table.lines().last().unwrap().split_whitespace().collect();
-        assert_eq!(total, ["total", "1", "0", "1", "0", "1", "1", "1"]);
+        assert_eq!(total, ["total", "1", "0", "1", "0", "1"]);
     }
 }
