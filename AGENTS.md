@@ -27,7 +27,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 
 - `src/main.rs` parses the command line and calls `Cli::run`.
 - `src/lib.rs` declares the modules in sorted order.
-- `src/cli.rs` defines the clap commands. `plan` loads an experiment and prints its trial matrix. `check` grades every reference solution and regenerates missing workloads. `run` runs an experiment's pending trials with progress logged to stderr through `tracing`, and fails while any trial is still pending.
+- `src/cli.rs` defines the clap commands. `plan` loads an experiment and prints its trial matrix. `check` grades every reference solution and regenerates missing workloads. `run` runs an experiment's pending trials with progress logged to stderr through `tracing`, and fails while any trial is still pending. `grade` grades the committed runs that lack a current grade.
 - `src/id.rs` holds the identifiers every module shares. The `slug!` macro makes the validated newtypes `LanguageId`, `ScenarioId`, `ModelId`, `BackendId`, `HarnessName`, `HarnessVersion`, `CaseId` and `WorkloadId`. `Rep`, `AttemptNo` and the rank-ordered `Effort` enum live there too.
 - `src/catalog.rs` loads `gungnir.toml` into `Catalog`, `Backend`, `Credential`, `Model` and dated price tiers. `Catalog::system` is the only constructor of `System`, and `System::id` derives the `SystemId`.
 - `src/language.rs` loads `languages/` into `Language` profiles. `Language::prompt` renders the agent's prompt from a `Brief`.
@@ -43,13 +43,13 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/sandbox/` defines `Spec`, `Network`, `Finished`, `Fault` and the object-safe `Backend` trait, with the bubblewrap backend. It is the only place untrusted code is spawned.
 - `src/egress/` is the host-side CONNECT proxy that tunnels only allowlisted hosts on port 443 and logs every connection.
 - `src/harness/` holds the `Driver` registry (`DRIVERS`), the `Harness` handle, the Claude Code and Codex drivers, the harness-neutral `Event` and `TokenUsage`, and the pure `Fold` into an `Ending`. Captured transcripts for its tests live in `tests/fixtures/harness/`.
-- `src/grade/` judges a workspace: an offline build, every hidden case in its own sandbox compared on the host, lizard complexity, and the `GradeRecord` with its `GradeInputs`.
+- `src/grade/` judges a workspace: an offline build, every hidden case in its own sandbox compared on the host, lizard complexity, and the `GradeRecord` with its `GradeInputs`. `phase.rs` is the grade phase, `grade_runs`, which commits a grade for every committed run without a current one and never commits an environment fault.
 - `src/workload.rs` regenerates a scenario's workloads in a sandbox and verifies them against `workloads.sha256`.
 - `src/run/` is the run phase. `Task` is one trial as an agent sees it, with a `Brief` and never a `Scenario`. `records.rs` holds `RunInputs`, `RunRecord`, `DiscardedAttempt` and the stored form of the agent's outcome. `workspace.rs` scaffolds the agent's starting workspace and keeps it, without build output or secrets, for the run directory. `attempt.rs` makes one attempt: an isolated home, an egress proxy, the sandbox, the transcript streamed, redacted and folded live, and then the run committed or the attempt discarded. `schedule.rs` runs pending trials in one lane per backend behind the pure `Gate` in `gate.rs`, and `reparse.rs` re-derives committed outcomes for a newer parser. `run::run` is the phase: pins, session, references, staleness, reparsing, then the lanes. Tests play agents through the `Agent` backend in `fixture.rs`.
 - `src/lifecycle.rs` derives a trial's `Stage` and its first stale phase from the committed records, comparing each record's inputs with `Current`.
 - `src/testing.rs` holds the fixture writers the unit tests share. It compiles only for tests.
 
-The contract also specifies parts that are not in the crate yet: the run, grade and measure phases over trials, and the report. Give each its own module and update this map when it lands.
+The contract also specifies parts that are not in the crate yet: the measure phase over trials, and the report. Give each its own module and update this map when it lands.
 
 ## How `gungnir plan` loads an experiment
 

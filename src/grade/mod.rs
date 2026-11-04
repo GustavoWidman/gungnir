@@ -6,6 +6,7 @@ mod complexity;
 #[cfg(test)]
 pub(crate) mod fake;
 mod judgement;
+mod phase;
 mod record;
 #[cfg(test)]
 mod tests;
@@ -16,6 +17,7 @@ pub(crate) use judgement::duration;
 pub use judgement::{
     Abnormal, Build, BuildOutcome, Case, Crash, Failure, Judgement, Outcome, Verdict,
 };
+pub use phase::{Graded, grade_runs};
 pub use record::{GradeInputs, GradeRecord};
 
 use crate::{

@@ -107,6 +107,14 @@ impl<'a> Current<'a> {
         &self.run
     }
 
+    pub fn language(&self) -> &'a Language {
+        self.language
+    }
+
+    pub fn scenario(&self) -> &'a Scenario {
+        self.scenario
+    }
+
     /// The inputs of grading the committed workspace `workspace` now.
     pub fn grade(&self, workspace: &Path) -> Result<GradeInputs> {
         GradeInputs::new(self.language, self.toolchains, self.scenario, workspace)
