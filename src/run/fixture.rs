@@ -284,20 +284,14 @@ pub fn toolchains(dir: &Path) -> Toolchains {
     fake::toolchains(dir, &["python", "rust"])
 }
 
-/// Commits a first attempt of `trial`, made from the current inputs, whose agent completed
-/// and left `files`.
-pub fn commit_run(repo: &Repo, trial: &TrialKey, files: &[(&str, &str)]) {
+/// The record of a first attempt of `trial` in the fixture experiment, made from the current
+/// inputs, whose agent completed one turn and left a workspace with digest `snapshot`.
+pub fn record(repo: &Repo, trial: &TrialKey, snapshot: Digest) -> RunRecord {
     let experiment = repo.experiment();
     let task = Task::of(&experiment, trial).unwrap();
-    let inputs = RunInputs::current(&task, &repo.toolchains, experiment.budget()).unwrap();
-    let partial = PartialDir::begin(&experiment.results().trial(trial).phase(Phase::Run)).unwrap();
-    let workspace = partial.path().join(FINAL);
-    for (path, contents) in files {
-        write(&workspace, path, contents);
-    }
-    let record = RunRecord {
+    RunRecord {
         session: session(),
-        inputs,
+        inputs: RunInputs::current(&task, &repo.toolchains, experiment.budget()).unwrap(),
         attempt: AttemptNo::FIRST,
         started: Utc::now(),
         process: Process {
@@ -317,9 +311,22 @@ pub fn commit_run(repo: &Repo, trial: &TrialKey, files: &[(&str, &str)]) {
             quota: BTreeMap::new(),
             unrecognised: BTreeMap::new(),
         },
-        snapshot: Digest::of_tree(&workspace, task.language.ignore()).unwrap(),
-    };
-    partial.commit(&record).unwrap();
+        snapshot,
+    }
+}
+
+/// Commits a first attempt of `trial`, made from the current inputs, whose agent completed
+/// and left `files`.
+pub fn commit_run(repo: &Repo, trial: &TrialKey, files: &[(&str, &str)]) {
+    let experiment = repo.experiment();
+    let partial = PartialDir::begin(&experiment.results().trial(trial).phase(Phase::Run)).unwrap();
+    let workspace = partial.path().join(FINAL);
+    for (path, contents) in files {
+        write(&workspace, path, contents);
+    }
+    let ignore = experiment.languages()[0].ignore();
+    let snapshot = Digest::of_tree(&workspace, ignore).unwrap();
+    partial.commit(&record(repo, trial, snapshot)).unwrap();
 }
 
 /// A sandbox whose every build step succeeds and whose program echoes each case.

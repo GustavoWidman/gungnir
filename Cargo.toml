@@ -21,6 +21,7 @@ tempfile = "3.27.0"
 tokio = { version = "1.54.1", features = ["full"] }
 tokio-util = { version = "0.7.20", features = ["rt"] }
 toml = "1.1.8"
+tracing = "0.1.44"
 
 [dev-dependencies]
 tokio = { version = "1.54.1", features = ["test-util"] }

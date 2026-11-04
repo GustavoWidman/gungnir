@@ -3,7 +3,9 @@
 mod attempt;
 #[cfg(test)]
 pub(crate) mod fixture;
+mod gate;
 mod records;
+mod schedule;
 mod workspace;
 
 pub use attempt::{Attempted, Rig};
@@ -11,6 +13,7 @@ pub use records::{
     AgentExit, Cut, DiscardedAttempt, Outcome, Process, ProcessExit, Quota, RunInputs, RunRecord,
     Sample, Tokens,
 };
+pub use schedule::{Tally, schedule};
 
 use crate::{
     catalog::Backend, experiment::Experiment, language::Language, scenario::Brief, trial::TrialKey,
