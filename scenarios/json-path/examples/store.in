@@ -1,0 +1,14 @@
+8
+$.store.book[*].title
+$..price
+$.store.book[-1]
+$.store.book[:2].author
+$["store"]["bicycle"]
+$.store.book[5]
+$.store.book[0]..*
+$.store..[0]
+{"store": {"book": [{"title": "Sayings", "price": 8, "author": "Rees"},
+                    {"title": "Moby Dick", "price": 9, "author": "Melville"},
+                    {"title": "Lord", "price": -0, "author": "Tolkien"}],
+           "bicycle": {"color": "red", "price": 19}},
+ "price": 1}

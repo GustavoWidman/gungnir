@@ -1,0 +1,52 @@
+0
+3
+0
+{"id":null,"\ud83d\ude00":{"":{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}},"0":"/with space\ud800\u0080","a b":"\u0800","\"q\"":true,"x":"\u0800\u2028"}
+255
+10
+null
+{"":{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}}
+{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}
+-1
+-9223372036854775808
+"\u07ffa/b\u2028\udbff\udfff\udfff"
+"/with space\ud800\u0080"
+"\u0800"
+true
+"\u0800\u2028"
+1
+{"k1":[0,{"id":null,"\ud83d\ude00":{"":{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}},"0":"/with space\ud800\u0080","a b":"\u0800","\"q\"":true,"x":"\u0800\u2028"},255]}
+1
+[0,{"id":null,"\ud83d\ude00":{"":{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}},"0":"/with space\ud800\u0080","a b":"\u0800","\"q\"":true,"x":"\u0800\u2028"},255]
+0
+0
+0
+0
+0
+4
+{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}
+-1
+-9223372036854775808
+"\u07ffa/b\u2028\udbff\udfff\udfff"
+3
+0
+{"id":null,"\ud83d\ude00":{"":{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}},"0":"/with space\ud800\u0080","a b":"\u0800","\"q\"":true,"x":"\u0800\u2028"}
+255
+0
+1
+[0,{"id":null,"\ud83d\ude00":{"":{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}},"0":"/with space\ud800\u0080","a b":"\u0800","\"q\"":true,"x":"\u0800\u2028"},255]
+1
+0
+1
+[0,{"id":null,"\ud83d\ude00":{"":{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}},"0":"/with space\ud800\u0080","a b":"\u0800","\"q\"":true,"x":"\u0800\u2028"},255]
+0
+1
+{"k1":[0,{"id":null,"\ud83d\ude00":{"":{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}},"0":"/with space\ud800\u0080","a b":"\u0800","\"q\"":true,"x":"\u0800\u2028"},255]}
+invalid query
+0
+1
+[0,{"id":null,"\ud83d\ude00":{"":{"null":-1,"b":-9223372036854775808,"x":"\u07ffa/b\u2028\udbff\udfff\udfff"}},"0":"/with space\ud800\u0080","a b":"\u0800","\"q\"":true,"x":"\u0800\u2028"},255]
+0
+0
+0
+0

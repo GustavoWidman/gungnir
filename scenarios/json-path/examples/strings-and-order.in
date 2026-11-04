@@ -1,0 +1,10 @@
+6
+$..a
+$..a..a
+$.k
+$["caf\u00e9"]
+$.s
+$.t
+{"x": {"a": 1}, "a": {"a": {"a": 2}},
+ "k": "first", "k": "second",
+ "café": [], "s": "tab\there \/ \u00E9\ud83d\ude00\udc00", "t": "\u007f"}

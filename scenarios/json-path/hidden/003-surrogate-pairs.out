@@ -1,0 +1,15 @@
+2
+"raw key"
+"escaped key"
+2
+"raw key"
+"escaped key"
+1
+"\ud834\udd1e"
+4
+"raw key"
+"escaped key"
+"\ud834\udd1e"
+["\ud834\udd1e","\udbff\udfff"]
+1
+{"\ud83d\ude00":"raw key","\ud83d\ude00":"escaped key","\ud834\udd1e":"\ud834\udd1e","x":["\ud834\udd1e","\udbff\udfff"]}

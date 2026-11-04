@@ -1,0 +1,102 @@
+1
+{"x":["\u4e2d\u6587a/b\u0800line\nbreak",0],"true":-1,"name":[{"0":{"beta":"\ud800","alpha":false,"x":["\udfff",false,"/","\u0000\u07ffwith space\ud83d\ude00a/b",false,"\u03a9"]},"_t":{"*":-66453,"a b":null,"a.b":[false,"\t",65536],"name":"\uffff","null":1,"alpha":"\u03a9","b":"\udbff\udfff"},"alpha":"\udbff\udfff","\ud800":3296660153574137086,"_t":"\u2028","delta":"/\ud834\udd1ewith spaceline\nbreak","items":0,"id":"\u007f\u0000","x":true,"-":"plain"},"\u2028","\u03a9",null]}
+10
+"\ud800"
+false
+["\udfff",false,"/","\u0000\u07ffwith space\ud83d\ude00a/b",false,"\u03a9"]
+-66453
+null
+[false,"\t",65536]
+"\uffff"
+1
+"\u03a9"
+"\udbff\udfff"
+1
+{"x":["\u4e2d\u6587a/b\u0800line\nbreak",0],"true":-1,"name":[{"0":{"beta":"\ud800","alpha":false,"x":["\udfff",false,"/","\u0000\u07ffwith space\ud83d\ude00a/b",false,"\u03a9"]},"_t":{"*":-66453,"a b":null,"a.b":[false,"\t",65536],"name":"\uffff","null":1,"alpha":"\u03a9","b":"\udbff\udfff"},"alpha":"\udbff\udfff","\ud800":3296660153574137086,"_t":"\u2028","delta":"/\ud834\udd1ewith spaceline\nbreak","items":0,"id":"\u007f\u0000","x":true,"-":"plain"},"\u2028","\u03a9",null]}
+1
+["\u4e2d\u6587a/b\u0800line\nbreak",0]
+29
+{"beta":"\ud800","alpha":false,"x":["\udfff",false,"/","\u0000\u07ffwith space\ud83d\ude00a/b",false,"\u03a9"]}
+"\ud800"
+false
+["\udfff",false,"/","\u0000\u07ffwith space\ud83d\ude00a/b",false,"\u03a9"]
+"\udfff"
+false
+"/"
+"\u0000\u07ffwith space\ud83d\ude00a/b"
+false
+"\u03a9"
+{"*":-66453,"a b":null,"a.b":[false,"\t",65536],"name":"\uffff","null":1,"alpha":"\u03a9","b":"\udbff\udfff"}
+-66453
+null
+[false,"\t",65536]
+false
+"\t"
+65536
+"\uffff"
+1
+"\u03a9"
+"\udbff\udfff"
+"\udbff\udfff"
+3296660153574137086
+"\u2028"
+"/\ud834\udd1ewith spaceline\nbreak"
+0
+"\u007f\u0000"
+true
+"plain"
+0
+0
+invalid query
+0
+0
+9
+"\udfff"
+false
+"/"
+"\u0000\u07ffwith space\ud83d\ude00a/b"
+false
+"\u03a9"
+false
+"\t"
+65536
+0
+1
+{"x":["\u4e2d\u6587a/b\u0800line\nbreak",0],"true":-1,"name":[{"0":{"beta":"\ud800","alpha":false,"x":["\udfff",false,"/","\u0000\u07ffwith space\ud83d\ude00a/b",false,"\u03a9"]},"_t":{"*":-66453,"a b":null,"a.b":[false,"\t",65536],"name":"\uffff","null":1,"alpha":"\u03a9","b":"\udbff\udfff"},"alpha":"\udbff\udfff","\ud800":3296660153574137086,"_t":"\u2028","delta":"/\ud834\udd1ewith spaceline\nbreak","items":0,"id":"\u007f\u0000","x":true,"-":"plain"},"\u2028","\u03a9",null]}
+1
+-1
+1
+{"x":["\u4e2d\u6587a/b\u0800line\nbreak",0],"true":-1,"name":[{"0":{"beta":"\ud800","alpha":false,"x":["\udfff",false,"/","\u0000\u07ffwith space\ud83d\ude00a/b",false,"\u03a9"]},"_t":{"*":-66453,"a b":null,"a.b":[false,"\t",65536],"name":"\uffff","null":1,"alpha":"\u03a9","b":"\udbff\udfff"},"alpha":"\udbff\udfff","\ud800":3296660153574137086,"_t":"\u2028","delta":"/\ud834\udd1ewith spaceline\nbreak","items":0,"id":"\u007f\u0000","x":true,"-":"plain"},"\u2028","\u03a9",null]}
+0
+1
+"\u4e2d\u6587a/b\u0800line\nbreak"
+0
+19
+"\ud800"
+false
+["\udfff",false,"/","\u0000\u07ffwith space\ud83d\ude00a/b",false,"\u03a9"]
+"\udfff"
+false
+"/"
+"\u0000\u07ffwith space\ud83d\ude00a/b"
+false
+"\u03a9"
+-66453
+null
+[false,"\t",65536]
+false
+"\t"
+65536
+"\uffff"
+1
+"\u03a9"
+"\udbff\udfff"
+0
+1
+{"x":["\u4e2d\u6587a/b\u0800line\nbreak",0],"true":-1,"name":[{"0":{"beta":"\ud800","alpha":false,"x":["\udfff",false,"/","\u0000\u07ffwith space\ud83d\ude00a/b",false,"\u03a9"]},"_t":{"*":-66453,"a b":null,"a.b":[false,"\t",65536],"name":"\uffff","null":1,"alpha":"\u03a9","b":"\udbff\udfff"},"alpha":"\udbff\udfff","\ud800":3296660153574137086,"_t":"\u2028","delta":"/\ud834\udd1ewith spaceline\nbreak","items":0,"id":"\u007f\u0000","x":true,"-":"plain"},"\u2028","\u03a9",null]}
+0
+1
+{"x":["\u4e2d\u6587a/b\u0800line\nbreak",0],"true":-1,"name":[{"0":{"beta":"\ud800","alpha":false,"x":["\udfff",false,"/","\u0000\u07ffwith space\ud83d\ude00a/b",false,"\u03a9"]},"_t":{"*":-66453,"a b":null,"a.b":[false,"\t",65536],"name":"\uffff","null":1,"alpha":"\u03a9","b":"\udbff\udfff"},"alpha":"\udbff\udfff","\ud800":3296660153574137086,"_t":"\u2028","delta":"/\ud834\udd1ewith spaceline\nbreak","items":0,"id":"\u007f\u0000","x":true,"-":"plain"},"\u2028","\u03a9",null]}
+1
+null
+invalid query

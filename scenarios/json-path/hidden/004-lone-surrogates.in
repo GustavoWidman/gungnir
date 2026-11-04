@@ -1,0 +1,9 @@
+7
+$["\ud800"]
+$["\udc00"]
+$["\ud800\ud800"]
+$["\udc00\ud800"]
+$.*
+$["x\udfff"]
+$["\ud800"][0]
+{"\ud800": ["high"], "\udc00": "low", "\ud800\ud800": "two highs", "\udc00\ud800": "low then high", "x\udfff": "after x", "e": "\ud800x\udbff", "f": "\ud800\u0041", "g": "end\ud83d"}

@@ -1,0 +1,8 @@
+6
+$..a
+$..a.a
+$..*
+$.c..a
+$..a..a
+$..*..a
+{"b": {"a": "deep first"}, "a": "root member", "c": [{"a": {"a": "nested"}}, {"x": 1}]}

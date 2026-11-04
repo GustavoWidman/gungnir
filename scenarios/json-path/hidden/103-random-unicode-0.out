@@ -1,0 +1,141 @@
+invalid query
+0
+0
+0
+0
+0
+1
+[{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true},{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}]
+0
+0
+2
+[0,847982,false,{"b":"\u4e2d\u6587"},{},1]
+"\ud83d\ude00"
+0
+invalid query
+0
+0
+1
+{"delta":"a/b","null":[{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true},{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}],"_t":{"null":-1,"\"q\"":{"\ud83d\ude00":"\udfff\ud83d\ude00\ud83d\ude00plain","name":[0,847982,false,{"b":"\u4e2d\u6587"},{},1],"0":{"a":{"-":"with space\u0080/\u4e2d\u6587","[0]":true,"name":"\ud83d\ude00","alpha":42,"tab\t":"plain\u00e9\t","y":7,"a":"\udbff\udfff\uffff","\u007f":"\\","y":true,"alpha":"\ud83d\ude00"}}},"\u00e9":{"$":-1,"tab\t":{"data":false,"\"q\"":"\"line\nbreak\u0800\uffff"},"":"plain\uffff","\ud83d\ude00":-9223372036854775808},"alpha":"/","a.b":true,"beta":0}}
+0
+1
+true
+0
+0
+0
+0
+8
+{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true}
+{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}
+-1
+{"\ud83d\ude00":"\udfff\ud83d\ude00\ud83d\ude00plain","name":[0,847982,false,{"b":"\u4e2d\u6587"},{},1],"0":{"a":{"-":"with space\u0080/\u4e2d\u6587","[0]":true,"name":"\ud83d\ude00","alpha":42,"tab\t":"plain\u00e9\t","y":7,"a":"\udbff\udfff\uffff","\u007f":"\\","y":true,"alpha":"\ud83d\ude00"}}}
+{"$":-1,"tab\t":{"data":false,"\"q\"":"\"line\nbreak\u0800\uffff"},"":"plain\uffff","\ud83d\ude00":-9223372036854775808}
+"/"
+true
+0
+16
+["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"]
+{}
+["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0]
+["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"]
+{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"}
+["a/b\u4e2d\u6587\"",false,"a/b"]
+[]
+true
+false
+{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}
+"\udfff"
+"\udfff"
+"/"
+null
+null
+false
+0
+0
+0
+0
+1
+{"delta":"a/b","null":[{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true},{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}],"_t":{"null":-1,"\"q\"":{"\ud83d\ude00":"\udfff\ud83d\ude00\ud83d\ude00plain","name":[0,847982,false,{"b":"\u4e2d\u6587"},{},1],"0":{"a":{"-":"with space\u0080/\u4e2d\u6587","[0]":true,"name":"\ud83d\ude00","alpha":42,"tab\t":"plain\u00e9\t","y":7,"a":"\udbff\udfff\uffff","\u007f":"\\","y":true,"alpha":"\ud83d\ude00"}}},"\u00e9":{"$":-1,"tab\t":{"data":false,"\"q\"":"\"line\nbreak\u0800\uffff"},"":"plain\uffff","\ud83d\ude00":-9223372036854775808},"alpha":"/","a.b":true,"beta":0}}
+invalid query
+2
+{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true}
+{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}
+1
+{"null":-1,"\"q\"":{"\ud83d\ude00":"\udfff\ud83d\ude00\ud83d\ude00plain","name":[0,847982,false,{"b":"\u4e2d\u6587"},{},1],"0":{"a":{"-":"with space\u0080/\u4e2d\u6587","[0]":true,"name":"\ud83d\ude00","alpha":42,"tab\t":"plain\u00e9\t","y":7,"a":"\udbff\udfff\uffff","\u007f":"\\","y":true,"alpha":"\ud83d\ude00"}}},"\u00e9":{"$":-1,"tab\t":{"data":false,"\"q\"":"\"line\nbreak\u0800\uffff"},"":"plain\uffff","\ud83d\ude00":-9223372036854775808},"alpha":"/","a.b":true,"beta":0}
+1
+{"delta":"a/b","null":[{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true},{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}],"_t":{"null":-1,"\"q\"":{"\ud83d\ude00":"\udfff\ud83d\ude00\ud83d\ude00plain","name":[0,847982,false,{"b":"\u4e2d\u6587"},{},1],"0":{"a":{"-":"with space\u0080/\u4e2d\u6587","[0]":true,"name":"\ud83d\ude00","alpha":42,"tab\t":"plain\u00e9\t","y":7,"a":"\udbff\udfff\uffff","\u007f":"\\","y":true,"alpha":"\ud83d\ude00"}}},"\u00e9":{"$":-1,"tab\t":{"data":false,"\"q\"":"\"line\nbreak\u0800\uffff"},"":"plain\uffff","\ud83d\ude00":-9223372036854775808},"alpha":"/","a.b":true,"beta":0}}
+1
+{"delta":"a/b","null":[{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true},{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}],"_t":{"null":-1,"\"q\"":{"\ud83d\ude00":"\udfff\ud83d\ude00\ud83d\ude00plain","name":[0,847982,false,{"b":"\u4e2d\u6587"},{},1],"0":{"a":{"-":"with space\u0080/\u4e2d\u6587","[0]":true,"name":"\ud83d\ude00","alpha":42,"tab\t":"plain\u00e9\t","y":7,"a":"\udbff\udfff\uffff","\u007f":"\\","y":true,"alpha":"\ud83d\ude00"}}},"\u00e9":{"$":-1,"tab\t":{"data":false,"\"q\"":"\"line\nbreak\u0800\uffff"},"":"plain\uffff","\ud83d\ude00":-9223372036854775808},"alpha":"/","a.b":true,"beta":0}}
+3
+"\udfff"
+"with space\u4e2d\u6587\uffff/\u07ff"
+0
+1
+[{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true},{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}]
+6
+-1
+{"\ud83d\ude00":"\udfff\ud83d\ude00\ud83d\ude00plain","name":[0,847982,false,{"b":"\u4e2d\u6587"},{},1],"0":{"a":{"-":"with space\u0080/\u4e2d\u6587","[0]":true,"name":"\ud83d\ude00","alpha":42,"tab\t":"plain\u00e9\t","y":7,"a":"\udbff\udfff\uffff","\u007f":"\\","y":true,"alpha":"\ud83d\ude00"}}}
+{"$":-1,"tab\t":{"data":false,"\"q\"":"\"line\nbreak\u0800\uffff"},"":"plain\uffff","\ud83d\ude00":-9223372036854775808}
+"/"
+true
+0
+0
+0
+0
+0
+1
+{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}
+0
+0
+0
+0
+1
+"a/b"
+2
+"\ud83d\ude00"
+{"null":-1,"\"q\"":{"\ud83d\ude00":"\udfff\ud83d\ude00\ud83d\ude00plain","name":[0,847982,false,{"b":"\u4e2d\u6587"},{},1],"0":{"a":{"-":"with space\u0080/\u4e2d\u6587","[0]":true,"name":"\ud83d\ude00","alpha":42,"tab\t":"plain\u00e9\t","y":7,"a":"\udbff\udfff\uffff","\u007f":"\\","y":true,"alpha":"\ud83d\ude00"}}},"\u00e9":{"$":-1,"tab\t":{"data":false,"\"q\"":"\"line\nbreak\u0800\uffff"},"":"plain\uffff","\ud83d\ude00":-9223372036854775808},"alpha":"/","a.b":true,"beta":0}
+0
+2
+{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true}
+{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}
+0
+invalid query
+0
+0
+2
+{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true}
+{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}
+invalid query
+1
+"a/b"
+0
+3
+"a/b"
+[{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true},{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}]
+{"null":-1,"\"q\"":{"\ud83d\ude00":"\udfff\ud83d\ude00\ud83d\ude00plain","name":[0,847982,false,{"b":"\u4e2d\u6587"},{},1],"0":{"a":{"-":"with space\u0080/\u4e2d\u6587","[0]":true,"name":"\ud83d\ude00","alpha":42,"tab\t":"plain\u00e9\t","y":7,"a":"\udbff\udfff\uffff","\u007f":"\\","y":true,"alpha":"\ud83d\ude00"}}},"\u00e9":{"$":-1,"tab\t":{"data":false,"\"q\"":"\"line\nbreak\u0800\uffff"},"":"plain\uffff","\ud83d\ude00":-9223372036854775808},"alpha":"/","a.b":true,"beta":0}
+0
+invalid query
+1
+[{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true},{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}]
+0
+0
+0
+0
+0
+1
+{"delta":"a/b","null":[{"$":0,"b":"\\","[0]":[{"a b":"\t"},[],-1,255],"true":[-4319473395969788180,{"\ud800":"\udfff\u4e2d\u6587/\u0080","\ud83d\ude00":0,"\u00e9":"\udbff\udfff","true":42,"id":"\u0080","alpha":"x\ud83d"},-9223372036854775808],"-":1,"y":"\u0800plain","*":[{"delta":"with space","-":-69847,"[0]":"line\nbreak","gamma":9223372036854775807},"\udc00\ud800\udbff\udfff\""],"\ud83d\ude00":[65536],"\ud83d\ude00":false,"id":true},{"\\":0,"a.b":[["\u00df",9223372036854775807,"\ud83d\ude00\ud83d\ude00",null,"\u2028","\t","/",true,"\u0000","\udfff\ud834\udd1e\udc00\ud800\u0080"],{},["\udfff","with space\u4e2d\u6587\uffff/\u07ff",0],["\udbff\udfff",65536,"\ud83d\ude00\ud83d\ude00"],{"delta":"a/b\u07ff\u4e2d\u6587x\ud83d\u4e2d\u6587"},["a/b\u4e2d\u6587\"",false,"a/b"],[],true,false,{"\u00e9":"\u0080","\u007f":196156,"items":false,"delta":false,"_t":"\ud83d\ude00","data":"\udbff\udfff"}],"beta":707433,"y":true,"\u007f":255,"beta":{"$":{"a":"\u0800","-":"\t","data":"with space\udfff\u4e2d\u6587\ud83d\ude00","a":"\t"},"a.b":{"[0]":"\udfff","$":"\udfff","items":"/","0":null,"data":null,"gamma":false},"null":"plain","\ud83d\ude00":"/","null":null,"items":["plain",-1,"\u00df","\ud834\udd1e","\udbff\udfff\udbff\t","\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00","\ud800\u00e9\udc00\ud800","\udc00\ud800line\nbreak\ud83d\ude00\u03a9",false,"\ud834\udd1e/\u007f\udbff\udfff"]}}],"_t":{"null":-1,"\"q\"":{"\ud83d\ude00":"\udfff\ud83d\ude00\ud83d\ude00plain","name":[0,847982,false,{"b":"\u4e2d\u6587"},{},1],"0":{"a":{"-":"with space\u0080/\u4e2d\u6587","[0]":true,"name":"\ud83d\ude00","alpha":42,"tab\t":"plain\u00e9\t","y":7,"a":"\udbff\udfff\uffff","\u007f":"\\","y":true,"alpha":"\ud83d\ude00"}}},"\u00e9":{"$":-1,"tab\t":{"data":false,"\"q\"":"\"line\nbreak\u0800\uffff"},"":"plain\uffff","\ud83d\ude00":-9223372036854775808},"alpha":"/","a.b":true,"beta":0}}
+0
+0
+0
+0
+4
+"\t"
+["a/b\u4e2d\u6587\"",false,"a/b"]
+"\ud83d\ude00\ud83d\ude00x\ud83d\ud800\udc00\"\ud83d\ude00\ud83d\ude00"
+1
+0
+0
+0
+0
+0
+0

@@ -1,0 +1,17 @@
+1
+0
+invalid query
+0
+0
+1
+255
+5
+"\u00e9\u4e2d\u6587"
+{"_t":"\ud834\udd1e\"\uffff\ud800"}
+true
+{"_t":"\u2028","alpha":"\udc00\ud800","true":"","\ud83d\ude00":"with space"}
+"with space"
+0
+0
+0
+0

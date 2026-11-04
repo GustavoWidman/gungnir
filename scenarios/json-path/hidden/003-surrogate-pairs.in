@@ -1,0 +1,7 @@
+5
+$["\ud83d\ude00"]
+$["\uD83D\uDE00"]
+$..["\ud834\udd1e"]
+$.*
+$
+{"😀": "raw key", "\ud83d\ude00": "escaped key", "\uD834\uDD1E": "\ud834\udd1e", "x": ["𝄞", "\udbff\udfff"]}
