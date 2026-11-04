@@ -288,8 +288,8 @@ impl Bench<'_> {
     async fn time(&self, side: Side, workload: &Path, export: &Path) -> Result<Timing> {
         let (program, settings) = (self.program(side), self.settings);
         let limits = Limits {
-            wall: RUN_TIMEOUT * (settings.warmup + settings.runs.get()),
-            memory: settings.memory + TIMER_MEMORY,
+            wall: RUN_TIMEOUT.saturating_mul(settings.warmup.saturating_add(settings.runs.get())),
+            memory: settings.memory.saturating_add(TIMER_MEMORY),
             tasks: TASKS,
             cpu: Some(settings.core),
         };
