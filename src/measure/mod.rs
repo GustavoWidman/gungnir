@@ -12,7 +12,7 @@ mod stats;
 mod tests;
 mod timing;
 
-pub use machine::{Load, Machine};
+pub use machine::{Identity, Load, Machine};
 pub use phase::{Measured, Quiet, Request, Selection, measure_trials};
 pub use profile::{Profiled, profile_trial};
 pub use record::{MeasureInputs, MeasureRecord};

@@ -5,7 +5,7 @@ use crate::{
     experiment::Experiment,
     grade::{GradeInputs, GradeRecord, Verdict},
     language::Language,
-    measure::{MeasureInputs, MeasureRecord, Protocol},
+    measure::{Identity, MeasureInputs, MeasureRecord, Protocol},
     run::{RunInputs, RunRecord, Task},
     scenario::Scenario,
     store::read_record,
@@ -78,7 +78,10 @@ impl Lifecycle {
                 stale,
             });
         };
-        if stale.is_none() && measure.inputs() != &current.measure(&workspace)? {
+        if stale.is_none()
+            && (measure.inputs() != &current.measure(&workspace)?
+                || !measure.machine().is(current.machine))
+        {
             stale = Some(Phase::Measure);
         }
         Ok(Self {
@@ -102,14 +105,16 @@ impl Lifecycle {
     }
 }
 
-/// What each phase would use for one trial now. A measurement is current only when made under
-/// [`Protocol::DEFAULT`], unless [`Current::with_protocol`] names another protocol.
+/// What each phase would use for one trial now. A measurement is current only when made on this
+/// machine and under [`Protocol::DEFAULT`], unless [`Current::with_protocol`] names another
+/// protocol.
 pub struct Current<'a> {
     run: RunInputs,
     language: &'a Language,
     scenario: &'a Scenario,
     toolchains: &'a Toolchains,
     protocol: Protocol,
+    machine: &'static Identity,
 }
 
 impl<'a> Current<'a> {
@@ -130,6 +135,7 @@ impl<'a> Current<'a> {
             scenario,
             toolchains,
             protocol: Protocol::DEFAULT,
+            machine: Identity::here()?,
         })
     }
 
@@ -243,8 +249,26 @@ mod tests {
     }
 
     /// Commits a measurement of `trial` that timed nothing, made from the inputs of measuring
-    /// it now under `protocol`.
+    /// it now under `protocol`, on this machine.
     fn commit_measure(repo: &Repo, trial: &TrialKey, protocol: Protocol) {
+        let here = Identity::here().unwrap();
+        commit_measure_on(
+            repo,
+            trial,
+            protocol,
+            here.cpu.as_deref(),
+            here.host.as_deref(),
+        );
+    }
+
+    /// The same, on the machine with the CPU model `cpu` and the host id `host`.
+    fn commit_measure_on(
+        repo: &Repo,
+        trial: &TrialKey,
+        protocol: Protocol,
+        cpu: Option<&str>,
+        host: Option<&str>,
+    ) {
         let experiment = repo.experiment();
         let current = Current::of(&experiment, trial, &repo.toolchains)
             .unwrap()
@@ -254,7 +278,7 @@ mod tests {
             "session": fixture::session(),
             "inputs": current.measure(&dir.final_workspace()).unwrap(),
             "machine": {
-                "cpu": null, "cpus": 1, "core": 0, "governor": null, "kernel": "7.3.0",
+                "cpu": cpu, "host": host, "cpus": 1, "core": 0, "governor": null, "kernel": "7.3.0",
                 "perf_event_paranoid": 1, "load": {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0]},
             },
             "workloads": {},
@@ -296,5 +320,34 @@ mod tests {
         fixture::commit_grade(&repo, &trial).await;
         let failed = read(&repo, "opus");
         assert_eq!((stage(&failed), failed.stale), ("graded", None));
+    }
+
+    #[tokio::test]
+    async fn a_measurement_made_on_another_machine_is_stale() {
+        let repo = Repo::new();
+        let experiment = repo.experiment();
+        let trial = fixture::trial(&experiment, "opus");
+        fixture::commit_run(&repo, &trial, &[("main.py", "print(input())\n")]);
+        fixture::commit_grade(&repo, &trial).await;
+        let dir = experiment.results().trial(&trial);
+        let here = Identity::here().unwrap();
+        let (cpu, host) = (here.cpu.as_deref(), here.host.as_deref());
+        let measured_on = |cpu: Option<&str>, host: Option<&str>| {
+            fs::remove_dir_all(dir.phase(Phase::Measure)).ok();
+            commit_measure_on(&repo, &trial, Protocol::DEFAULT, cpu, host);
+            let lifecycle = read(&repo, "opus");
+            (stage(&lifecycle), lifecycle.stale)
+        };
+
+        assert_eq!(measured_on(cpu, host), ("measured", None));
+        assert_eq!(
+            measured_on(Some("Another CPU"), host),
+            ("measured", Some(Phase::Measure))
+        );
+        assert_eq!(
+            measured_on(cpu, Some("another-host")),
+            ("measured", Some(Phase::Measure))
+        );
+        assert_eq!(measured_on(cpu, None), ("measured", None));
     }
 }

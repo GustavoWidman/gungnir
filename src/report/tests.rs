@@ -1,7 +1,10 @@
 use super::*;
 use crate::{
     id::AttemptNo,
-    measure::{self, Block, Comparison, Load, Machine, MeasureRecord, PeakMemory, Protocol, Timed},
+    measure::{
+        self, Block, Comparison, Identity, Load, Machine, MeasureRecord, PeakMemory, Protocol,
+        Timed,
+    },
     run::fixture::{self, Repo},
     store::{Digest, PartialDir},
     testing::{self, write},
@@ -90,9 +93,11 @@ fn commit_measure(repo: &Repo, trial: &TrialKey, protocol: Protocol) {
             candidate: Some(2 << 20),
         },
     };
+    let here = Identity::here().unwrap();
     let comparison = Comparison {
         machine: Machine {
-            cpu: None,
+            cpu: here.cpu.clone(),
+            host: here.host.clone(),
             cpus: 1,
             core: 0,
             governor: None,

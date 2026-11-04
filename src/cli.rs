@@ -1275,6 +1275,7 @@ mod tests {
         ]);
         let machine = Machine {
             cpu: Some("AMD Ryzen 7 5800U".into()),
+            host: None,
             cpus: 16,
             core: 15,
             governor: None,
