@@ -1,0 +1,17 @@
+packages = ["bun"]
+# Bun's bundler parses every module the entry imports, with the parser that runs the program,
+# and fails on a syntax error or an import that does not resolve. Nothing is executed and
+# nothing is written to the workspace.
+build = [["bun", "build", "main.js", "--target=bun", "--outfile=/dev/null"]]
+run = ["bun", "main.js"]
+sources = ["**/*.js", "**/*.mjs", "**/*.cjs"]
+ignore = ["node_modules/**"]
+lizard = "javascript"
+
+# The transpiler cache is off so no run reuses another's work, and auto-install is off because
+# the sandbox has no registry.
+[env]
+BUN_INSTALL_CACHE_DIR = "/tmp/bun-install-cache"
+BUN_OPTIONS = "--no-install"
+BUN_RUNTIME_TRANSPILER_CACHE_PATH = "0"
+DO_NOT_TRACK = "1"
