@@ -79,8 +79,19 @@ fn loads_the_repository_catalog() {
     );
 
     let haiku = catalog.model(&id("claude-haiku-5-5")).unwrap();
-    assert_eq!(haiku.rates(day("2026-11-03"), 100_000).unwrap().input, 0.1);
-    assert_eq!(haiku.rates(day("2026-11-03"), 100_001).unwrap().input, 0.5);
+    assert_eq!(
+        haiku.rates(day("2026-11-03"), 100_000).unwrap().input,
+        Rate(100_000)
+    );
+    assert_eq!(
+        haiku.rates(day("2026-11-03"), 100_001).unwrap().input,
+        Rate(500_000)
+    );
+    let glm = catalog.model(&id("glm-5.3")).unwrap();
+    assert_eq!(
+        glm.rates(day("2026-11-03"), 0).unwrap().cache_read,
+        Rate(260_000)
+    );
 
     let glm = catalog
         .system(&id("glm-5.3"), &id("zai"), Effort::High, id("2.1.316"))
@@ -109,14 +120,34 @@ fn systems_need_a_serving_backend_and_an_offered_effort() {
 }
 
 #[test]
+fn a_model_is_found_by_the_name_its_backend_serves_it_under() {
+    let catalog = load(CATALOG).unwrap();
+    let model = catalog.model(&id("m")).unwrap();
+    let served = |backend: &str, name: &str| catalog.served(&id(backend), name);
+    assert!(served("proxy", "m-proxy").is_some_and(|found| std::ptr::eq(found, model)));
+    assert!(served("anthropic", "m-api").is_some_and(|found| std::ptr::eq(found, model)));
+    assert!(served("anthropic", "m-proxy").is_none());
+    assert!(served("zai", "m-api").is_none());
+}
+
+#[test]
 fn rates_follow_the_price_date_and_prompt_tier() {
     let catalog = load(CATALOG).unwrap();
     let model = catalog.model(&id("m")).unwrap();
     assert_eq!(model.rates(day("2025-12-31"), 10), None);
-    assert_eq!(model.rates(day("2026-01-01"), 1000).unwrap().input, 1.0);
-    assert_eq!(model.rates(day("2026-05-31"), 1001).unwrap().input, 3.0);
+    assert_eq!(
+        model.rates(day("2026-01-01"), 1000).unwrap().input,
+        Rate(1_000_000)
+    );
+    assert_eq!(
+        model.rates(day("2026-05-31"), 1001).unwrap().input,
+        Rate(3_000_000)
+    );
     let june = model.rates(day("2026-06-01"), 1001).unwrap();
-    assert_eq!((june.input, june.cache_write), (0.5, Some(0.6)));
+    assert_eq!(
+        (june.input, june.cache_write),
+        (Rate(500_000), Some(Rate(600_000)))
+    );
 }
 
 #[test]
@@ -231,6 +262,11 @@ fn prices_must_be_well_formed() {
         &["2026-06-01", "no base tier"],
     );
     rejects("input = 1.0", "input = -1.0", &["-1"]);
+    rejects(
+        "input = 1.0",
+        "input = 0.0000001",
+        &["2026-01-01", "0.0000001", "picodollar"],
+    );
 }
 
 #[test]

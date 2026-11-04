@@ -46,6 +46,16 @@ impl Catalog {
         self.models.get(id)
     }
 
+    /// The model `backend` serves under the API name `api_model`, if the catalog lists one.
+    pub fn served(&self, backend: &BackendId, api_model: &str) -> Option<&Model> {
+        self.models.values().find(|model| {
+            model
+                .served_by
+                .get(backend)
+                .is_some_and(|name| name == api_model)
+        })
+    }
+
     /// The system that runs `model_id` through `backend_id` at `effort`, with the backend's
     /// harness at `harness_version`. Fails unless the backend serves the model, the model
     /// offers the effort and the harness can carry it.
@@ -219,14 +229,25 @@ struct Tiers {
     above: BTreeMap<u64, Rates>,
 }
 
-/// USD per million tokens. A rate the vendor does not list is `None`, never guessed.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// The price of each kind of token. A rate the vendor does not list is `None`, never guessed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rates {
-    pub input: f64,
-    pub output: f64,
-    pub cache_read: f64,
-    pub cache_write: Option<f64>,
-    pub cache_write_1h: Option<f64>,
+    pub input: Rate,
+    pub output: Rate,
+    pub cache_read: Rate,
+    pub cache_write: Option<Rate>,
+    pub cache_write_1h: Option<Rate>,
+}
+
+/// A price per token, exact to the picodollar, so that costs add up without rounding. One USD
+/// per million tokens, as the catalog writes rates, is a million picodollars per token.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Rate(u64);
+
+impl Rate {
+    pub fn picodollars(self) -> u64 {
+        self.0
+    }
 }
 
 /// A harness at a pinned version, a backend, a model and an effort: the subject of every
@@ -560,23 +581,26 @@ fn price_table(prices: Vec<RawPrice>) -> Result<BTreeMap<NaiveDate, Tiers>> {
 
 impl RawPrice {
     fn rates(&self) -> Result<Rates> {
-        let listed = [self.input, self.output, self.cache_read]
-            .into_iter()
-            .chain(self.cache_write)
-            .chain(self.cache_write_1h);
-        for rate in listed {
+        let rate = |usd_per_million: f64| {
             ensure!(
-                rate.is_finite() && rate >= 0.0,
-                "prices since {}: rate {rate} is not a finite non-negative number",
+                usd_per_million.is_finite() && usd_per_million >= 0.0,
+                "prices since {}: rate {usd_per_million} is not a finite non-negative number",
                 self.since
             );
-        }
+            let picodollars = usd_per_million * 1e6;
+            ensure!(
+                (picodollars - picodollars.round()).abs() < 1e-6,
+                "prices since {}: rate {usd_per_million} is finer than a picodollar per token",
+                self.since
+            );
+            Ok(Rate(picodollars.round() as u64))
+        };
         Ok(Rates {
-            input: self.input,
-            output: self.output,
-            cache_read: self.cache_read,
-            cache_write: self.cache_write,
-            cache_write_1h: self.cache_write_1h,
+            input: rate(self.input)?,
+            output: rate(self.output)?,
+            cache_read: rate(self.cache_read)?,
+            cache_write: self.cache_write.map(rate).transpose()?,
+            cache_write_1h: self.cache_write_1h.map(rate).transpose()?,
         })
     }
 }
