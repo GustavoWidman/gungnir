@@ -222,6 +222,12 @@ impl AttemptDir {
         self.path.join("egress.jsonl")
     }
 
+    /// Files the CLI left in its isolated home that its driver reads, such as Codex's session
+    /// rollout, under their paths relative to that home, secrets redacted.
+    pub fn artifacts(&self) -> PathBuf {
+        self.path.join("artifacts")
+    }
+
     /// Present only for an attempt a rate limit ended.
     pub fn discarded(&self) -> PathBuf {
         self.path.join("discarded.json")

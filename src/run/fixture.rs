@@ -1,5 +1,6 @@
 //! Fixtures the run phase's tests share: a repository with a two-trial experiment, toolchains
-//! for its languages and harnesses, and committed runs and grades.
+//! for its languages and harnesses, its credentials, committed runs and grades, and a sandbox
+//! backend that plays an agent.
 use super::{AgentExit, Outcome, Process, ProcessExit, RunInputs, RunRecord, Task};
 use crate::{
     experiment::Experiment,
@@ -10,7 +11,9 @@ use crate::{
     id::AttemptNo,
     lifecycle::Current,
     provenance::SessionId,
-    sandbox::{Exit, Input},
+    sandbox::{
+        Backend, BoxFuture, Collected, Exit, Fault, Finished, HOME, Input, Io, Output, Spec, WORK,
+    },
     stop::Stop,
     store::{Digest, PartialDir},
     testing::{self, write},
@@ -18,8 +21,188 @@ use crate::{
     trial::{FINAL, Phase, TrialKey},
 };
 use chrono::Utc;
-use std::{collections::BTreeMap, fs, os::unix::fs::symlink, path::Path, time::Duration};
+use std::{
+    collections::BTreeMap,
+    ffi::OsString,
+    fs,
+    os::unix::fs::symlink,
+    path::{Path, PathBuf},
+    sync::Mutex,
+    time::Duration,
+};
 use tempfile::TempDir;
+use tokio::sync::mpsc;
+
+/// The fixture's Claude token.
+pub const TOKEN: &str = "sk-ant-oat01-fixture";
+/// The fixture's Codex login.
+pub const LOGIN: &str = r#"{"OPENAI_API_KEY":null,"tokens":{"id_token":"eyJ.id","access_token":"eyJ.access","refresh_token":"rt.refresh","account_id":"acct"},"last_refresh":"2026-11-03T20:04:12Z"}"#;
+
+/// A user home holding the fixture catalog's three credentials.
+pub fn credentials() -> TempDir {
+    let home = TempDir::new().unwrap();
+    write(home.path(), "token", format!("{TOKEN}\n"));
+    write(home.path(), "key", "glm-key");
+    write(home.path(), "codex/auth.json", LOGIN);
+    home
+}
+
+/// What a fake agent does once launched.
+#[derive(Clone, Debug)]
+pub struct Play {
+    /// Files the agent writes, by path relative to its workspace.
+    pub workspace: Vec<(String, String)>,
+    /// Files the agent writes, by path relative to its home.
+    pub home: Vec<(String, String)>,
+    pub stdout: Vec<String>,
+    pub stderr: Vec<String>,
+    /// How long the agent stays silent, with its stdout open, after its last line.
+    pub silence: Duration,
+    /// How the sandbox reports the agent's end.
+    pub exit: Exit,
+}
+
+impl Play {
+    /// An agent that prints the captured transcript `name` from `tests/fixtures/harness/` and
+    /// exits 0.
+    pub fn transcript(name: &str) -> Self {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/harness")
+            .join(name);
+        let text = fs::read_to_string(&path).unwrap();
+        Self {
+            workspace: Vec::new(),
+            home: Vec::new(),
+            stdout: text.lines().map(str::to_owned).collect(),
+            stderr: Vec::new(),
+            silence: Duration::ZERO,
+            exit: Exit::Code(0),
+        }
+    }
+}
+
+/// One launch an [`Agent`] saw.
+#[derive(Clone, Debug)]
+pub struct Launched {
+    pub spec: Spec,
+    pub argv: Vec<String>,
+    pub stdin: Vec<u8>,
+}
+
+type Script = dyn Fn(&Spec) -> Play + Send + Sync;
+
+/// A sandbox backend for the run phase. `--version` prints the pinned version, a grading
+/// sandbox builds and echoes every case, and an agent plays what the script decides.
+pub struct Agent {
+    script: Box<Script>,
+    versions: BTreeMap<String, String>,
+    launches: Mutex<Vec<Launched>>,
+}
+
+impl Agent {
+    pub fn new(script: impl Fn(&Spec) -> Play + Send + Sync + 'static) -> Self {
+        let versions = [
+            ("claude", "2.1.316 (Claude Code)\n"),
+            ("codex", "codex-cli 0.166.0\n"),
+        ];
+        Self {
+            script: Box::new(script),
+            versions: versions
+                .into_iter()
+                .map(|(program, printed)| (program.to_owned(), printed.to_owned()))
+                .collect(),
+            launches: Mutex::default(),
+        }
+    }
+
+    /// Every agent launched so far.
+    pub fn launches(&self) -> Vec<Launched> {
+        self.launches.lock().unwrap().clone()
+    }
+
+    /// Answers a sandbox that captures its stdout: a version probe or a grading step.
+    fn tool(&self, argv: &[String], stdin: Input) -> Finished {
+        if argv.get(1).map(String::as_str) == Some("--version") {
+            return finished(Exit::Code(0), self.versions[&argv[0]].as_bytes());
+        }
+        let echoed = match stdin {
+            Input::File(path) => fs::read(path).unwrap(),
+            _ => Vec::new(),
+        };
+        finished(Exit::Code(0), &echoed)
+    }
+}
+
+impl Backend for Agent {
+    fn exec<'a>(
+        &'a self,
+        spec: &'a Spec,
+        argv: &'a [OsString],
+        io: Io,
+        _stop: &'a Stop,
+    ) -> BoxFuture<'a, Result<Finished, Fault>> {
+        let argv: Vec<String> = argv
+            .iter()
+            .map(|arg| arg.to_str().unwrap().to_owned())
+            .collect();
+        let (Output::Lines { sink: stdout, .. }, Output::Lines { sink: stderr, .. }) =
+            (io.stdout, io.stderr)
+        else {
+            let finished = self.tool(&argv, io.stdin);
+            return Box::pin(async move { Ok(finished) });
+        };
+        let Input::Bytes(stdin) = io.stdin else {
+            panic!("an agent reads its prompt from bytes");
+        };
+        self.launches.lock().unwrap().push(Launched {
+            spec: spec.clone(),
+            argv,
+            stdin,
+        });
+        let play = (self.script)(spec);
+        Box::pin(async move {
+            let host = |guest: &str| -> PathBuf {
+                let mount = spec
+                    .mounts
+                    .iter()
+                    .find(|mount| mount.guest == Path::new(guest));
+                mount.unwrap().host.clone()
+            };
+            for (path, contents) in &play.workspace {
+                write(&host(WORK), path, contents);
+            }
+            for (path, contents) in &play.home {
+                write(&host(HOME), path, contents);
+            }
+            let stdout_bytes = print(&stdout, &play.stdout).await;
+            let stderr_bytes = print(&stderr, &play.stderr).await;
+            tokio::time::sleep(play.silence).await;
+            drop((stdout, stderr));
+            let collected = |total| Collected {
+                bytes: Vec::new(),
+                total,
+                truncated: false,
+            };
+            Ok(Finished {
+                exit: play.exit,
+                wall: Duration::from_secs(90),
+                stdout: collected(stdout_bytes),
+                stderr: collected(stderr_bytes),
+            })
+        })
+    }
+}
+
+/// Sends each of `lines` as one line of output. Returns how many bytes a program printing them
+/// would have written.
+async fn print(sink: &mpsc::Sender<Vec<u8>>, lines: &[String]) -> u64 {
+    let mut total = 0;
+    for line in lines {
+        total += line.len() as u64 + 1;
+        let _ = sink.send(line.clone().into_bytes()).await;
+    }
+    total
+}
 
 /// Claude Code's Opus and Codex's Luna, once each, on `echo` in Python.
 pub const EXPERIMENT_TOML: &str = r#"

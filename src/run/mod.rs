@@ -1,10 +1,12 @@
 //! The run phase: each pending trial's agent, launched headless in a sandbox, until one attempt
 //! is committed as the trial's sample.
+mod attempt;
 #[cfg(test)]
 pub(crate) mod fixture;
 mod records;
 mod workspace;
 
+pub use attempt::{Attempted, Rig};
 pub use records::{
     AgentExit, Cut, DiscardedAttempt, Outcome, Process, ProcessExit, Quota, RunInputs, RunRecord,
     Sample, Tokens,
@@ -17,7 +19,7 @@ use eyre::{Result, eyre};
 
 /// One trial as the run phase sees it: the system, and what its agent is given. It holds the
 /// scenario's brief and never the scenario, so nothing in it leads to a hidden case.
-pub(crate) struct Task<'a> {
+pub struct Task<'a> {
     pub trial: &'a TrialKey,
     pub language: &'a Language,
     pub brief: &'a Brief,

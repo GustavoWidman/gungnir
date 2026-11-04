@@ -44,7 +44,7 @@ struct StoredToolchains {
 impl RunInputs {
     /// The inputs of running `task` now, for an agent that starts in a workspace with digest
     /// `workspace`.
-    pub(crate) fn new(
+    pub fn new(
         task: &Task<'_>,
         toolchains: &Toolchains,
         budget: Budget,
@@ -74,11 +74,7 @@ impl RunInputs {
     }
 
     /// The inputs of running `task` now, scaffolding its workspace in scratch to digest it.
-    pub(crate) fn current(
-        task: &Task<'_>,
-        toolchains: &Toolchains,
-        budget: Budget,
-    ) -> Result<Self> {
+    pub fn current(task: &Task<'_>, toolchains: &Toolchains, budget: Budget) -> Result<Self> {
         let scratch = tempfile::Builder::new()
             .prefix("gungnir-scaffold-")
             .tempdir()
