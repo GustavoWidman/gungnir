@@ -37,6 +37,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/store.rs` and `src/store/` hold the file mechanics: `Digest`, atomic writes, `read_json`, the `PartialDir` commit protocol and the `Lock` used for phase locks.
 - `src/provenance.rs` records one `Session` per invocation in `sessions/<id>.json`, with the harness versions it probed and the store paths of the toolchains it used.
 - `src/secret.rs` holds `Secret<T>`, whose `Debug` prints nothing, `EnvValue` for sandbox environments, and redaction of secret values from bytes and files.
+- `src/vault.rs` reads each backend's credential into a `Key` (the material a driver launches with, the endpoint, and the exact strings to redact) and stages launch files into an isolated `Home` under `$XDG_RUNTIME_DIR/gungnir/`, writing a refreshed Codex login back to its master under a lock.
 - `src/stop.rs` is the two-stage interruption: the first Ctrl-C drains, the second kills in-flight sandboxes.
 - `src/toolchains.rs` loads `GUNGNIR_TOOLCHAINS` into `Closure` sets and `bin` directories, refusing any closure that contains a flake source path.
 - `src/sandbox/` defines `Spec`, `Network`, `Finished`, `Fault` and the object-safe `Backend` trait, with the bubblewrap backend. It is the only place untrusted code is spawned.
@@ -46,7 +47,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/workload.rs` regenerates a scenario's workloads in a sandbox and verifies them against `workloads.sha256`.
 - `src/testing.rs` holds the fixture writers the unit tests share. It compiles only for tests.
 
-The contract also specifies parts that are not in the crate yet: the credential vault, the run, grade and measure phases over trials, and the report. Give each its own module and update this map when it lands.
+The contract also specifies parts that are not in the crate yet: the run, grade and measure phases over trials, and the report. Give each its own module and update this map when it lands.
 
 ## How `gungnir plan` loads an experiment
 

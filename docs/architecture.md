@@ -187,9 +187,11 @@ The first backend is bubblewrap. Its argv builder is a pure function with unit t
 
 - `env-token`: a file whose contents become one environment variable. Claude Code uses `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`.
 - `api-key`: the same, plus the backend's endpoint. GLM uses `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL`.
-- `codex-home`: a dedicated `CODEX_HOME` whose `auth.json` is copied into each attempt's isolated home. After the attempt, if the copy carries a newer `last_refresh`, the vault writes it back to the master atomically under a lock, so parallel attempts never fight over one file.
+- `codex-home`: a dedicated `CODEX_HOME` whose `auth.json` is copied into each attempt's isolated home. After the attempt, if the copy carries a newer `last_refresh`, the vault writes it back to the master atomically under `gungnir.lock` beside it, so parallel attempts, even from two gungnir processes, never fight over one file and the newest login wins. A copy that names another account or a `last_refresh` in the future is refused, because the agent can write to its home.
 
-Isolated homes live under `$XDG_RUNTIME_DIR/gungnir/`, never under the results directory, and are deleted after each attempt.
+Every credential is read again as each attempt starts, so an attempt always gets the latest login. The vault also names the exact strings to redact: the token for the first two kinds, and each token inside `auth.json` (never the whole file) for the third, including tokens the CLI refreshed during the attempt.
+
+Isolated homes live under `$XDG_RUNTIME_DIR/gungnir/<results digest>/`, never under the results directory. The directory is private to the run that holds the results directory's run lock, so that run sweeps whatever a crashed run left there. Each home and everything in it is readable by the user alone, sits beside the attempt's egress socket, and is deleted after the attempt, also when it fails.
 
 ## Phases
 
