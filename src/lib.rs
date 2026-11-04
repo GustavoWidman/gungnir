@@ -5,6 +5,7 @@ pub mod catalog;
 pub mod cli;
 pub mod egress;
 pub mod experiment;
+pub mod harness;
 pub mod id;
 pub mod language;
 pub mod provenance;
