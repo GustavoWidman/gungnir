@@ -1,6 +1,7 @@
 //! The catalog in `gungnir.toml`: harnesses, the backends that serve models through them,
 //! and the models with their effort levels and dated prices.
 use crate::{
+    harness::Harness,
     id::{BackendId, Effort, HarnessName, HarnessVersion, ModelId},
     store::read_toml,
 };
@@ -16,11 +17,12 @@ use std::{
 #[cfg(test)]
 mod tests;
 
-/// Everything `gungnir.toml` declares, cross-checked at load: every backend uses a declared
-/// harness and every model is served only by declared backends.
+/// Everything `gungnir.toml` declares, cross-checked at load: the harnesses are exactly the
+/// registered drivers, every backend uses a declared harness and every model is served only by
+/// declared backends.
 #[derive(Debug)]
 pub struct Catalog {
-    harnesses: BTreeSet<HarnessName>,
+    harnesses: BTreeMap<HarnessName, Harness>,
     backends: BTreeMap<BackendId, Backend>,
     models: BTreeMap<ModelId, Model>,
 }
@@ -33,7 +35,7 @@ impl Catalog {
     }
 
     pub fn harnesses(&self) -> impl Iterator<Item = &HarnessName> {
-        self.harnesses.iter()
+        self.harnesses.keys()
     }
 
     pub fn backend(&self, id: &BackendId) -> Option<&Backend> {
@@ -45,8 +47,8 @@ impl Catalog {
     }
 
     /// The system that runs `model_id` through `backend_id` at `effort`, with the backend's
-    /// harness at `harness_version`. Fails unless the backend serves the model and the model
-    /// offers the effort.
+    /// harness at `harness_version`. Fails unless the backend serves the model, the model
+    /// offers the effort and the harness can carry it.
     pub fn system(
         &self,
         model_id: &ModelId,
@@ -71,6 +73,11 @@ impl Catalog {
             "model {model_id} does not offer effort {effort}, only {}",
             list(model.efforts())
         );
+        ensure!(
+            backend.driver.accepts(effort),
+            "backend {backend_id} runs harness {}, which cannot carry effort {effort}",
+            backend.harness
+        );
         Ok(System {
             harness: backend.harness.clone(),
             harness_version,
@@ -86,6 +93,7 @@ impl Catalog {
 #[derive(Debug)]
 pub struct Backend {
     harness: HarnessName,
+    driver: Harness,
     endpoint: Option<Endpoint>,
     credential: Credential,
     egress: Vec<String>,
@@ -223,7 +231,7 @@ pub struct Rates {
 
 /// A harness at a pinned version, a backend, a model and an effort: the subject of every
 /// result. Only [`Catalog::system`] constructs one, so the backend always serves the model
-/// at that effort.
+/// at that effort and its harness can carry it.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct System {
     harness: HarnessName,
@@ -377,7 +385,24 @@ impl RawCatalog {
                 "[harnesses.{name}] package is empty"
             );
         }
-        let harnesses: BTreeSet<HarnessName> = self.harnesses.into_keys().collect();
+        let harnesses = self
+            .harnesses
+            .into_keys()
+            .map(|name| {
+                let driver = Harness::named(&name).ok_or_else(|| {
+                    eyre!(
+                        "[harnesses.{name}] has no driver; the drivers are {}",
+                        list(Harness::all().map(Harness::name))
+                    )
+                })?;
+                Ok((name, driver))
+            })
+            .collect::<Result<BTreeMap<_, _>>>()?;
+        if let Some(driver) = Harness::all()
+            .find(|driver| !harnesses.keys().any(|name| name.as_str() == driver.name()))
+        {
+            bail!("driver {0} has no [harnesses.{0}] table", driver.name());
+        }
         let backends = self
             .backends
             .into_iter()
@@ -408,12 +433,13 @@ impl RawCatalog {
 }
 
 impl RawBackend {
-    fn resolve(self, harnesses: &BTreeSet<HarnessName>) -> Result<Backend> {
-        ensure!(
-            harnesses.contains(&self.harness),
-            "harness = \"{0}\" names no [harnesses.{0}] table",
-            self.harness
-        );
+    fn resolve(self, harnesses: &BTreeMap<HarnessName, Harness>) -> Result<Backend> {
+        let driver = *harnesses.get(&self.harness).ok_or_else(|| {
+            eyre!(
+                "harness = \"{0}\" names no [harnesses.{0}] table",
+                self.harness
+            )
+        })?;
         ensure!(!self.egress.is_empty(), "egress is empty");
         if let Some(host) = self.egress.iter().find(|host| !is_hostname(host)) {
             bail!("egress host {host:?} is not a lowercase DNS name");
@@ -436,6 +462,7 @@ impl RawBackend {
         }
         Ok(Backend {
             harness: self.harness,
+            driver,
             endpoint,
             credential,
             egress: self.egress,

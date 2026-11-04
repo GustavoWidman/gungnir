@@ -146,6 +146,34 @@ fn efforts_must_be_offered_by_the_model() {
 }
 
 #[test]
+fn efforts_must_be_carried_by_the_harness() {
+    let root = fixture();
+    let opus_offers_none = testing::CATALOG_TOML.replacen(
+        "efforts = [\"low\", \"high\", \"max\"]",
+        "efforts = [\"none\", \"low\", \"high\", \"max\"]",
+        1,
+    );
+    write(root.path(), "gungnir.toml", opus_offers_none);
+    edit(
+        root.path(),
+        "efforts = [\"high\", \"low\"]",
+        "efforts = \"all\"",
+    );
+    let message = format!("{:#}", load(root.path()).unwrap_err());
+    for needle in [
+        "trial.toml",
+        "model = \"opus\"",
+        "claude-code",
+        "effort none",
+    ] {
+        assert!(
+            message.contains(needle),
+            "{needle:?} missing from: {message}"
+        );
+    }
+}
+
+#[test]
 fn every_harness_in_use_needs_a_pin() {
     rejects("codex = \"0.166.0\"\n", "", &["[pins]", "codex", "openai"]);
     rejects(

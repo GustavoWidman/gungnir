@@ -9,6 +9,9 @@ packages = ["coreutils"]
 [harnesses.claude-code]
 package = "claude-code"
 
+[harnesses.codex]
+package = "codex"
+
 [backends.anthropic]
 harness = "claude-code"
 credential = { kind = "env-token", var = "TOKEN", file = "~/.config/gungnir/token" }
@@ -132,9 +135,48 @@ fn credential_paths_expand_home_only_when_used() {
 #[test]
 fn backends_must_name_a_declared_harness() {
     rejects(
-        "[harnesses.claude-code]",
+        "harness = \"claude-code\"",
+        "harness = \"gemini\"",
+        &["[backends.anthropic]", "gemini"],
+    );
+}
+
+#[test]
+fn harness_tables_must_match_the_drivers() {
+    rejects(
+        "[harnesses.codex]\npackage = \"codex\"\n",
+        "",
+        &["driver codex", "[harnesses.codex]"],
+    );
+    rejects(
         "[harnesses.codex]",
-        &["[backends.anthropic]", "claude-code"],
+        "[harnesses.gemini]",
+        &["[harnesses.gemini]", "no driver", "claude-code, codex"],
+    );
+}
+
+#[test]
+fn systems_need_an_effort_the_harness_can_carry() {
+    let offers_none = CATALOG.replacen(
+        "efforts = [\"low\", \"high\"]",
+        "efforts = [\"none\", \"low\", \"high\"]",
+        1,
+    );
+    let catalog = load(&offers_none).unwrap();
+    let err = catalog
+        .system(&id("m"), &id("proxy"), Effort::None, id("1.0.0"))
+        .unwrap_err();
+    let message = err.to_string();
+    for needle in ["proxy", "claude-code", "effort none"] {
+        assert!(
+            message.contains(needle),
+            "{needle:?} missing from: {message}"
+        );
+    }
+    assert!(
+        catalog
+            .system(&id("m"), &id("proxy"), Effort::Low, id("1.0.0"))
+            .is_ok()
     );
 }
 
