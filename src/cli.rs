@@ -2,18 +2,31 @@
 use crate::{
     experiment::Experiment,
     grade::{self, Judgement, Outcome, Verdict},
-    id::{LanguageId, ScenarioId},
+    id::{LanguageId, ScenarioId, WorkloadId},
     language::Language,
+    measure::{self, Machine, MeasureInputs, MeasureRecord, Program, Settings, Spread, Summary},
+    provenance::Session,
     sandbox::{Backend, Bubblewrap},
     scenario::Scenario,
     stop::{Stage, Stop},
+    store::PartialDir,
     toolchains::Toolchains,
     workload::{self, Ensured},
 };
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use eyre::{Result, WrapErr, bail, ensure, eyre};
 use futures_util::{StreamExt, stream};
-use std::{collections::BTreeMap, fmt, num::NonZeroUsize, path::PathBuf, time::Duration};
+use nix::{
+    sched::{CpuSet, sched_getaffinity},
+    unistd::Pid,
+};
+use std::{
+    collections::BTreeMap,
+    fmt,
+    num::{NonZeroU32, NonZeroUsize},
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 #[derive(Parser)]
 #[command(
@@ -45,6 +58,10 @@ enum Command {
         #[arg(long, value_name = "N", default_value_t = default_jobs())]
         jobs: NonZeroUsize,
     },
+    /// Time a candidate against a scenario's reference solution on every workload. Without a
+    /// candidate the reference is timed against itself, an A/A test whose ratio interval
+    /// shows the noise floor.
+    Bench(Bench),
 }
 
 impl Cli {
@@ -59,6 +76,7 @@ impl Cli {
                 languages,
                 jobs,
             } => run_check(&scenarios, &languages, jobs),
+            Command::Bench(bench) => bench.run(),
         }
     }
 }
@@ -74,16 +92,7 @@ fn default_jobs() -> NonZeroUsize {
 /// Checks the references of the repository holding the current directory, prints the table,
 /// and names every reference that did not pass.
 fn run_check(scenarios: &[ScenarioId], languages: &[LanguageId], jobs: NonZeroUsize) -> Result<()> {
-    let cwd = std::env::current_dir().wrap_err("reading the current directory")?;
-    let root = cwd
-        .ancestors()
-        .find(|dir| dir.join("gungnir.toml").is_file())
-        .ok_or_else(|| {
-            eyre!(
-                "no directory at or above {} has a gungnir.toml",
-                cwd.display()
-            )
-        })?;
+    let root = repository()?;
     let all_languages = Language::load_all(&root.join("languages"))?;
     let all_scenarios = Scenario::load_all(&root.join("scenarios"), &all_languages)?;
     let selected = references(&all_scenarios, &all_languages, scenarios, languages)?;
@@ -117,6 +126,21 @@ fn run_check(scenarios: &[ScenarioId], languages: &[LanguageId], jobs: NonZeroUs
         checked.len()
     );
     Ok(())
+}
+
+/// The repository that holds the current directory: the nearest directory at or above it with
+/// a `gungnir.toml`.
+fn repository() -> Result<PathBuf> {
+    let cwd = std::env::current_dir().wrap_err("reading the current directory")?;
+    cwd.ancestors()
+        .find(|dir| dir.join("gungnir.toml").is_file())
+        .map(Path::to_owned)
+        .ok_or_else(|| {
+            eyre!(
+                "no directory at or above {} has a gungnir.toml",
+                cwd.display()
+            )
+        })
 }
 
 /// Every scenario's reference solution in every language it supports, narrowed to the
@@ -266,19 +290,238 @@ impl fmt::Display for CheckTable<'_> {
                 slowest,
             ]);
         }
-        let widths: [usize; 6] = std::array::from_fn(|column| {
-            rows.iter().map(|row| row[column].len()).max().unwrap_or(0)
-        });
-        for row in &rows {
-            let cells: Vec<String> = row
-                .iter()
-                .zip(widths)
-                .map(|(cell, width)| format!("{cell:width$}"))
-                .collect();
-            writeln!(f, "{}", cells.join("  ").trim_end())?;
-        }
+        write_rows(f, &rows)
+    }
+}
+
+/// Writes `rows` as left-aligned columns two spaces apart.
+fn write_rows<const N: usize>(f: &mut fmt::Formatter<'_>, rows: &[[String; N]]) -> fmt::Result {
+    let widths: [usize; N] =
+        std::array::from_fn(|column| rows.iter().map(|row| row[column].len()).max().unwrap_or(0));
+    for row in rows {
+        let cells: Vec<String> = row
+            .iter()
+            .zip(widths)
+            .map(|(cell, width)| format!("{cell:width$}"))
+            .collect();
+        writeln!(f, "{}", cells.join("  ").trim_end())?;
+    }
+    Ok(())
+}
+
+#[derive(Args)]
+struct Bench {
+    #[arg(long, value_name = "ID")]
+    scenario: ScenarioId,
+    #[arg(long, value_name = "ID")]
+    language: LanguageId,
+    /// The candidate's workspace. Defaults to the reference.
+    #[arg(long, value_name = "DIR")]
+    candidate: Option<PathBuf>,
+    /// The CPU every run is pinned to. Defaults to the last one gungnir may run on.
+    #[arg(long, value_name = "N")]
+    core: Option<u32>,
+    /// ABBA blocks per workload. An even count puts each program first equally often.
+    #[arg(long, value_name = "B", default_value = "6")]
+    blocks: NonZeroU32,
+    /// Timed runs of each program in each block.
+    #[arg(long, value_name = "R", default_value = "5")]
+    runs: NonZeroU32,
+    /// Untimed runs of each program before its timed runs in each block.
+    #[arg(long, value_name = "W", default_value_t = 1)]
+    warmup: u32,
+}
+
+impl Bench {
+    /// Ensures the workloads, builds both programs, compares them, commits the record beside
+    /// hyperfine's exports in a directory it keeps, and prints the table.
+    fn run(self) -> Result<()> {
+        let root = repository()?;
+        let languages = Language::load_all(&root.join("languages"))?;
+        let scenarios = Scenario::load_all(&root.join("scenarios"), &languages)?;
+        let scenario = scenarios
+            .get(&self.scenario)
+            .ok_or_else(|| eyre!("no scenario {} under scenarios/", self.scenario))?;
+        let language = languages
+            .get(&self.language)
+            .ok_or_else(|| eyre!("no language {} under languages/", self.language))?;
+        let reference = scenario
+            .reference(language.id())
+            .ok_or_else(|| eyre!("{} has no {} reference", scenario.id(), language.id()))?
+            .dir();
+        let candidate = self.candidate.as_deref().unwrap_or(reference);
+        let settings = Settings {
+            core: pinned_core(self.core)?,
+            blocks: self.blocks,
+            runs: self.runs,
+            warmup: self.warmup,
+            memory: scenario.limits().memory_bytes(),
+        };
+        let session = Session::start(&root)?;
+        let toolchains = Toolchains::from_env()?;
+        let backend = Bubblewrap::new(toolchains.base().clone())?;
+        let kept = tempfile::Builder::new()
+            .prefix("gungnir-bench-")
+            .tempdir()
+            .wrap_err("creating a directory for the record")?;
+        let target = kept.path().join("measure");
+
+        let runtime = tokio::runtime::Runtime::new().wrap_err("starting the async runtime")?;
+        let record = runtime.block_on(async {
+            let stop = Stop::on_ctrl_c()?;
+            if workload::ensure(scenario, &toolchains, &backend, &stop).await?
+                == Ensured::Regenerated
+            {
+                eprintln!("{}: regenerated the workloads", scenario.id());
+            }
+            let build =
+                |workspace| Program::build(language, &toolchains, workspace, &backend, &stop);
+            let reference = build(reference).await.wrap_err("building the reference")?;
+            let candidate = build(candidate).await.wrap_err("building the candidate")?;
+            let workloads = scenario.workloads();
+            let inputs = MeasureInputs::new(
+                language,
+                &toolchains,
+                &reference,
+                &candidate,
+                workloads,
+                &settings,
+            )?;
+            let partial = PartialDir::begin(&target)?;
+            let comparison = measure::compare(
+                &reference,
+                &candidate,
+                workloads,
+                &settings,
+                &backend,
+                &stop,
+                partial.path(),
+            )
+            .await?;
+            let record = MeasureRecord::new(session.id().clone(), inputs, comparison);
+            partial.commit(&record)?;
+            Ok::<_, eyre::Report>(record)
+        })?;
+        print!(
+            "{}",
+            BenchTable {
+                machine: record.machine(),
+                workloads: record.workloads(),
+            }
+        );
+        let kept = kept.keep();
+        eprintln!(
+            "record and hyperfine exports in {}",
+            kept.join("measure").display()
+        );
         Ok(())
     }
+}
+
+/// `core` when gungnir may run on it, or else the last CPU gungnir may run on.
+fn pinned_core(core: Option<u32>) -> Result<u32> {
+    let affinity = sched_getaffinity(Pid::from_raw(0)).wrap_err("reading the CPU affinity")?;
+    let allowed: Vec<u32> = (0..CpuSet::count())
+        .filter(|&cpu| affinity.is_set(cpu).unwrap_or(false))
+        .filter_map(|cpu| u32::try_from(cpu).ok())
+        .collect();
+    match core {
+        Some(core) => {
+            ensure!(
+                allowed.contains(&core),
+                "gungnir may not run on CPU {core}; it may run on {allowed:?}"
+            );
+            Ok(core)
+        }
+        None => allowed
+            .last()
+            .copied()
+            .ok_or_else(|| eyre!("gungnir may run on no CPU")),
+    }
+}
+
+/// One row per workload: each program's median wall time and range, and the ratio of the
+/// candidate's time to the reference's with its 95% interval. Then the machine it ran on.
+struct BenchTable<'a> {
+    machine: &'a Machine,
+    workloads: &'a BTreeMap<WorkloadId, measure::Outcome>,
+}
+
+impl fmt::Display for BenchTable<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let header = [
+            "workload",
+            "reference",
+            "range",
+            "candidate",
+            "range",
+            "ratio",
+            "95% interval",
+        ];
+        let mut rows = vec![header.map(String::from)];
+        for (id, outcome) in self.workloads {
+            let none = || "-".to_owned();
+            rows.push(match outcome {
+                measure::Outcome::Timed(timed) => {
+                    let Summary {
+                        reference,
+                        candidate,
+                        ratio,
+                    } = timed.summary();
+                    let interval = ratio
+                        .interval
+                        .map_or_else(none, |(low, high)| format!("[{low:.3}, {high:.3}]"));
+                    [
+                        id.to_string(),
+                        seconds(reference.median),
+                        range(reference),
+                        seconds(candidate.median),
+                        range(candidate),
+                        format!("{:.3}", ratio.geomean),
+                        interval,
+                    ]
+                }
+                measure::Outcome::CandidateFailed(failure) => [
+                    id.to_string(),
+                    none(),
+                    none(),
+                    format!("failed: {failure}"),
+                    none(),
+                    none(),
+                    none(),
+                ],
+            });
+        }
+        write_rows(f, &rows)?;
+        let machine = self.machine;
+        let load = |load: [f64; 3]| format!("{:.2} {:.2} {:.2}", load[0], load[1], load[2]);
+        writeln!(
+            f,
+            "pinned to CPU {} of {} ({}), governor {}",
+            machine.core,
+            machine.cpus,
+            machine.cpu.as_deref().unwrap_or("unknown model"),
+            machine.governor.as_deref().unwrap_or("unknown")
+        )?;
+        writeln!(
+            f,
+            "load average {} at the start, {} at the end",
+            load(machine.load.start),
+            load(machine.load.end)
+        )
+    }
+}
+
+fn seconds(seconds: f64) -> String {
+    if seconds >= 1.0 {
+        format!("{seconds:.3}s")
+    } else {
+        format!("{:.1}ms", seconds * 1000.0)
+    }
+}
+
+fn range(spread: Spread) -> String {
+    format!("[{}, {}]", seconds(spread.min), seconds(spread.max))
 }
 
 /// An experiment's matrix as aligned text, one row per model with its efforts.
@@ -355,11 +598,72 @@ mod tests {
     use super::*;
     use crate::{
         grade::fake::{self, Scripted, finished},
+        measure::{Block, Failure, Load, Sample, Timed},
         sandbox::{Exit, Input},
         testing::{self, id, write},
     };
     use std::fs;
     use tempfile::TempDir;
+
+    #[test]
+    fn bench_prints_each_workload_then_the_machine() {
+        let runs = |wall: f64| {
+            let sample = Sample {
+                wall,
+                user: wall,
+                system: 0.0,
+                peak_memory: 1 << 20,
+                instructions: None,
+            };
+            vec![sample; 2]
+        };
+        let block = |reference, candidate| Block {
+            reference: runs(reference),
+            candidate: runs(candidate),
+        };
+        let timed = Timed {
+            blocks: vec![block(1.0, 2.0), block(0.5, 1.0)],
+        };
+        let workloads = BTreeMap::from([
+            (id("full-range"), measure::Outcome::Timed(timed)),
+            (
+                id("uniform"),
+                measure::Outcome::CandidateFailed(Failure::WrongOutput),
+            ),
+        ]);
+        let machine = Machine {
+            cpu: Some("AMD Ryzen 7 5800U".into()),
+            cpus: 16,
+            core: 15,
+            governor: None,
+            kernel: "7.3.0".into(),
+            load: Load {
+                start: [6.65, 4.26, 3.28],
+                end: [7.0, 5.0, 3.5],
+            },
+        };
+        let table = BenchTable {
+            machine: &machine,
+            workloads: &workloads,
+        };
+
+        assert_eq!(
+            table.to_string(),
+            "workload    reference  range              candidate             range             ratio  95% interval\n\
+             full-range  750.0ms    [500.0ms, 1.000s]  1.500s                [1.000s, 2.000s]  2.000  [2.000, 2.000]\n\
+             uniform     -          -                  failed: wrong output  -                 -      -\n\
+             pinned to CPU 15 of 16 (AMD Ryzen 7 5800U), governor unknown\n\
+             load average 6.65 4.26 3.28 at the start, 7.00 5.00 3.50 at the end\n"
+        );
+    }
+
+    #[test]
+    fn bench_pins_only_to_a_cpu_gungnir_may_run_on() {
+        let last = pinned_core(None).unwrap();
+        assert_eq!(pinned_core(Some(last)).unwrap(), last);
+        let message = pinned_core(Some(4096)).unwrap_err().to_string();
+        assert!(message.contains("may not run on CPU 4096"), "{message}");
+    }
 
     /// The fixture repository with languages `python` and `rust` and no lizard, so judging
     /// needs no host tool, and fake toolchains for both.
