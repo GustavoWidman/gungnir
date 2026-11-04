@@ -359,12 +359,30 @@ async fn only_a_current_measurement_is_tabled() {
                 "stage",
                 "stale_phase",
                 "verdict",
-                "measure_session"
+                "measure_session",
+                "measure_load_start",
+                "measure_load_end",
             ]
         ),
         [
-            ["opus", "measured", "", "pass", "20261103T120000Z-42"],
-            ["luna", "measured", "measure", "pass", "20261103T120000Z-42"],
+            [
+                "opus",
+                "measured",
+                "",
+                "pass",
+                "20261103T120000Z-42",
+                "0.5",
+                "0.75"
+            ],
+            [
+                "luna",
+                "measured",
+                "measure",
+                "pass",
+                "20261103T120000Z-42",
+                "0.5",
+                "0.75"
+            ],
         ]
     );
     let opus_id = opus.system.id().to_string();

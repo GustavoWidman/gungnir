@@ -134,6 +134,10 @@ row! {
         pub ccn_max: Option<u32>,
         pub nloc: Option<u64>,
         pub measure_session: Option<String>,
+        /// The one-minute load average when timing started and when it ended. Measuring
+        /// refuses to start at 1.0 or more unless told the machine may be busy.
+        pub measure_load_start: Option<f64>,
+        pub measure_load_end: Option<f64>,
     }
 }
 
@@ -457,6 +461,7 @@ impl TrialRow {
             ProcessExit::Killed => ("killed", None),
         };
         let judgement = grade.as_ref().map(GradeRecord::judgement);
+        let load = measure.as_ref().map(|measure| measure.machine().load);
         let verdict = judgement.map(|judgement| judgement.verdict());
         let complexity = judgement.and_then(|judgement| judgement.complexity());
         let functions = || {
@@ -512,6 +517,8 @@ impl TrialRow {
             measure_session: measure
                 .as_ref()
                 .map(|measure| measure.session().to_string()),
+            measure_load_start: load.map(|load| load.start[0]),
+            measure_load_end: load.map(|load| load.end[0]),
         }
     }
 }
