@@ -3,7 +3,7 @@
 //! run withdrawn when it is no sample, whether the newer parser or the sample policy says so.
 //! A withdrawn run's trial is pending again. Reviewing only reads; applying a review writes.
 use super::{
-    Reason, RunRecord,
+    Reason, RunRecord, Sample,
     attempt::conclude,
     records::{Counted, DiscardedAttempt},
 };
@@ -23,34 +23,27 @@ pub enum Review {
     /// Its record should hold this one, whose outcome the current parser folds and which is
     /// still a sample.
     Reparsed(Box<RunRecord>),
-    /// It is no sample: its attempt should be discarded with this record, and the run withdrawn
-    /// with every phase built on it.
-    Withdrawn(Box<DiscardedAttempt>),
+    /// It is no sample, for `reason`, as the outcome `parser` folded says: its attempt should
+    /// be discarded with what it spent, and the run withdrawn with every phase built on it.
+    Withdrawn {
+        reason: Reason,
+        parser: u32,
+        usage: Vec<Sample>,
+    },
 }
 
 /// Reviews `run`, committed in `dir`, with the current parser of `harness` and the sample
-/// policy. A discard is recorded in the name of `session`.
-pub(super) fn review(
-    dir: &TrialDir,
-    run: &RunRecord,
-    harness: Harness,
-    session: &SessionId,
-) -> Result<Review> {
+/// policy.
+pub(super) fn review(dir: &TrialDir, run: &RunRecord, harness: Harness) -> Result<Review> {
     let parser = harness.parser_version();
-    let withdrawn = |parser, reason, usage| {
-        Review::Withdrawn(Box::new(DiscardedAttempt {
-            session: session.clone(),
-            started: run.started,
-            process: Some(run.process),
-            parser,
-            reason,
-            usage,
-        }))
-    };
     if run.parser >= parser {
         return Ok(match Reason::of(&run.outcome.exit, &run.process) {
             None => Review::Current,
-            Some(reason) => withdrawn(run.parser, reason, run.outcome.usage.clone()),
+            Some(reason) => Review::Withdrawn {
+                reason,
+                parser: run.parser,
+                usage: run.outcome.usage.clone(),
+            },
         });
     }
     let ending = conclude(harness, &dir.attempt(run.attempt), run.process.end())?;
@@ -60,27 +53,45 @@ pub(super) fn review(
             outcome,
             ..run.clone()
         })),
-        Counted::Discarded { reason, usage } => withdrawn(parser, reason, usage),
+        Counted::Discarded { reason, usage } => Review::Withdrawn {
+            reason,
+            parser,
+            usage,
+        },
     })
 }
 
-/// Carries out `review` of `run`, committed in `dir`. A withdrawal removes the phases built on
-/// the run before the run itself, so a crash at any point leaves the run committed until
-/// nothing depends on it, and the next invocation reviews it again.
+/// Carries out `review` of `run`, committed in `dir`, discarding in the name of `session`. A
+/// withdrawal removes the phases built on the run before the run itself, so a crash at any
+/// point leaves the run committed until nothing depends on it, and the next invocation reviews
+/// it again.
 pub(super) fn apply(
     results: &ResultsDir,
     dir: &TrialDir,
     run: &RunRecord,
     review: &Review,
+    session: &SessionId,
 ) -> Result<()> {
     match review {
         Review::Current => Ok(()),
         Review::Reparsed(updated) => write_json(&dir.record(Phase::Run), updated),
-        Review::Withdrawn(discarded) => {
+        Review::Withdrawn {
+            reason,
+            parser,
+            usage,
+        } => {
             for phase in [Phase::Measure, Phase::Grade] {
                 results.retract(Phase::Run, &dir.phase(phase))?;
             }
-            write_json(&dir.attempt(run.attempt).discarded(), discarded)?;
+            let discarded = DiscardedAttempt {
+                session: session.clone(),
+                started: run.started,
+                process: Some(run.process),
+                parser: *parser,
+                reason: reason.clone(),
+                usage: usage.clone(),
+            };
+            write_json(&dir.attempt(run.attempt).discarded(), &discarded)?;
             results.retract(Phase::Run, &dir.phase(Phase::Run))
         }
     }
@@ -141,7 +152,12 @@ mod tests {
     }
 
     fn reviewed(dir: &TrialDir, run: &RunRecord) -> Review {
-        review(dir, run, claude(), &fixture::session()).unwrap()
+        review(dir, run, claude()).unwrap()
+    }
+
+    fn applied(repo: &Repo, dir: &TrialDir, run: &RunRecord, review: &Review) {
+        let results = repo.experiment().results().clone();
+        apply(&results, dir, run, review, &fixture::session()).unwrap();
     }
 
     fn stage(repo: &Repo) -> Stage {
@@ -157,12 +173,11 @@ mod tests {
     fn an_older_parser_s_outcome_is_re_derived_and_the_rest_kept() {
         let repo = Repo::new();
         let (dir, before) = committed(&repo, "haiku-bash-success.jsonl", older_parser);
-        let results = repo.experiment().results().clone();
 
         let review = reviewed(&dir, &before);
         let stored: RunRecord = read_record(&dir.phase(Phase::Run)).unwrap().unwrap();
         assert_eq!(stored, before, "reviewing writes nothing");
-        apply(&results, &dir, &before, &review).unwrap();
+        applied(&repo, &dir, &before, &review);
         let after: RunRecord = read_record(&dir.phase(Phase::Run)).unwrap().unwrap();
         assert_eq!(review, Review::Reparsed(Box::new(after.clone())));
         assert_eq!(after.parser(), claude().parser_version());
@@ -182,15 +197,22 @@ mod tests {
     fn a_rate_limit_an_older_parser_missed_withdraws_the_run() {
         let repo = Repo::new();
         let (dir, before) = committed(&repo, "synthetic-rate-limit-event.jsonl", older_parser);
-        let results = repo.experiment().results().clone();
 
         let review = reviewed(&dir, &before);
-        apply(&results, &dir, &before, &review).unwrap();
+        applied(&repo, &dir, &before, &review);
         let discarded: DiscardedAttempt = read_json(&dir.attempt(AttemptNo::FIRST).discarded())
             .unwrap()
             .unwrap();
-        assert_eq!(review, Review::Withdrawn(Box::new(discarded.clone())));
+        assert_eq!(
+            review,
+            Review::Withdrawn {
+                reason: discarded.reason.clone(),
+                parser: claude().parser_version(),
+                usage: discarded.usage.clone(),
+            }
+        );
         assert!(matches!(discarded.reason, Reason::RateLimited { .. }));
+        assert_eq!(discarded.session, fixture::session());
         let output: u64 = discarded.usage.iter().map(|s| s.tokens.output).sum();
         assert_eq!(output, 40);
         assert!(!dir.phase(Phase::Run).exists());
@@ -244,17 +266,16 @@ mod tests {
             let trial = fixture::trial(&repo.experiment(), "opus");
             fixture::commit_grade(&repo, &trial).await;
             write(&dir.phase(Phase::Measure), "record.json", "{}");
-            let results = repo.experiment().results().clone();
 
             let review = reviewed(&dir, &run);
-            let Review::Withdrawn(discarded) = &review else {
+            let Review::Withdrawn { reason: found, .. } = &review else {
                 panic!("{reason}: expected a withdrawal, got {review:?}");
             };
-            assert_eq!(discarded.reason, reason);
+            assert_eq!(found, &reason);
             assert!(dir.phase(Phase::Grade).is_dir(), "reviewing writes nothing");
 
-            apply(&results, &dir, &run, &review).unwrap();
-            apply(&results, &dir, &run, &review).unwrap();
+            applied(&repo, &dir, &run, &review);
+            applied(&repo, &dir, &run, &review);
             for phase in [Phase::Run, Phase::Grade, Phase::Measure] {
                 assert!(!dir.phase(phase).exists(), "{reason}: {phase}");
             }

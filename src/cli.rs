@@ -286,7 +286,7 @@ fn run_trials(path: &Path, guard: &Guard, dry_run: bool) -> Result<()> {
     if dry_run {
         let preview = runtime.block_on(async {
             let stop = Stop::on_ctrl_c()?;
-            run::preview(&experiment, &repo, &host, &stop).await
+            run::preview(&experiment, &host, &stop).await
         })?;
         print!("{}", PreviewTable(&preview));
         return Ok(());

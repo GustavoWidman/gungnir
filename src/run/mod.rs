@@ -144,7 +144,7 @@ pub async fn run(
     for trial in experiment.trials() {
         sweep_partial(&results.trial(&trial).phase(Phase::Run))?;
     }
-    let pending = settle(results, triage(experiment, host.toolchains, session.id())?)?;
+    let pending = settle(results, triage(experiment, host.toolchains)?, session.id())?;
     info!(
         "{}: {} of {} trials pending",
         experiment.name(),
@@ -183,12 +183,7 @@ pub struct Preview {
 /// pins and refuses stale runs as `run` does, and reviews every committed run without applying
 /// a review. It takes no lock, since it writes nothing, writes no session, and leaves the
 /// references unchecked, since judging one commits its grade.
-pub async fn preview(
-    experiment: &Experiment,
-    repo: &Path,
-    host: &Host<'_>,
-    stop: &Stop,
-) -> Result<Preview> {
+pub async fn preview(experiment: &Experiment, host: &Host<'_>, stop: &Stop) -> Result<Preview> {
     let backends: BTreeSet<&BackendId> = experiment.systems().iter().map(System::backend).collect();
     let scratch = tempfile::Builder::new()
         .prefix("gungnir-preview-")
@@ -201,23 +196,22 @@ pub async fn preview(
         scratch.path().join("homes"),
     )?;
     probe_versions(experiment, host, &vault, stop).await?;
-    let session = Session::start(repo)?;
     let mut preview = Preview {
         withdrawals: Vec::new(),
         reparsed: 0,
         pending: BTreeMap::new(),
     };
-    for Found { trial, committed } in triage(experiment, host.toolchains, session.id())? {
+    for Found { trial, committed } in triage(experiment, host.toolchains)? {
         match committed {
             Some((_, Review::Current)) => continue,
             Some((_, Review::Reparsed(_))) => {
                 preview.reparsed += 1;
                 continue;
             }
-            Some((run, Review::Withdrawn(discarded))) => {
+            Some((run, Review::Withdrawn { reason, .. })) => {
                 preview
                     .withdrawals
-                    .push((trial.clone(), run.attempt(), discarded.reason));
+                    .push((trial.clone(), run.attempt(), reason));
             }
             None => {}
         }
@@ -239,11 +233,7 @@ struct Found {
 /// Every trial of `experiment` as the run phase finds it, in order, after refusing every
 /// committed run that is stale. Reads only: reviewing a run decides what to do with it, and
 /// [`settle`] does it.
-fn triage(
-    experiment: &Experiment,
-    toolchains: &Toolchains,
-    session: &SessionId,
-) -> Result<Vec<Found>> {
+fn triage(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<Found>> {
     let results = experiment.results();
     let trials = experiment.trials();
     let mut lifecycles = Vec::with_capacity(trials.len());
@@ -277,32 +267,30 @@ fn triage(
         };
         let harness = Harness::named(trial.system.harness())
             .ok_or_else(|| eyre!("no driver for harness {}", trial.system.harness()))?;
-        let review = review(&results.trial(&trial), run, harness, session)?;
+        let review = review(&results.trial(&trial), run, harness)?;
         let committed = Some((Box::new(run.clone()), review));
         found.push(Found { trial, committed });
     }
     Ok(found)
 }
 
-/// Carries out the review of each committed run in `found`, and returns the trials pending
-/// once it is done, in order: those without a committed run and those whose run was withdrawn.
-fn settle(results: &ResultsDir, found: Vec<Found>) -> Result<Vec<TrialKey>> {
+/// Carries out the review of each committed run in `found` in the name of `session`, and
+/// returns the trials pending once it is done, in order: those without a committed run and
+/// those whose run was withdrawn.
+fn settle(results: &ResultsDir, found: Vec<Found>, session: &SessionId) -> Result<Vec<TrialKey>> {
     let mut pending = Vec::new();
     for Found { trial, committed } in found {
         let Some((run, review)) = committed else {
             pending.push(trial);
             continue;
         };
-        apply(results, &results.trial(&trial), &run, &review)?;
+        apply(results, &results.trial(&trial), &run, &review, session)?;
         let attempt = run.attempt();
         match review {
             Review::Current => {}
             Review::Reparsed(_) => info!("{trial}: reparsed attempt {attempt}"),
-            Review::Withdrawn(discarded) => {
-                info!(
-                    "{trial}: withdrew attempt {attempt}, no sample: {}",
-                    discarded.reason
-                );
+            Review::Withdrawn { reason, .. } => {
+                info!("{trial}: withdrew attempt {attempt}, no sample: {reason}");
                 pending.push(trial);
             }
         }
@@ -778,14 +766,7 @@ mod tests {
             home: machine.home.path(),
             runtime: machine.runtime.path(),
         };
-        let preview = preview(
-            &experiment,
-            machine.repo.root.path(),
-            &host,
-            &Stop::default(),
-        )
-        .await
-        .unwrap();
+        let preview = preview(&experiment, &host, &Stop::default()).await.unwrap();
 
         let wall = Reason::TimedOut {
             budget: records::Timeout::Wall,
