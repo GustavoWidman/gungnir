@@ -105,16 +105,16 @@ impl Lifecycle {
     }
 }
 
-/// What each phase would use for one trial now. A measurement is current only when made on this
-/// machine and under [`Protocol::DEFAULT`], unless [`Current::with_protocol`] names another
-/// protocol.
+/// What each phase would use for one trial now. A measurement is current only when made on the
+/// machine the experiment pins, or on this machine when it pins none, and under
+/// [`Protocol::DEFAULT`], unless [`Current::with_protocol`] names another protocol.
 pub struct Current<'a> {
     run: RunInputs,
     language: &'a Language,
     scenario: &'a Scenario,
     toolchains: &'a Toolchains,
     protocol: Protocol,
-    machine: &'static Identity,
+    machine: &'a Identity,
 }
 
 impl<'a> Current<'a> {
@@ -135,7 +135,10 @@ impl<'a> Current<'a> {
             scenario,
             toolchains,
             protocol: Protocol::DEFAULT,
-            machine: Identity::here()?,
+            machine: match experiment.machine() {
+                Some(pinned) => pinned,
+                None => Identity::here()?,
+            },
         })
     }
 
@@ -349,5 +352,39 @@ mod tests {
             ("measured", Some(Phase::Measure))
         );
         assert_eq!(measured_on(cpu, None), ("measured", None));
+    }
+
+    #[tokio::test]
+    async fn a_pinned_machine_decides_wherever_the_lifecycle_is_read() {
+        let repo = Repo::new();
+        let file = repo.root.path().join("experiments/fixture.toml");
+        let text = fs::read_to_string(&file).unwrap();
+        let pin = "[machine]\ncpu = \"13th Gen Intel(R) Core(TM) i9-13900K\"\nhost = \"d35k70p\"\n\n[pins]";
+        fs::write(&file, text.replacen("[pins]", pin, 1)).unwrap();
+        let experiment = repo.experiment();
+        let trial = fixture::trial(&experiment, "opus");
+        fixture::commit_run(&repo, &trial, &[("main.py", "print(input())\n")]);
+        fixture::commit_grade(&repo, &trial).await;
+        let dir = experiment.results().trial(&trial);
+        let measured_on = |cpu: Option<&str>, host: Option<&str>| {
+            fs::remove_dir_all(dir.phase(Phase::Measure)).ok();
+            commit_measure_on(&repo, &trial, Protocol::DEFAULT, cpu, host);
+            let lifecycle = read(&repo, "opus");
+            (stage(&lifecycle), lifecycle.stale)
+        };
+
+        let desktop = (
+            Some("13th Gen Intel(R) Core(TM) i9-13900K"),
+            Some("d35k70p"),
+        );
+        assert_eq!(measured_on(desktop.0, desktop.1), ("measured", None));
+        assert_eq!(
+            measured_on(Some("Another CPU"), Some("another-host")),
+            ("measured", Some(Phase::Measure))
+        );
+        assert_eq!(
+            measured_on(desktop.0, Some("another-host")),
+            ("measured", Some(Phase::Measure))
+        );
     }
 }

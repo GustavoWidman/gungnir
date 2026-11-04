@@ -2,11 +2,12 @@
 use crate::provenance::cpu_model;
 use eyre::{Result, WrapErr, eyre};
 use serde::{Deserialize, Serialize};
-use std::{fs, sync::OnceLock};
+use std::{fmt, fs, sync::OnceLock};
 
 /// Which machine timed a comparison: its CPU model and its host id. Timings compare only within
-/// one machine, so a measurement made on another is stale. The core, the governor, the kernel
-/// and the load vary between measurements on one machine and are kept as provenance only.
+/// one machine: an experiment's `[machine]` pins the one its measurements must come from, and
+/// without a pin it is the machine looking at them. The core, the governor, the kernel and the
+/// load vary between measurements on one machine and are kept as provenance only.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Identity {
     pub cpu: Option<String>,
@@ -84,6 +85,14 @@ impl Machine {
                 end: load_average()?,
             },
         })
+    }
+}
+
+impl fmt::Display for Identity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let cpu = self.cpu.as_deref().unwrap_or("an unreported CPU");
+        let host = self.host.as_deref().unwrap_or("no host id");
+        write!(f, "{cpu} ({host})")
     }
 }
 

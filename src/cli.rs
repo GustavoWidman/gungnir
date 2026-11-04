@@ -115,6 +115,9 @@ enum Command {
     /// the run and grade locks, unless --allow-busy. The first Ctrl-C lets the comparison in
     /// progress finish, the second kills it.
     Measure(Measure),
+    /// Print this machine's identity as the [machine] table that pins an experiment's
+    /// measurements to it.
+    Machine,
     /// Run one trial's candidate and the reference in its language once each under perf on one
     /// workload, and keep the samples, the folded stacks and a flame graph of each under the
     /// trial's profile/<workload>/. Explains an outlier; never part of a measurement.
@@ -181,6 +184,10 @@ impl Cli {
             }
             Command::Grade { experiment, jobs } => grade_trials(&experiment, jobs),
             Command::Measure(measure) => measure.run(),
+            Command::Machine => {
+                print!("{}", machine_pin(measure::Identity::here()?)?);
+                Ok(())
+            }
             Command::Profile {
                 experiment,
                 trial,
@@ -536,6 +543,14 @@ fn profile(path: &Path, name: &str, workload: Option<&WorkloadId>) -> Result<()>
     }
     println!("{}: {}", trial.language, profiled.shows);
     Ok(())
+}
+
+/// The `[machine]` table that pins measurements to `identity`.
+fn machine_pin(identity: &measure::Identity) -> Result<String> {
+    let (Some(cpu), Some(host)) = (&identity.cpu, &identity.host) else {
+        bail!("this machine is {identity}, which lacks a CPU model or a host id to pin");
+    };
+    Ok(format!("[machine]\ncpu = {cpu:?}\nhost = {host:?}\n"))
 }
 
 /// Parses a repetition as `3` or `r3`.

@@ -242,3 +242,31 @@ fn an_experiment_outside_a_repository_is_an_error() {
     let err = Experiment::load(&dir.path().join("lonely.toml")).unwrap_err();
     assert!(err.to_string().contains("gungnir.toml"), "{err}");
 }
+
+#[test]
+fn a_machine_pin_names_a_cpu_model_and_a_host_id() {
+    let root = fixture();
+    assert_eq!(load(root.path()).unwrap().machine(), None);
+    let pin =
+        "[machine]\ncpu = \"13th Gen Intel(R) Core(TM) i9-13900K\"\nhost = \"d35k70p\"\n\n[pins]";
+    edit(root.path(), "[pins]", pin);
+    let experiment = load(root.path()).unwrap();
+    assert_eq!(
+        experiment.machine(),
+        Some(&Identity {
+            cpu: Some("13th Gen Intel(R) Core(TM) i9-13900K".into()),
+            host: Some("d35k70p".into()),
+        })
+    );
+
+    rejects(
+        "[pins]",
+        "[machine]\ncpu = \"i9-13900K\"\nhost = \"\"\n\n[pins]",
+        &["machine.host"],
+    );
+    rejects(
+        "[pins]",
+        "[machine]\ncpu = \"i9-13900K\"\n\n[pins]",
+        &["host"],
+    );
+}

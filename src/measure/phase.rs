@@ -2,7 +2,7 @@
 //! the reference in its language one comparison at a time, and committed with hyperfine's
 //! exports. Timing needs a quiet machine, so unless told otherwise the phase refuses a busy one
 //! and holds the run and grade locks, which keeps both phases from starting.
-use super::{MeasureRecord, Outcome, Program, Protocol, Settings, compare, machine};
+use super::{Identity, MeasureRecord, Outcome, Program, Protocol, Settings, compare, machine};
 use crate::{
     experiment::Experiment,
     grade::Verdict,
@@ -124,6 +124,7 @@ pub async fn measure_trials(
     stop: &Stop,
 ) -> Result<Measured> {
     let results = experiment.results();
+    pinned(experiment.machine(), Identity::here()?)?;
     let _locks = quiet(results, request.quiet)?;
     results.sweep_scratch(Phase::Measure)?;
     let mut used = vec![
@@ -201,6 +202,18 @@ fn is_due(lifecycle: &Lifecycle) -> bool {
         (Stage::Measured { .. }, Some(Phase::Measure)) => true,
         _ => false,
     }
+}
+
+/// Refuses to measure on any machine but the one the experiment pins, when it pins one.
+fn pinned(pin: Option<&Identity>, here: &Identity) -> Result<()> {
+    if let Some(pin) = pin {
+        ensure!(
+            pin == here,
+            "this machine is {here}, and the experiment's [machine] pins measuring to {pin}; \
+             measure on that machine, or change the pin"
+        );
+    }
+    Ok(())
 }
 
 /// Holds the locks a measurement needs: its own always, and the run and grade locks while the
@@ -365,6 +378,28 @@ pub fn describe(record: &MeasureRecord) -> String {
         let _ = write!(line, ", peak {}", summary.peak_memory);
     }
     line
+}
+
+#[cfg(test)]
+mod pin_tests {
+    use super::*;
+
+    #[test]
+    fn measuring_refuses_any_machine_but_the_pinned_one() {
+        let desktop = Identity {
+            cpu: Some("13th Gen Intel(R) Core(TM) i9-13900K".into()),
+            host: Some("d35k70p".into()),
+        };
+        let vm = Identity {
+            cpu: Some("AMD Ryzen 7 5800U with Radeon Graphics".into()),
+            host: Some("4a7c1e90".into()),
+        };
+        assert!(pinned(None, &vm).is_ok());
+        assert!(pinned(Some(&desktop), &desktop).is_ok());
+        let message = pinned(Some(&desktop), &vm).unwrap_err().to_string();
+        assert!(message.contains("AMD Ryzen 7 5800U"), "{message}");
+        assert!(message.contains("i9-13900K"), "{message}");
+    }
 }
 
 #[cfg(test)]

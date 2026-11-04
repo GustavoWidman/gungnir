@@ -4,6 +4,7 @@ use crate::{
     catalog::{Catalog, System},
     id::{BackendId, Effort, HarnessName, HarnessVersion, LanguageId, ModelId, Rep, ScenarioId},
     language::Language,
+    measure::Identity,
     scenario::Scenario,
     store::read_toml,
     trial::{ResultsDir, TrialKey},
@@ -33,6 +34,7 @@ pub struct Experiment {
     scenarios: Vec<Scenario>,
     languages: Vec<Language>,
     pins: BTreeMap<HarnessName, HarnessVersion>,
+    machine: Option<Identity>,
     budget: Budget,
     concurrency: BTreeMap<BackendId, NonZeroUsize>,
     catalog: Catalog,
@@ -86,6 +88,11 @@ impl Experiment {
     /// The harness version each harness in use must report.
     pub fn pins(&self) -> &BTreeMap<HarnessName, HarnessVersion> {
         &self.pins
+    }
+
+    /// The machine every measurement must be made on, when `[machine]` pins one.
+    pub fn machine(&self) -> Option<&Identity> {
+        self.machine.as_ref()
     }
 
     pub fn budget(&self) -> Budget {
@@ -152,9 +159,30 @@ struct RawExperiment {
     scenarios: Vec<ScenarioId>,
     languages: Vec<LanguageId>,
     pins: BTreeMap<HarnessName, HarnessVersion>,
+    #[serde(default)]
+    machine: Option<RawMachine>,
     budget: RawBudget,
     concurrency: BTreeMap<BackendId, NonZeroUsize>,
     systems: Vec<RawSystems>,
+}
+
+/// `[machine]`: the CPU model and host id that `gungnir machine` prints.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawMachine {
+    cpu: String,
+    host: String,
+}
+
+impl RawMachine {
+    fn resolve(self) -> Result<Identity> {
+        ensure!(!self.cpu.trim().is_empty(), "machine.cpu is empty");
+        ensure!(!self.host.trim().is_empty(), "machine.host is empty");
+        Ok(Identity {
+            cpu: Some(self.cpu),
+            host: Some(self.host),
+        })
+    }
 }
 
 #[derive(Deserialize)]
@@ -246,6 +274,7 @@ impl RawExperiment {
             scenarios,
             languages,
             pins: self.pins,
+            machine: self.machine.map(RawMachine::resolve).transpose()?,
             budget: Budget {
                 wall: positive_duration("budget.wall", &self.budget.wall)?,
                 idle: positive_duration("budget.idle", &self.budget.idle)?,
