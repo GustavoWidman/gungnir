@@ -33,7 +33,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/language.rs` loads `languages/` into `Language` profiles. `Language::prompt` renders the agent's prompt from a `Brief`.
 - `src/scenario.rs` loads `scenarios/` into `Scenario` values, with digests of the brief, the hidden suite, the workloads and each reference.
 - `src/experiment.rs` loads an experiment against the repository that holds it, validates it, and expands it into `TrialKey` values with `Experiment::trials`.
-- `src/trial.rs` defines `Phase`, `TrialKey`, `ResultsDir` and `TrialDir`. Paths under `results/<experiment>/` are named there and nowhere else.
+- `src/trial.rs` defines `Phase`, `TrialKey`, `ResultsDir`, `TrialDir` and `AttemptDir`. Paths under `results/<experiment>/` are named there and nowhere else. `ResultsDir::retract` withdraws a committed directory through the phase's scratch, so a crash never leaves one half deleted.
 - `src/store.rs` and `src/store/` hold the file mechanics: `Digest`, atomic writes, `read_json`, the `PartialDir` commit protocol and the `Lock` used for phase locks.
 - `src/provenance.rs` records one `Session` per invocation in `sessions/<id>.json`.
 - `src/secret.rs` holds `Secret<T>`, whose `Debug` prints nothing, `EnvValue` for sandbox environments, and redaction of secret values from bytes and files.
