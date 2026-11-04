@@ -11,8 +11,8 @@ mod workspace;
 
 pub use attempt::{Attempted, Rig};
 pub use records::{
-    AgentExit, Cut, DiscardedAttempt, Outcome, Process, ProcessExit, Quota, RunInputs, RunRecord,
-    Sample, Tokens,
+    AgentExit, Cut, Outcome, Process, ProcessExit, Quota, Reason, RunInputs, RunRecord, Sample,
+    Tokens,
 };
 pub use schedule::{Ceiling, Guard, Tally};
 

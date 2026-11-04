@@ -1,10 +1,11 @@
 //! What the run phase commits: the inputs a run was made from, the run record with the
-//! agent's outcome, and the record of an attempt a rate limit discarded.
+//! agent's outcome, and the record of an attempt that is no sample, with the policy that tells
+//! the two apart.
 use super::{Task, workspace};
 use crate::{
     experiment::Budget,
     grade::duration,
-    harness::{self, AgentOutcome, ProcessEnd, QuotaSpan, TokenUsage, UsageSample},
+    harness::{self, AgentOutcome, Ending, ProcessEnd, QuotaSpan, TokenUsage, UsageSample},
     id::AttemptNo,
     provenance::SessionId,
     sandbox,
@@ -14,7 +15,7 @@ use crate::{
 use chrono::{DateTime, Utc};
 use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, path::PathBuf, time::Duration};
+use std::{collections::BTreeMap, fmt, path::PathBuf, time::Duration};
 
 /// Everything a run depends on that gungnir controls. Equal inputs make the same kind of
 /// sample, so a committed run is stale exactly when its inputs differ from the current ones.
@@ -136,41 +137,157 @@ impl RunRecord {
     }
 }
 
-/// `attempts/<n>/discarded.json`: an attempt the account's quota ended. Its tokens are
-/// overhead, never a sample.
+/// `attempts/<n>/discarded.json`: an attempt that is no sample. It is the run phase's own
+/// bookkeeping, which tells a discarded attempt from one a crash interrupted and keeps attempt
+/// numbers unique across retries; nothing reports it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(from = "StoredDiscard")]
 pub struct DiscardedAttempt {
-    /// The invocation that discarded the attempt: the one that ran it, or a later one whose
-    /// parser found the rate limit in its transcript.
+    /// The invocation that discarded the attempt: the one that ran it, or a later one that
+    /// found its committed run was no sample.
     pub(super) session: SessionId,
     pub(super) started: DateTime<Utc>,
-    pub(super) process: Process,
+    /// How the agent's process ended, unless the sandbox could not tell.
+    pub(super) process: Option<Process>,
     pub(super) parser: u32,
-    /// When the vendor said the quota resets, if it did.
-    pub(super) resets_at: Option<DateTime<Utc>>,
-    /// What the attempt spent before the limit.
+    pub(super) reason: Reason,
     pub(super) usage: Vec<Sample>,
 }
 
-impl DiscardedAttempt {
-    pub fn session(&self) -> &SessionId {
-        &self.session
-    }
+/// `discarded.json` as files of any age hold it. Before discards had reasons, only rate limits
+/// were discarded, with the vendor's reset time beside the usage.
+#[derive(Deserialize)]
+struct StoredDiscard {
+    session: SessionId,
+    started: DateTime<Utc>,
+    process: Option<Process>,
+    parser: u32,
+    reason: Option<Reason>,
+    resets_at: Option<DateTime<Utc>>,
+    usage: Vec<Sample>,
+}
 
-    pub fn started(&self) -> DateTime<Utc> {
-        self.started
+impl From<StoredDiscard> for DiscardedAttempt {
+    fn from(stored: StoredDiscard) -> Self {
+        let StoredDiscard {
+            session,
+            started,
+            process,
+            parser,
+            reason,
+            resets_at,
+            usage,
+        } = stored;
+        Self {
+            session,
+            started,
+            process,
+            parser,
+            reason: reason.unwrap_or(Reason::RateLimited { resets_at }),
+            usage,
+        }
     }
+}
 
-    pub fn process(&self) -> &Process {
-        &self.process
+/// Why an attempt is no sample. A sample is an agent session that ended on its own: the CLI
+/// reported it complete, or the model declined the task. Anything else says nothing about the
+/// model, so the attempt is discarded and its trial runs again.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum Reason {
+    /// The account's quota ended the session, and the vendor may have said when it resets.
+    RateLimited { resets_at: Option<DateTime<Utc>> },
+    /// The CLI reported an error that ended the session.
+    Errored { message: String },
+    /// The CLI ended without its final report.
+    Crashed,
+    /// gungnir ended the agent when one of its time budgets ran out.
+    TimedOut { budget: Timeout },
+    /// The second Ctrl-C ended the agent.
+    Stopped,
+    /// The sandbox could not run the agent to its end.
+    Fault { message: String },
+}
+
+/// Which of an attempt's time budgets ran out.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Timeout {
+    Wall,
+    Idle,
+}
+
+impl Reason {
+    /// Why an attempt whose agent ended with `exit`, its process ending as `process` says, is
+    /// no sample, or `None` when it is one.
+    pub fn of(exit: &AgentExit, process: &Process) -> Option<Self> {
+        match exit {
+            AgentExit::Completed | AgentExit::Refused => None,
+            AgentExit::Errored { message } => Some(Self::Errored {
+                message: message.clone(),
+            }),
+            AgentExit::Crashed => Some(Self::Crashed),
+            AgentExit::Killed => Some(match (process.cut, process.exit) {
+                (Some(Cut::RateLimited), _) => Self::RateLimited { resets_at: None },
+                (Some(Cut::Idle), _) => Self::TimedOut {
+                    budget: Timeout::Idle,
+                },
+                (None, ProcessExit::TimedOut) => Self::TimedOut {
+                    budget: Timeout::Wall,
+                },
+                (None, _) => Self::Stopped,
+            }),
+        }
     }
+}
 
-    pub fn usage(&self) -> &[Sample] {
-        &self.usage
+impl fmt::Display for Reason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::RateLimited {
+                resets_at: Some(at),
+            } => write!(f, "rate limited until {at}"),
+            Self::RateLimited { resets_at: None } => f.write_str("rate limited"),
+            Self::Errored { message } => write!(f, "the CLI reported an error: {message}"),
+            Self::Crashed => f.write_str("the CLI ended without its final report"),
+            Self::TimedOut {
+                budget: Timeout::Wall,
+            } => f.write_str("the wall budget ran out"),
+            Self::TimedOut {
+                budget: Timeout::Idle,
+            } => f.write_str("the idle budget ran out"),
+            Self::Stopped => f.write_str("stopped by the second Ctrl-C"),
+            Self::Fault { message } => f.write_str(message),
+        }
     }
+}
 
-    pub fn resets_at(&self) -> Option<DateTime<Utc>> {
-        self.resets_at
+/// How an attempt counts: as a sample, or not, for a reason.
+#[derive(Debug)]
+pub(super) enum Counted {
+    Sample(Outcome),
+    Discarded { reason: Reason, usage: Vec<Sample> },
+}
+
+impl Counted {
+    /// How an attempt that ended as `ending`, its process ending as `process` says, counts.
+    pub(super) fn of(ending: Ending, process: &Process) -> Self {
+        match ending {
+            Ending::RateLimited { resets_at, usage } => Self::Discarded {
+                reason: Reason::RateLimited { resets_at },
+                usage: samples(usage),
+            },
+            Ending::Finished(outcome) => {
+                let outcome = Outcome::from(outcome);
+                match Reason::of(&outcome.exit, process) {
+                    None => Self::Sample(outcome),
+                    Some(reason) => Self::Discarded {
+                        reason,
+                        usage: outcome.usage,
+                    },
+                }
+            }
+        }
     }
 }
 

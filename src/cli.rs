@@ -233,14 +233,12 @@ fn run_trials(path: &Path, guard: &Guard) -> Result<()> {
         committed,
         discarded,
         failed,
-        interrupted,
-        unstarted,
+        pending,
     } = tally;
     println!(
-        "committed {committed}, discarded {discarded}, failed {failed}, interrupted \
-         {interrupted}, not started {unstarted}"
+        "attempts committed {committed}, discarded {discarded}, failed {failed}; trials pending \
+         {pending}"
     );
-    let pending = failed + interrupted + unstarted;
     ensure!(
         pending == 0,
         "{pending} trials are still pending; run again to continue"

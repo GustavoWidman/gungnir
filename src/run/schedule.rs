@@ -1,7 +1,7 @@
 //! The lanes: one per backend, each starting its pending trials in order, up to the backend's
 //! concurrency, behind a gate that only that backend's rate limits close.
 use super::{
-    AgentExit, Attempted, Quota, RunRecord,
+    AgentExit, Attempted, Quota, Reason, RunRecord,
     gate::{Event, Gate},
 };
 use crate::{
@@ -20,15 +20,17 @@ use std::{
 use tokio::time::Instant;
 use tracing::{error, info, warn};
 
-/// What became of the attempts one invocation scheduled.
+/// What became of the attempts and trials one invocation scheduled.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Tally {
+    /// Attempts committed as their trial's sample.
     pub committed: usize,
+    /// Attempts discarded as no sample.
     pub discarded: usize,
+    /// Attempts that failed before they could be committed or discarded.
     pub failed: usize,
-    pub interrupted: usize,
-    /// Trials not started because the invocation drained first.
-    pub unstarted: usize,
+    /// Trials still without a committed run when the invocation ended.
+    pub pending: usize,
 }
 
 /// How much of each backend's account one invocation may spend. A backend whose guard trips
@@ -105,7 +107,8 @@ struct Lane {
 
 /// Runs `attempt` for each of `trials`, in order within each backend's lane, until every trial
 /// is committed or failed, or `stop` drains. A rate-limited trial goes back to the front of its
-/// lane. A failed or interrupted one stays pending for the next invocation.
+/// lane. One whose attempt was otherwise discarded or failed stays pending for the next
+/// invocation.
 pub(super) async fn schedule(
     trials: Vec<TrialKey>,
     limits: &BTreeMap<BackendId, NonZeroUsize>,
@@ -113,6 +116,7 @@ pub(super) async fn schedule(
     stop: &Stop,
     attempt: impl AsyncFn(&TrialKey) -> Result<Attempted>,
 ) -> Result<Tally> {
+    let scheduled = trials.len();
     let mut lanes: BTreeMap<&BackendId, Lane> = limits
         .iter()
         .map(|(backend, limit)| {
@@ -194,16 +198,7 @@ pub(super) async fn schedule(
                     .get_mut(backend)
                     .ok_or_else(|| eyre!("no lane for backend {backend}"))?;
                 lane.running -= 1;
-                lane.errors = match &result {
-                    Ok(Attempted::Committed(record)) => match record.outcome().exit {
-                        AgentExit::Errored { .. } | AgentExit::Crashed => lane.errors + 1,
-                        AgentExit::Completed | AgentExit::Refused | AgentExit::Killed => 0,
-                    },
-                    Ok(Attempted::RateLimited { .. } | Attempted::Interrupted { .. }) => {
-                        lane.errors
-                    }
-                    Err(_) => lane.errors + 1,
-                };
+                lane.errors = errors_after(lane.errors, &result);
                 let quota = match &result {
                     Ok(Attempted::Committed(record)) => {
                         Some((&record.outcome().quota, record.started()))
@@ -239,8 +234,23 @@ pub(super) async fn schedule(
             else => break,
         }
     }
-    tally.unstarted = lanes.values().map(|lane| lane.queue.len()).sum();
+    tally.pending = scheduled - tally.committed;
     Ok(tally)
+}
+
+/// The errors in a row after an attempt that ended as `result`, from `errors` before it. An
+/// error, a crash or a fault adds one, a session that ran until it finished or ran out of
+/// time resets the count, and a rate limit or a stop says nothing either way.
+fn errors_after(errors: u32, result: &Result<Attempted>) -> u32 {
+    match result {
+        Ok(Attempted::Committed(_)) => 0,
+        Ok(Attempted::Discarded { reason, .. }) => match reason {
+            Reason::Errored { .. } | Reason::Crashed | Reason::Fault { .. } => errors + 1,
+            Reason::TimedOut { .. } => 0,
+            Reason::RateLimited { .. } | Reason::Stopped => errors,
+        },
+        Err(_) => errors + 1,
+    }
 }
 
 /// Counts and logs how an attempt of `trial` ended, and names it for the lane's gate.
@@ -255,21 +265,15 @@ fn settle(tally: &mut Tally, trial: &TrialKey, result: Result<Attempted>) -> Eve
             );
             Event::Passed
         }
-        Ok(Attempted::RateLimited { attempt, resets_at }) => {
+        Ok(Attempted::Discarded { attempt, reason }) => {
             tally.discarded += 1;
-            let resets_in = resets_at.and_then(|at| (at - Utc::now()).to_std().ok());
-            match resets_at {
-                Some(at) => warn!(
-                    "{trial}: rate limited, attempt {attempt} discarded; quota resets at {at}"
-                ),
-                None => warn!("{trial}: rate limited, attempt {attempt} discarded"),
+            warn!("{trial}: attempt {attempt} discarded, {reason}");
+            match reason {
+                Reason::RateLimited { resets_at } => Event::Limited {
+                    resets_in: resets_at.and_then(|at| (at - Utc::now()).to_std().ok()),
+                },
+                _ => Event::Passed,
             }
-            Event::Limited { resets_in }
-        }
-        Ok(Attempted::Interrupted { attempt }) => {
-            tally.interrupted += 1;
-            warn!("{trial}: attempt {attempt} interrupted");
-            Event::Passed
         }
         Err(err) => {
             tally.failed += 1;
@@ -443,6 +447,13 @@ mod tests {
         starts.iter().map(|start| start.trial.clone()).collect()
     }
 
+    fn discarded(reason: Reason) -> Attempted {
+        Attempted::Discarded {
+            attempt: AttemptNo::FIRST,
+            reason,
+        }
+    }
+
     #[tokio::test(start_paused = true)]
     async fn each_lane_starts_its_trials_in_order_up_to_its_concurrency() {
         let bench = Bench::new();
@@ -472,11 +483,10 @@ mod tests {
             .schedule(&Stop::default(), |trial, earlier| {
                 if trial == &first && earlier == 0 {
                     let resets_at = Utc::now() + chrono::TimeDelta::seconds(30 * 60 + 5);
-                    let limited = Attempted::RateLimited {
-                        attempt: AttemptNo::FIRST,
+                    let reason = Reason::RateLimited {
                         resets_at: Some(resets_at),
                     };
-                    (5 * MINUTE, limited)
+                    (5 * MINUTE, discarded(reason))
                 } else {
                     (10 * MINUTE, bench.committed())
                 }
@@ -524,7 +534,7 @@ mod tests {
             tally,
             Tally {
                 committed: 3,
-                unstarted: 13,
+                pending: 13,
                 ..Tally::default()
             }
         );
@@ -544,7 +554,7 @@ mod tests {
             .schedule(&Stop::default(), |_, _| (10 * MINUTE, bench.committed()))
             .await;
         assert_eq!(tally.committed, 8);
-        assert_eq!(tally.unstarted, 8);
+        assert_eq!(tally.pending, 8);
         assert!(bench.starts("openai").is_empty());
         assert_eq!(bench.starts("anthropic").len(), 8);
     }
@@ -581,7 +591,7 @@ mod tests {
         assert_eq!(bench.starts("anthropic").len(), 2, "the two running finish");
         assert_eq!(bench.starts("openai").len(), 8);
         assert_eq!(tally.committed, 10);
-        assert_eq!(tally.unstarted, 6);
+        assert_eq!(tally.pending, 6);
     }
 
     #[tokio::test(start_paused = true)]
@@ -616,22 +626,21 @@ mod tests {
     async fn errors_in_a_row_stop_the_backend_and_a_clean_attempt_resets_the_count() {
         let mut bench = Bench::new();
         bench.guard.max_errors = Some(3);
-        let mut errored = bench.record.clone();
-        errored.outcome.exit = AgentExit::Errored {
+        let errored = Reason::Errored {
             message: "authentication failed".to_owned(),
         };
         let tally = bench
             .schedule(&Stop::default(), |trial, _| {
-                let record = if trial.system.backend().as_str() == "openai" {
-                    errored.clone()
+                let attempted = if trial.system.backend().as_str() == "openai" {
+                    discarded(errored.clone())
                 } else {
-                    bench.record.clone()
+                    bench.committed()
                 };
-                (10 * MINUTE, Attempted::Committed(Box::new(record)))
+                (10 * MINUTE, attempted)
             })
             .await;
         assert_eq!(bench.starts("openai").len(), 3);
         assert_eq!(bench.starts("anthropic").len(), 8);
-        assert_eq!(tally.unstarted, 5);
+        assert_eq!(tally.pending, 8);
     }
 }

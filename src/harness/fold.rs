@@ -7,17 +7,17 @@ use std::{collections::BTreeMap, time::Duration};
 /// How an attempt ended.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Ending {
-    /// A sample, whatever the agent achieved.
+    /// The session ended some other way than a rate limit. Whether it is a sample is the run
+    /// phase's call.
     Finished(AgentOutcome),
-    /// The account's quota ended the session. The attempt is discarded and its usage is
-    /// overhead.
+    /// The account's quota ended the session.
     RateLimited {
         resets_at: Option<DateTime<Utc>>,
         usage: Vec<UsageSample>,
     },
 }
 
-/// What an attempt that counts as a sample produced, apart from its workspace.
+/// What an attempt produced, apart from its workspace.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AgentOutcome {
     pub exit: Exit,

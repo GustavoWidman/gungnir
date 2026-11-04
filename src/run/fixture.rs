@@ -60,6 +60,8 @@ pub struct Play {
     pub silence: Duration,
     /// How the sandbox reports the agent's end.
     pub exit: Exit,
+    /// The sandbox's fault, when it cannot run the agent to its end.
+    pub fault: Option<String>,
 }
 
 impl Play {
@@ -77,6 +79,7 @@ impl Play {
             stderr: Vec::new(),
             silence: Duration::ZERO,
             exit: Exit::Code(0),
+            fault: None,
         }
     }
 }
@@ -184,6 +187,9 @@ impl Backend for Agent {
             let stderr_bytes = print(&stderr, &play.stderr).await;
             tokio::time::sleep(play.silence).await;
             drop((stdout, stderr));
+            if let Some(fault) = play.fault {
+                return Err(eyre::eyre!(fault).into());
+            }
             let collected = |total| Collected {
                 bytes: Vec::new(),
                 total,

@@ -2,7 +2,9 @@
 //! own egress proxy, its stdout streamed into the transcript and decoded as it arrives, and
 //! the trial's run directory or the attempt's discard record committed from how it ended.
 use super::{
-    Cut, DiscardedAttempt, Process, RunInputs, RunRecord, Task, records::samples, workspace,
+    Cut, Process, Reason, RunInputs, RunRecord, Task,
+    records::{Counted, DiscardedAttempt, samples},
+    workspace,
 };
 use crate::{
     egress::{Allowlist, Proxy},
@@ -11,7 +13,7 @@ use crate::{
     id::AttemptNo,
     provenance::SessionId,
     sandbox::{
-        self, Backend, Finished, HOME, Input, Io, Kill, Limits, Mount, Network, Output, Spec, WORK,
+        Backend, Fault, Finished, HOME, Input, Io, Kill, Limits, Mount, Network, Output, Spec, WORK,
     },
     secret::{EnvValue, Redactor},
     stop::Stop,
@@ -20,7 +22,7 @@ use crate::{
     trial::{AttemptDir, FINAL, PROMPT, Phase, ResultsDir},
     vault::{Home, Vault},
 };
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use eyre::{Result, WrapErr, eyre};
 use globset::{Glob, GlobSetBuilder};
 use std::{
@@ -58,27 +60,21 @@ pub struct Rig<'a> {
 /// How an attempt whose agent ran left its trial.
 #[derive(Debug)]
 pub enum Attempted {
-    /// The trial's run directory is committed with this record.
+    /// The attempt is a sample: the trial's run directory is committed with this record.
     Committed(Box<RunRecord>),
-    /// The account's quota ended the session. The attempt is discarded and the trial is still
-    /// pending.
-    RateLimited {
-        attempt: AttemptNo,
-        resets_at: Option<DateTime<Utc>>,
-    },
-    /// The second Ctrl-C killed the agent. The attempt stays as interrupted.
-    Interrupted { attempt: AttemptNo },
+    /// The attempt is no sample, for `reason`. It is discarded and the trial is still pending.
+    Discarded { attempt: AttemptNo, reason: Reason },
 }
 
 /// What the sandbox reported, and why gungnir cut the agent short when it did.
 struct Ran {
-    finished: Finished,
+    finished: Result<Finished, Fault>,
     cut: Option<Cut>,
 }
 
 impl Rig<'_> {
-    /// Makes the next attempt of `task`'s trial. An error leaves the attempt, if it started,
-    /// as interrupted.
+    /// Makes the next attempt of `task`'s trial, committing its run when it is a sample and
+    /// discarding it otherwise. An error leaves the attempt, if it started, as interrupted.
     pub async fn attempt(&self, task: &Task<'_>) -> Result<Attempted> {
         let system = &task.trial.system;
         let harness = Harness::named(system.harness())
@@ -143,6 +139,34 @@ impl Rig<'_> {
                 refreshed.redact_file(artifact)?;
             }
         }
+        let discard = |process, reason: Reason, usage| -> Result<Attempted> {
+            let discarded = DiscardedAttempt {
+                session: self.session.clone(),
+                started,
+                process,
+                parser: harness.parser_version(),
+                reason: reason.clone(),
+                usage,
+            };
+            write_json(&attempt.discarded(), &discarded)?;
+            Ok(Attempted::Discarded {
+                attempt: number,
+                reason,
+            })
+        };
+        let finished = match finished {
+            Ok(finished) => finished,
+            Err(fault) => {
+                let usage = match conclude(harness, &attempt, ProcessEnd::Killed)? {
+                    Ending::Finished(outcome) => outcome.usage,
+                    Ending::RateLimited { usage, .. } => usage,
+                };
+                let reason = Reason::Fault {
+                    message: fault.to_string(),
+                };
+                return discard(None, reason, samples(usage));
+            }
+        };
         let process = Process {
             exit: finished.exit.into(),
             cut,
@@ -150,27 +174,9 @@ impl Rig<'_> {
             stdout_bytes: finished.stdout.total,
             stderr_bytes: finished.stderr.total,
         };
-        // Only the second Ctrl-C kills an agent that gungnir did not cut short.
-        if finished.exit == sandbox::Exit::Killed && cut.is_none() {
-            return Ok(Attempted::Interrupted { attempt: number });
-        }
-        match conclude(harness, &attempt, process.end())? {
-            Ending::RateLimited { resets_at, usage } => {
-                let discarded = DiscardedAttempt {
-                    session: self.session.clone(),
-                    started,
-                    process,
-                    parser: harness.parser_version(),
-                    resets_at,
-                    usage: samples(usage),
-                };
-                write_json(&attempt.discarded(), &discarded)?;
-                Ok(Attempted::RateLimited {
-                    attempt: number,
-                    resets_at,
-                })
-            }
-            Ending::Finished(outcome) => {
+        match Counted::of(conclude(harness, &attempt, process.end())?, &process) {
+            Counted::Discarded { reason, usage } => discard(Some(process), reason, usage),
+            Counted::Sample(outcome) => {
                 let redactor = Redactor::new(key.secrets().iter().chain(&fresh));
                 let partial = PartialDir::begin(&trial.phase(Phase::Run))?;
                 let prompt_file = partial.path().join(PROMPT);
@@ -189,7 +195,7 @@ impl Rig<'_> {
                     started,
                     process,
                     parser: harness.parser_version(),
-                    outcome: outcome.into(),
+                    outcome,
                     snapshot,
                 };
                 partial.commit(&record)?;
@@ -281,10 +287,7 @@ impl Rig<'_> {
             or_kill(&kill, log(stderr, stderr_log, redactor)),
         );
         let (cut, ()) = (cut?, logged?);
-        Ok(Ran {
-            finished: finished?,
-            cut,
-        })
+        Ok(Ran { finished, cut })
     }
 }
 
@@ -483,11 +486,14 @@ mod tests {
         run::{
             AgentExit, ProcessExit,
             fixture::{self, Agent, LOGIN, Play, Repo, TOKEN},
+            records::Timeout,
         },
+        sandbox,
         secret::Secret,
         store::read_record,
         trial::TrialDir,
     };
+    use chrono::DateTime;
     use globset::GlobSet;
     use std::{collections::BTreeMap, path::PathBuf};
     use tempfile::TempDir;
@@ -672,18 +678,21 @@ mod tests {
             exit: sandbox::Exit::Killed,
             ..Play::transcript("claude-code/synthetic-rate-limit-event.jsonl")
         });
-        let Attempted::RateLimited { attempt, resets_at } = bench.attempt("opus", &limited).await
-        else {
-            panic!("expected a rate limit");
+        let resets_at = DateTime::from_timestamp(1_793_762_400, 0);
+        let Attempted::Discarded { attempt, reason } = bench.attempt("opus", &limited).await else {
+            panic!("expected a discarded attempt");
         };
         assert_eq!(attempt, AttemptNo::FIRST);
-        assert_eq!(resets_at, DateTime::from_timestamp(1_793_762_400, 0));
+        assert_eq!(reason, Reason::RateLimited { resets_at });
         let trial = bench.trial("opus");
         let discarded: DiscardedAttempt =
             serde_json::from_str(&read(&trial.attempt(attempt).discarded())).unwrap();
-        assert_eq!(discarded.resets_at(), resets_at);
-        assert_eq!(discarded.process.cut, Some(Cut::RateLimited));
-        let output: u64 = discarded.usage().iter().map(|s| s.tokens.output).sum();
+        assert_eq!(discarded.reason, reason);
+        assert_eq!(
+            discarded.process.and_then(|process| process.cut),
+            Some(Cut::RateLimited)
+        );
+        let output: u64 = discarded.usage.iter().map(|s| s.tokens.output).sum();
         assert_eq!(output, 40);
         assert!(!trial.phase(Phase::Run).exists());
         bench.assert_clean();
@@ -709,8 +718,8 @@ mod tests {
         assert!(
             matches!(
                 attempted,
-                Attempted::RateLimited {
-                    resets_at: None,
+                Attempted::Discarded {
+                    reason: Reason::RateLimited { resets_at: None },
                     ..
                 }
             ),
@@ -718,43 +727,130 @@ mod tests {
         );
     }
 
-    #[tokio::test(start_paused = true)]
-    async fn an_agent_silent_past_the_idle_budget_is_cut_and_its_run_kept() {
-        let bench = Bench::new();
-        let agent = Agent::new(|_| {
-            let mut play = Play::transcript("claude-code/haiku-bash-success.jsonl");
-            play.stdout.truncate(2);
-            play.silence = Duration::from_secs(3600);
-            play.exit = sandbox::Exit::Killed;
-            play
-        });
-        let Attempted::Committed(record) = bench.attempt("opus", &agent).await else {
-            panic!("expected a committed run");
-        };
-        assert_eq!(record.process().cut, Some(Cut::Idle));
-        assert_eq!(record.outcome().exit, AgentExit::Killed);
+    /// How an attempt left its trial, as a test expects it.
+    #[derive(Debug, PartialEq)]
+    enum Left {
+        Committed(AgentExit),
+        Discarded(Reason),
     }
 
-    #[tokio::test]
-    async fn an_agent_the_second_ctrl_c_killed_leaves_an_interrupted_attempt() {
-        let bench = Bench::new();
-        let agent = Agent::new(|_| {
-            let mut play = Play::transcript("claude-code/haiku-bash-success.jsonl");
+    #[tokio::test(start_paused = true)]
+    async fn only_a_session_that_ended_on_its_own_is_committed_and_the_rest_are_discarded() {
+        let played = |name: &str| Play::transcript(&format!("claude-code/{name}"));
+        let cut_short = |exit| {
+            let mut play = played("haiku-bash-success.jsonl");
             play.stdout.truncate(2);
-            play.exit = sandbox::Exit::Killed;
-            play
-        });
-        let attempted = bench.attempt("opus", &agent).await;
-        assert!(
-            matches!(attempted, Attempted::Interrupted { attempt } if attempt == AttemptNo::FIRST),
-            "{attempted:?}"
+            Play { exit, ..play }
+        };
+        let cases = [
+            (
+                "completed",
+                played("haiku-bash-success.jsonl"),
+                Left::Committed(AgentExit::Completed),
+            ),
+            (
+                "refused",
+                played("synthetic-refusal.jsonl"),
+                Left::Committed(AgentExit::Refused),
+            ),
+            (
+                "errored",
+                played("unknown-model-error.jsonl"),
+                Left::Discarded(Reason::Errored {
+                    message: "There's an issue with the selected model (claude-nonexistent-9). \
+                              It may not exist or you may not have access to it. Run --model \
+                              to pick a different model."
+                        .to_owned(),
+                }),
+            ),
+            (
+                "crashed",
+                cut_short(sandbox::Exit::Code(1)),
+                Left::Discarded(Reason::Crashed),
+            ),
+            (
+                "out of memory",
+                cut_short(sandbox::Exit::OutOfMemory),
+                Left::Discarded(Reason::Crashed),
+            ),
+            (
+                "wall budget",
+                cut_short(sandbox::Exit::TimedOut),
+                Left::Discarded(Reason::TimedOut {
+                    budget: Timeout::Wall,
+                }),
+            ),
+            (
+                "idle budget",
+                Play {
+                    silence: Duration::from_secs(3600),
+                    ..cut_short(sandbox::Exit::Killed)
+                },
+                Left::Discarded(Reason::TimedOut {
+                    budget: Timeout::Idle,
+                }),
+            ),
+            (
+                "second ctrl-c",
+                cut_short(sandbox::Exit::Killed),
+                Left::Discarded(Reason::Stopped),
+            ),
+            (
+                "sandbox fault",
+                Play {
+                    fault: Some("the scope vanished".to_owned()),
+                    ..cut_short(sandbox::Exit::Code(0))
+                },
+                Left::Discarded(Reason::Fault {
+                    message: "sandbox fault: the scope vanished".to_owned(),
+                }),
+            ),
+        ];
+        for (label, play, expected) in cases {
+            let bench = Bench::new();
+            let agent = Agent::new(move |_| play.clone());
+            let trial = bench.trial("opus");
+            let attempt = trial.attempt(AttemptNo::FIRST);
+            let left = match bench.attempt("opus", &agent).await {
+                Attempted::Committed(record) => {
+                    assert!(!attempt.discarded().exists(), "{label}");
+                    Left::Committed(record.outcome().exit.clone())
+                }
+                Attempted::Discarded { reason, .. } => {
+                    assert!(!trial.phase(Phase::Run).exists(), "{label}");
+                    let stored: DiscardedAttempt =
+                        serde_json::from_str(&read(&attempt.discarded())).unwrap();
+                    assert_eq!(stored.reason, reason, "{label}");
+                    assert!(attempt.transcript().is_file(), "{label}");
+                    Left::Discarded(reason)
+                }
+            };
+            assert_eq!(left, expected, "{label}");
+            bench.assert_clean();
+        }
+    }
+
+    #[test]
+    fn a_discard_record_from_before_reasons_reads_as_a_rate_limit() {
+        let old = r#"{
+            "session": "20261103T110000Z-7",
+            "started": "2026-11-03T11:00:00Z",
+            "process": {"exit": "killed", "cut": "rate-limited", "wall": "30s",
+                        "stdout_bytes": 0, "stderr_bytes": 0},
+            "parser": 1,
+            "resets_at": "2026-11-03T16:00:00Z",
+            "usage": []
+        }"#;
+        let read: DiscardedAttempt = serde_json::from_str(old).unwrap();
+        assert_eq!(
+            read.reason,
+            Reason::RateLimited {
+                resets_at: DateTime::from_timestamp(1_793_721_600, 0)
+            }
         );
-        let trial = bench.trial("opus");
-        let attempt = trial.attempt(AttemptNo::FIRST);
-        assert_eq!(read(&attempt.transcript()).lines().count(), 2);
-        assert!(!attempt.discarded().exists());
-        assert!(!trial.phase(Phase::Run).exists());
-        bench.assert_clean();
+        let again: DiscardedAttempt =
+            serde_json::from_str(&serde_json::to_string(&read).unwrap()).unwrap();
+        assert_eq!(again, read);
     }
 
     #[tokio::test]

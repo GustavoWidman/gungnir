@@ -1,7 +1,11 @@
 //! Reparsing: a committed outcome re-derived from its stored transcript once its harness's
 //! parser has changed, without calling a model. A rate limit the older parser missed demotes
 //! the attempt to discarded, and the trial is pending again.
-use super::{DiscardedAttempt, RunRecord, attempt::conclude, records::samples};
+use super::{
+    Reason, RunRecord,
+    attempt::conclude,
+    records::{DiscardedAttempt, samples},
+};
 use crate::{
     harness::{Ending, Harness},
     provenance::SessionId,
@@ -49,9 +53,9 @@ pub(super) fn reparse(
             let discarded = DiscardedAttempt {
                 session: session.clone(),
                 started: run.started,
-                process: run.process,
+                process: Some(run.process),
                 parser,
-                resets_at,
+                reason: Reason::RateLimited { resets_at },
                 usage: samples(usage),
             };
             write_json(&attempt.discarded(), &discarded)?;
@@ -155,7 +159,7 @@ mod tests {
         let discarded: DiscardedAttempt = read_json(&dir.attempt(AttemptNo::FIRST).discarded())
             .unwrap()
             .unwrap();
-        let output: u64 = discarded.usage().iter().map(|s| s.tokens.output).sum();
+        let output: u64 = discarded.usage.iter().map(|s| s.tokens.output).sum();
         assert_eq!(output, 40);
         assert!(!dir.phase(Phase::Run).exists());
         assert!(dir.attempt(AttemptNo::FIRST).transcript().is_file());

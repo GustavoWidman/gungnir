@@ -10,7 +10,7 @@ gungnir runs a benchmark of AI coding agents. It drives each vendor's own CLI he
 - **Scenario.** A language-neutral task: a spec, visible examples, hidden cases, performance workloads, and one reference solution per supported language.
 - **Language.** A toolchain profile: packages, project template, build steps, run command, source globs and the lizard language name.
 - **Trial.** One system, scenario, language and repetition. Its identity is derived from those four, so every phase can find and resume it.
-- **Attempt.** One launch of the agent for a trial. A trial commits exactly one attempt. Rate-limited and interrupted attempts stay on disk as the run phase's own bookkeeping, never as samples.
+- **Attempt.** One launch of the agent for a trial. A trial commits exactly one attempt, and only a sample: an agent session that ended on its own, which the CLI reported complete or the model declined. Every other attempt is discarded with its reason. Discarded and interrupted attempts stay on disk only as the run phase's bookkeeping, which keeps retries and attempt numbering crash-safe, and are never data.
 
 ## Repository layout
 
@@ -83,7 +83,7 @@ results/<experiment>/
     attempts/<n>/transcript.jsonl         raw CLI stdout, streamed as it arrives, secrets redacted
     attempts/<n>/stderr.log
     attempts/<n>/egress.jsonl             every connection the agent attempted
-    attempts/<n>/discarded.json           present only for a rate-limited attempt
+    attempts/<n>/discarded.json           present only for an attempt that is no sample, with why
     run/      record.json  prompt.md  final/      the committed attempt and its workspace
     grade/    record.json  build.log  cases/<case>.out
     measure/  record.json  hyperfine/<workload>.json
@@ -143,10 +143,12 @@ A pure `Fold` turns events into an `Ending`:
 
 ```rust
 enum Ending {
-    Finished(AgentOutcome),   // a sample, whatever the agent achieved
+    Finished(AgentOutcome),   // completed, refused, errored, crashed or killed
     RateLimited { resets_at: Option<DateTime<Utc>>, usage: Vec<UsageSample> },
 }
 ```
+
+Whether an ending is a sample is the run phase's policy, not the driver's. `Counted::of` (`src/run/records.rs`) makes a sample only of an outcome that is `Completed` or `Refused`, and gives every other ending a `Reason`: `RateLimited { resets_at }`, `Errored { message }`, `Crashed` (the CLI ended without its final report, an out-of-memory kill included), `TimedOut { budget }` (the wall or the idle budget), `Stopped` (the second Ctrl-C), or `Fault { message }` (the sandbox could not run the agent to its end).
 
 The runner feeds stdout lines to `decode` and `Fold` live, so it can kill the process on a rate limit or after an idle timeout. The runner decides an attempt's ending by replaying the transcript it stored, redacted as it was written, so a live attempt and a later replay of it always agree. When the fold ends without the CLI's final report (`Crashed` or `Killed`), the runner hands the last 16 KiB of `stderr.log` to `diagnose_exit`, whose event, a rate limit for both drivers, joins the fold. Some CLIs report more in files they leave in the isolated home than on stdout. After the process exits, the runner copies every file matching one of the driver's `artifacts` patterns into the attempt directory, redacts it, and feeds its lines to `decode_artifact` and the same `Fold` before `finish`. Codex runs without `--ephemeral` for this reason: its session rollout under `CODEX_HOME/sessions/` carries the account's rate limits, which `exec --json` never prints, and each window becomes a `Quota` event named by its length (`5h`, `7d`), since which window Codex calls primary depends on the plan. The same decoders and fold replay any stored transcript with its artifacts. A run record stores the `parser_version` that produced its outcome. When a driver's version increases, `run` re-derives every committed outcome from its transcript without calling a model. If the new parser finds a rate limit the old one missed, the attempt is demoted to discarded and the trial is pending again.
 
@@ -201,7 +203,7 @@ Isolated homes live under `$XDG_RUNTIME_DIR/gungnir/<results digest>/`, never un
 All phases are safe to rerun and safe to interrupt. The first Ctrl-C drains: nothing new starts and in-flight work finishes. The second kills in-flight sandboxes, and their trials stay where they were.
 
 - **check.** Builds and grades every reference solution through the same `grade::judge` path that grades agents. A scenario whose reference fails cannot be run.
-- **run.** Expands the experiment into trials, verifies the harness versions against the experiment's pins (each CLI prints `--version` in an offline sandbox holding only its own environment), records them in the session, judges every requested reference through `grade::judge` into `references/` and refuses unless all pass (a current committed reference grade is reused), refuses and names every trial whose committed run is stale, re-derives outcomes for older parser versions, and schedules pending trials in lanes. Each attempt's workspace lives in `.scratch/run/` while the agent works. A lane per backend has its own concurrency limit and a `Gate` (`Open`, `Paused { until }`, `Probing`) whose transition is a pure function. A rate limit requeues the trial at the front and pauses only that lane: until the reset time the vendor named, plus a minute, or else for a backoff of 5 minutes that each rate-limited probe doubles up to 60. When a pause ends, one probe attempt runs alone, and the lane reopens when it ends without a rate limit. A failed attempt leaves its trial pending for the next invocation rather than retrying it.
+- **run.** Expands the experiment into trials, verifies the harness versions against the experiment's pins (each CLI prints `--version` in an offline sandbox holding only its own environment), records them in the session, judges every requested reference through `grade::judge` into `references/` and refuses unless all pass (a current committed reference grade is reused), refuses and names every trial whose committed run is stale, re-derives outcomes for older parser versions, and schedules pending trials in lanes. Each attempt's workspace lives in `.scratch/run/` while the agent works. A lane per backend has its own concurrency limit and a `Gate` (`Open`, `Paused { until }`, `Probing`) whose transition is a pure function. A rate limit requeues the trial at the front and pauses only that lane: until the reset time the vendor named, plus a minute, or else for a backoff of 5 minutes that each rate-limited probe doubles up to 60. When a pause ends, one probe attempt runs alone, and the lane reopens when it ends without a rate limit. An attempt whose ending is a sample commits the trial's run. Any other attempt is discarded: `attempts/<n>/discarded.json` records its `Reason`, and its trial is pending. An attempt that failed in gungnir itself leaves its trial pending without a record.
 - **Guard.** `run` can bound how much of each account one invocation spends: `--quota-ceiling BACKEND[:WINDOW]=FRACTION[@TIME]` stops a backend once the named quota window (any window when none is named) its latest attempt reported is at least that fraction used, counting only attempts that started at or after `TIME` when one is given (for a ceiling meant for the window after a reset), `--stop-at BACKEND=TIME` stops it at a time, and `--max-errors N` (default 3) stops it after that many attempts in a row errored, crashed or failed, so an expired login or an outage cannot turn every remaining trial into an error. A stopped backend starts nothing more; its running attempts finish and its other trials stay pending for the next invocation.
 - **grade.** In a fresh offline sandbox, copies the committed workspace, builds it, feeds each hidden case on stdin from the host, compares stdout on the host, and runs lizard over the sources. Expected outputs never enter a sandbox that runs agent code. Failures are classified as build error, wrong answer, timeout, crash, out of memory, or environment fault. The phase grades every trial whose run is committed and whose grade is missing or stale, a few at a time, withdrawing a stale grade through scratch first. A judgement the sandbox could not make (an environment fault) says nothing about the agent, so it is reported and never committed, and the trial waits for the next invocation.
 - **measure.** Serial, for passing trials only. Runs hyperfine inside an offline sandbox pinned to one core, alternating reference and candidate in ABBA blocks per workload, and stores hyperfine's JSON export.
@@ -218,7 +220,7 @@ All phases are safe to rerun and safe to interrupt. The first Ctrl-C drains: not
 
 ## Tradeoffs accepted
 
-- We discard a rate-limited attempt entirely, tokens included, so every sample is one uninterrupted session. What discarded and interrupted attempts spent is not reported.
+- We discard every attempt that is not a sample entirely, tokens included. A rate limit, an error, a crash, a timeout or a sandbox fault says nothing about the model, so every sample is one session that ended on its own. What discarded and interrupted attempts spent is not reported.
 - We accept about a dozen small files per trial in exchange for single-writer phases, inspection with `ls` and `jq`, and no schema migrations.
 - A CLI upgrade is a new system. Pins in the experiment make that deliberate.
 - Lizard runs in grade rather than measure. Complexity is a static property that needs no quiet machine.
