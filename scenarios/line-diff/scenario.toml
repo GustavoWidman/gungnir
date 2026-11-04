@@ -1,0 +1,6 @@
+title = "Line diff"
+compare = "exact"
+
+[limits]
+time = "10s"
+memory = "1GiB"
