@@ -1,0 +1,17 @@
+# typescript-bun is tsc with Bun's type declarations from nix/typescript-bun.nix. Bun runs
+# TypeScript by stripping its types, so the build is the type check, and a program that does
+# not type-check under the template's strict tsconfig.json does not build.
+packages = ["bun", "typescript-bun"]
+build = [["tsc", "--noEmit"]]
+run = ["bun", "main.ts"]
+sources = ["**/*.ts"]
+ignore = ["node_modules/**"]
+lizard = "typescript"
+
+# The transpiler cache is off so no run reuses another's work, and auto-install is off because
+# the sandbox has no registry.
+[env]
+BUN_INSTALL_CACHE_DIR = "/tmp/bun-install-cache"
+BUN_OPTIONS = "--no-install"
+BUN_RUNTIME_TRANSPILER_CACHE_PATH = "0"
+DO_NOT_TRACK = "1"
