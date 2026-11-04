@@ -1,0 +1,6 @@
+packages = ["llvmPackages_23.clang"]
+build = [["find", "src", "-name", "*.cpp", "-exec", "clang++", "-std=gnu++23", "-O3", "-DNDEBUG", "-Wall", "-Wextra", "-o", "solution", "{}", "+"]]
+run = ["./solution"]
+sources = ["src/**/*.cpp", "src/**/*.hpp", "src/**/*.h"]
+ignore = ["solution"]
+lizard = "cpp"
