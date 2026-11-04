@@ -4,10 +4,13 @@ use super::{
 };
 use crate::{
     id::{LanguageId, ScenarioId},
+    provenance::SessionId,
     sandbox::{Collected, Exit},
+    store::{PartialDir, read_record},
     testing::{self, id, write},
 };
 use eyre::eyre;
+use globset::GlobSet;
 use std::{
     os::unix::fs::symlink,
     sync::{Arc, Mutex},
@@ -67,20 +70,44 @@ impl Fixture {
         self.root.path().join("scenarios/echo/hidden")
     }
 
+    fn language(&self) -> &Language {
+        &self.languages[&id::<LanguageId>("python")]
+    }
+
+    fn scenario(&self) -> &Scenario {
+        &self.scenarios[&id::<ScenarioId>("echo")]
+    }
+
     /// Judges the workspace, returning the evidence directory alongside.
     async fn judge(&self, backend: &Scripted) -> (Result<Judgement>, TempDir) {
         let evidence = TempDir::new().unwrap();
-        let judgement = judge(
-            &self.languages[&id::<LanguageId>("python")],
-            &self.toolchains,
-            &self.workspace(),
-            &self.scenarios[&id::<ScenarioId>("echo")],
-            backend,
-            &Stop::default(),
-            evidence.path(),
-        )
-        .await;
+        let judgement = self.judge_into(backend, evidence.path()).await;
         (judgement, evidence)
+    }
+
+    async fn judge_into(&self, backend: &Scripted, evidence: &Path) -> Result<Judgement> {
+        let workspace = self.workspace();
+        let stop = Stop::default();
+        let (language, scenario) = (self.language(), self.scenario());
+        judge(
+            language,
+            &self.toolchains,
+            &workspace,
+            scenario,
+            backend,
+            &stop,
+            evidence,
+        )
+        .await
+    }
+
+    /// The inputs of grading the workspace, from the repository as it is on disk now.
+    fn current_inputs(&self) -> GradeInputs {
+        let languages = Language::load_all(&self.root.path().join("languages")).unwrap();
+        let scenarios =
+            Scenario::load_all(&self.root.path().join("scenarios"), &languages).unwrap();
+        let (language, scenario) = (&languages[&id("python")], &scenarios[&id("echo")]);
+        GradeInputs::new(language, &self.toolchains, scenario, &self.workspace()).unwrap()
     }
 }
 
@@ -246,6 +273,8 @@ async fn each_way_a_case_can_end_is_classified() {
             [("edge", &outcome), ("many", &outcome)]
         );
         assert_eq!(judgement.verdict(), Verdict::Fail(failure));
+        let json = serde_json::to_string(&judgement).unwrap();
+        assert_eq!(serde_json::from_str::<Judgement>(&json).unwrap(), judgement);
 
         let kept = fs::read(evidence.path().join("cases/edge.out")).ok();
         let expected = match outcome {
@@ -342,4 +371,111 @@ async fn a_case_killed_by_gungnir_leaves_no_judgement() {
     let (judgement, _evidence) = fixture.judge(&backend).await;
     let error = judgement.unwrap_err();
     assert!(format!("{error:#}").contains("interrupted"), "{error:#}");
+}
+
+#[tokio::test]
+async fn a_committed_grade_reads_back_beside_its_evidence() {
+    let fixture = fixture();
+    let results = TempDir::new().unwrap();
+    let target = results.path().join("r1/grade");
+    let backend = cases_end(|case| match case {
+        "edge" => Ok(finished(Exit::Code(0), b"wrong\n")),
+        _ => Ok(finished(Exit::Code(0), b"a\nb\n")),
+    });
+
+    let partial = PartialDir::begin(&target).unwrap();
+    let inputs = fixture.current_inputs();
+    let judgement = fixture.judge_into(&backend, partial.path()).await.unwrap();
+    let session: SessionId = serde_json::from_str("\"20261103T120000Z-42\"").unwrap();
+    let record = GradeRecord::new(session, inputs, judgement);
+    partial.commit(&record).unwrap();
+
+    assert_eq!(read_record::<GradeRecord>(&target).unwrap(), Some(record));
+    let files: Vec<_> = tree::files(&target, &GlobSet::empty())
+        .unwrap()
+        .into_iter()
+        .map(|(rel, _)| rel)
+        .collect();
+    assert_eq!(
+        files,
+        ["build.log", "cases/edge.out", "record.json"].map(PathBuf::from)
+    );
+    assert_eq!(fs::read(target.join("cases/edge.out")).unwrap(), b"wrong\n");
+}
+
+/// Replaces `from`, which must occur, with `to` in the file at `root/path`.
+fn replace(root: &Path, path: &str, from: &str, to: &str) {
+    let before = fs::read_to_string(root.join(path)).unwrap();
+    assert!(before.contains(from), "{path} lacks {from}");
+    write(root, path, before.replace(from, to));
+}
+
+#[test]
+fn stored_inputs_go_stale_exactly_when_grading_could_change() {
+    type Edit = fn(&Path);
+    let edits: [(Edit, bool); 7] = [
+        (
+            |root| {
+                write(
+                    root,
+                    "scenarios/echo/reference/python/__pycache__/m.pyc",
+                    "built",
+                )
+            },
+            false,
+        ),
+        (
+            |root| write(root, "scenarios/echo/examples/basic.out", "b\n"),
+            false,
+        ),
+        (
+            |root| {
+                write(
+                    root,
+                    "scenarios/echo/reference/python/main.py",
+                    "print(1)\n",
+                )
+            },
+            true,
+        ),
+        (
+            |root| write(root, "scenarios/echo/hidden/edge.out", "x\n"),
+            true,
+        ),
+        (
+            |root| replace(root, "scenarios/echo/scenario.toml", "\"10s\"", "\"2s\""),
+            true,
+        ),
+        (
+            |root| {
+                replace(
+                    root,
+                    "scenarios/echo/scenario.toml",
+                    "\"whitespace\"",
+                    "\"exact\"",
+                )
+            },
+            true,
+        ),
+        (
+            |root| {
+                replace(
+                    root,
+                    "languages/python/language.toml",
+                    "[\"true\"]",
+                    "[\"false\"]",
+                )
+            },
+            true,
+        ),
+    ];
+    for (index, (edit, stale)) in edits.into_iter().enumerate() {
+        let fixture = fixture();
+        let json = serde_json::to_string(&fixture.current_inputs()).unwrap();
+        let stored: GradeInputs = serde_json::from_str(&json).unwrap();
+        assert_eq!(stored, fixture.current_inputs());
+
+        edit(fixture.root.path());
+        assert_eq!(stored != fixture.current_inputs(), stale, "edit {index}");
+    }
 }

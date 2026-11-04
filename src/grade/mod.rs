@@ -4,6 +4,7 @@
 mod compare;
 mod complexity;
 mod judgement;
+mod record;
 #[cfg(test)]
 pub(crate) mod scripted;
 #[cfg(test)]
@@ -14,6 +15,7 @@ pub use complexity::{Complexity, FileComplexity, Function};
 pub use judgement::{
     Abnormal, Build, BuildOutcome, Case, Crash, Failure, Judgement, Outcome, Verdict,
 };
+pub use record::{GradeInputs, GradeRecord};
 
 use crate::{
     id::CaseId,
