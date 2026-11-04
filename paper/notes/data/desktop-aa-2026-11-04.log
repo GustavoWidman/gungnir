@@ -1,0 +1,68 @@
+tiny-vm: regenerated the workloads
+scenario  language  version   build  cases    verdict  slowest
+tiny-vm   c         Clang 23  0.19s  120/120  pass     106-fib-recursive 0.07s
+json-path: regenerated the workloads
+scenario   language  version        build  cases    verdict  slowest
+json-path  rust      1.101-nightly  0.37s  116/116  pass     114-large-records 0.06s
+word-freq: regenerated the workloads
+scenario   language  version  build  cases  verdict  slowest
+word-freq  python    3.15     0.17s  50/50  pass     048-large-zipf 0.09s
+route-fuel: regenerated the workloads
+scenario    language  version  build  cases  verdict  slowest
+route-fuel  go        1.27     1.75s  97/97  pass     093-large-city 0.12s
+regex-lite: regenerated the workloads
+scenario    language    version  build  cases    verdict  slowest
+regex-lite  javascript  1.4      0.02s  118/118  pass     060-anchor-end 0.07s
+/nix/store/rwdyiw3ydg9d7grar5f2rbm8rz76vb1r-gungnir-bench-mode/bin/gungnir-bench-mode: line 33: echo: write error: Invalid argument
+=== on tiny-vm:c
+workload  reference  range             candidate  range             ratio  95% interval    instructions  peak memory
+collatz   37.9ms     [37.6ms, 38.3ms]  37.8ms     [37.5ms, 38.2ms]  0.996  [0.990, 1.003]  1.000         1.7MiB (reference 1.7MiB)
+fib       33.4ms     [33.0ms, 36.6ms]  33.4ms     [33.1ms, 36.4ms]  1.010  [0.977, 1.044]  1.000         1.7MiB (reference 1.7MiB)
+sieve     44.8ms     [44.6ms, 49.7ms]  44.9ms     [44.4ms, 49.4ms]  0.999  [0.993, 1.004]  1.000         6.4MiB (reference 6.4MiB)
+pinned to CPU 14 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance
+load average 1.29 1.53 0.90 at the start, 1.41 1.55 0.91 at the end
+record and hyperfine exports in /tmp/gungnir-bench-yxXFf0/measure
+=== on json-path:rust
+workload  reference  range               candidate  range               ratio  95% interval    instructions  peak memory
+nested    255.8ms    [254.6ms, 260.1ms]  255.7ms    [255.2ms, 256.2ms]  1.000  [0.999, 1.001]  1.000         78.4MiB (reference 78.4MiB)
+records   167.8ms    [167.4ms, 174.6ms]  167.6ms    [167.3ms, 168.3ms]  0.999  [0.997, 1.000]  1.000         105.6MiB (reference 105.6MiB)
+pinned to CPU 14 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance
+load average 1.41 1.55 0.91 at the start, 1.32 1.52 0.91 at the end
+record and hyperfine exports in /tmp/gungnir-bench-1ylCmG/measure
+=== on word-freq:python
+workload       reference  range             candidate  range             ratio  95% interval    instructions  peak memory
+many-distinct  1.072s     [1.069s, 1.127s]  1.072s     [1.070s, 1.080s]  0.999  [0.997, 1.001]  1.000         204.5MiB (reference 204.5MiB)
+zipf           1.481s     [1.477s, 1.515s]  1.482s     [1.475s, 1.514s]  1.000  [0.996, 1.004]  1.000         399.8MiB (reference 399.7MiB)
+pinned to CPU 14 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance
+load average 1.29 1.51 0.91 at the start, 1.06 1.37 0.92 at the end
+record and hyperfine exports in /tmp/gungnir-bench-rHyltq/measure
+=== on route-fuel:go
+workload  reference  range               candidate  range               ratio  95% interval    instructions  peak memory
+city      267.8ms    [266.6ms, 268.5ms]  267.8ms    [266.6ms, 268.5ms]  1.000  [0.998, 1.002]  1.000         10.1MiB (reference 10.1MiB)
+highway   247.1ms    [245.8ms, 248.0ms]  247.0ms    [246.5ms, 247.6ms]  0.999  [0.998, 1.001]  1.000         3.9MiB (reference 3.9MiB)
+pinned to CPU 14 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance
+load average 1.05 1.36 0.92 at the start, 1.10 1.35 0.93 at the end
+record and hyperfine exports in /tmp/gungnir-bench-afL5V0/measure
+=== on regex-lite:javascript
+workload  reference  range               candidate  range               ratio  95% interval    instructions  peak memory
+labels    228.8ms    [227.3ms, 251.8ms]  228.7ms    [227.9ms, 229.6ms]  0.999  [0.996, 1.002]  1.000         49.5MiB (reference 50.6MiB)
+logs      297.8ms    [295.6ms, 316.2ms]  297.8ms    [294.8ms, 301.5ms]  0.999  [0.996, 1.002]  1.000         80.0MiB (reference 79.3MiB)
+nested    238.0ms    [230.7ms, 239.3ms]  237.9ms    [229.8ms, 238.8ms]  0.996  [0.985, 1.008]  0.999         55.3MiB (reference 54.9MiB)
+pinned to CPU 14 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance
+load average 1.10 1.35 0.93 at the start, 1.62 1.46 0.98 at the end
+record and hyperfine exports in /tmp/gungnir-bench-pzsUDA/measure
+bench mode:      off
+no_turbo:        0
+governor cpu14:  powersave
+isolated cpus:   14-15
+nohz_full cpus:  14-15
+perf paranoid:   1
+=== off tiny-vm:c
+workload  reference  range             candidate  range             ratio  95% interval    instructions  peak memory
+collatz   20.9ms     [20.5ms, 21.0ms]  20.8ms     [20.6ms, 21.8ms]  1.000  [0.993, 1.007]  1.000         1.7MiB (reference 1.7MiB)
+fib       18.6ms     [18.2ms, 20.1ms]  18.4ms     [18.2ms, 19.9ms]  0.982  [0.935, 1.032]  1.000         1.7MiB (reference 1.7MiB)
+sieve     24.6ms     [24.4ms, 30.9ms]  24.6ms     [24.5ms, 26.8ms]  0.983  [0.938, 1.030]  1.000         6.4MiB (reference 6.4MiB)
+pinned to CPU 14 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor powersave
+load average 1.62 1.46 0.98 at the start, 1.73 1.48 0.99 at the end
+record and hyperfine exports in /tmp/gungnir-bench-cCybb7/measure
+done
