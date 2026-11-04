@@ -1,13 +1,7 @@
 //! The bubblewrap backend against real bubblewrap, systemd and toolchains. Run them in the dev
 //! shell with `cargo test -- --ignored`.
 
-use std::{
-    collections::BTreeSet,
-    ffi::OsString,
-    fs,
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::{collections::BTreeSet, ffi::OsString, fs, path::PathBuf, time::Duration};
 
 use eyre::Result;
 use gungnir::{
@@ -469,10 +463,31 @@ async fn egress_reaches_allowlisted_hosts_and_refuses_others() -> Result<()> {
 fn toolchains_from_the_dev_shell_load() -> Result<()> {
     let toolchains = Toolchains::from_env()?;
     assert!(toolchains.base().bin().join("socat").exists());
-    assert!(
-        Path::new(&toolchains.language("zig")?.bin())
-            .join("zig")
-            .exists()
-    );
+    assert!(toolchains.language("zig")?.bin().join("zig").exists());
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs bwrap and GUNGNIR_TOOLCHAINS"]
+async fn harness_clis_start_in_an_offline_sandbox() -> Result<()> {
+    let rig = Rig::new()?;
+    for (harness, binary) in [("claude-code", "claude"), ("codex", "codex")] {
+        let toolchain = rig.toolchains.harness(harness)?;
+        let mut spec = rig.spec();
+        spec.closure = Closure::union([&spec.closure, toolchain.closure()]);
+        spec.path.insert(0, toolchain.bin());
+
+        let finished = rig.exec(&spec, &[binary, "--version"], captured()).await?;
+        assert_eq!(
+            finished.exit,
+            Exit::Code(0),
+            "{binary}: {}",
+            text(&finished.stderr.bytes)
+        );
+        assert!(
+            !finished.stdout.bytes.is_empty(),
+            "{binary} printed no version"
+        );
+    }
     Ok(())
 }
