@@ -1,7 +1,7 @@
 # The pilot: every effort level of four models, on two scenarios in three languages.
 name = "pilot"
 results = "../runs/pilot"
-repetitions = 3
+repetitions = 5
 scenarios = ["interval-cover", "word-freq"]
 languages = ["python", "rust", "zig"]
 
