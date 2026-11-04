@@ -1,10 +1,20 @@
 //! Where and how one gungnir invocation ran, recorded once per invocation so every record
 //! can name the session that produced it.
-use crate::{store::write_json, trial::ResultsDir};
+use crate::{
+    id::{HarnessName, HarnessVersion},
+    store::write_json,
+    toolchains::Toolchain,
+    trial::ResultsDir,
+};
 use chrono::{DateTime, Utc};
 use eyre::{Result, WrapErr, ensure};
 use serde::{Deserialize, Serialize};
-use std::{fmt, fs, path::Path, process::Command};
+use std::{
+    collections::BTreeMap,
+    fmt, fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 /// `<UTC start time>-<pid>`: unique per invocation on one machine and sorted by start time.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -17,7 +27,8 @@ impl fmt::Display for SessionId {
     }
 }
 
-/// One invocation's provenance: the gungnir build, the repository state and the host.
+/// One invocation's provenance: the gungnir build, the repository state, the host, and the
+/// harness CLIs and toolchains it used.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Session {
     id: SessionId,
@@ -26,6 +37,11 @@ pub struct Session {
     git: Option<GitState>,
     kernel: String,
     cpu: Option<String>,
+    /// The version each harness CLI printed, for an invocation that runs agents.
+    harnesses: BTreeMap<HarnessName, HarnessVersion>,
+    /// The store path of each toolchain environment used, named as under
+    /// `$GUNGNIR_TOOLCHAINS`: `base`, `language/<id>` or `harness/<name>`.
+    toolchains: BTreeMap<String, PathBuf>,
 }
 
 /// The repository's checked-out revision and whether the working tree differs from it,
@@ -53,7 +69,27 @@ impl Session {
             git: git_state(repo)?,
             kernel: read_proc("/proc/sys/kernel/osrelease")?.trim().to_owned(),
             cpu: cpu_model(&read_proc("/proc/cpuinfo")?),
+            harnesses: BTreeMap::new(),
+            toolchains: BTreeMap::new(),
         })
+    }
+
+    /// Records the versions the harness CLIs printed when probed.
+    pub fn with_harnesses(self, harnesses: BTreeMap<HarnessName, HarnessVersion>) -> Self {
+        Self { harnesses, ..self }
+    }
+
+    /// Records the store paths of the toolchain environments used, each named as under
+    /// `$GUNGNIR_TOOLCHAINS`.
+    pub fn with_toolchains<'a>(
+        self,
+        toolchains: impl IntoIterator<Item = (String, &'a Toolchain)>,
+    ) -> Self {
+        let toolchains = toolchains
+            .into_iter()
+            .map(|(name, toolchain)| (name, toolchain.root().to_owned()))
+            .collect();
+        Self { toolchains, ..self }
     }
 
     pub fn id(&self) -> &SessionId {
@@ -112,17 +148,35 @@ pub(crate) fn cpu_model(cpuinfo: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{store::read_json, testing::write};
+    use crate::{
+        grade::fake,
+        store::read_json,
+        testing::{id, write},
+    };
     use tempfile::TempDir;
 
     #[test]
     fn a_session_is_written_under_sessions_and_reads_back() {
         let repo = TempDir::new().unwrap();
         let results = TempDir::new().unwrap();
-        let session = Session::start(repo.path()).unwrap();
+        let toolchains = fake::toolchains(&repo.path().join("toolchains"), &["zig"]);
+        let session = Session::start(repo.path())
+            .unwrap()
+            .with_harnesses(BTreeMap::from([(id("codex"), id("0.166.0"))]))
+            .with_toolchains([
+                ("base".to_owned(), toolchains.base()),
+                (
+                    "language/zig".to_owned(),
+                    toolchains.language("zig").unwrap(),
+                ),
+            ]);
         assert_eq!(session.git(), None);
         assert!(!session.kernel.is_empty());
         assert_eq!(session.gungnir_version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(
+            session.toolchains["language/zig"],
+            Path::new("/nix/store/bbbb-gungnir-language-zig")
+        );
 
         session
             .write(&ResultsDir::new(results.path().to_owned()))

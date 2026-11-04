@@ -35,7 +35,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/experiment.rs` loads an experiment against the repository that holds it, validates it, and expands it into `TrialKey` values with `Experiment::trials`.
 - `src/trial.rs` defines `Phase`, `TrialKey`, `ResultsDir`, `TrialDir` and `AttemptDir`. Paths under `results/<experiment>/` are named there and nowhere else. `ResultsDir::retract` withdraws a committed directory through the phase's scratch, so a crash never leaves one half deleted.
 - `src/store.rs` and `src/store/` hold the file mechanics: `Digest`, atomic writes, `read_json`, the `PartialDir` commit protocol and the `Lock` used for phase locks.
-- `src/provenance.rs` records one `Session` per invocation in `sessions/<id>.json`.
+- `src/provenance.rs` records one `Session` per invocation in `sessions/<id>.json`, with the harness versions it probed and the store paths of the toolchains it used.
 - `src/secret.rs` holds `Secret<T>`, whose `Debug` prints nothing, `EnvValue` for sandbox environments, and redaction of secret values from bytes and files.
 - `src/stop.rs` is the two-stage interruption: the first Ctrl-C drains, the second kills in-flight sandboxes.
 - `src/toolchains.rs` loads `GUNGNIR_TOOLCHAINS` into `Closure` sets and `bin` directories, refusing any closure that contains a flake source path.
