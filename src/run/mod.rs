@@ -21,7 +21,7 @@ use crate::{
     experiment::Experiment,
     grade::{self, GradeInputs, GradeRecord, Verdict},
     harness::{Harness, LaunchRequest},
-    id::{BackendId, HarnessName, HarnessVersion},
+    id::{AttemptNo, BackendId, HarnessName, HarnessVersion},
     language::Language,
     lifecycle::{Current, Lifecycle},
     provenance::{Session, SessionId},
@@ -165,6 +165,68 @@ pub async fn run(
         rig.attempt(&Task::of(experiment, trial)?).await
     })
     .await
+}
+
+/// What [`run`] would do to an experiment now, before it starts any attempt.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Preview {
+    /// The committed runs it would withdraw as no sample: each trial, its committed attempt,
+    /// and why.
+    pub withdrawals: Vec<(TrialKey, AttemptNo, Reason)>,
+    /// How many committed runs it would re-derive with a newer parser and keep.
+    pub reparsed: usize,
+    /// How many trials it would schedule on each backend.
+    pub pending: BTreeMap<BackendId, usize>,
+}
+
+/// Finds what [`run`] would do to `experiment` now, and does none of it. It probes the harness
+/// pins and refuses stale runs as `run` does, and reviews every committed run without applying
+/// a review. It takes no lock, since it writes nothing, writes no session, and leaves the
+/// references unchecked, since judging one commits its grade.
+pub async fn preview(
+    experiment: &Experiment,
+    repo: &Path,
+    host: &Host<'_>,
+    stop: &Stop,
+) -> Result<Preview> {
+    let backends: BTreeSet<&BackendId> = experiment.systems().iter().map(System::backend).collect();
+    let scratch = tempfile::Builder::new()
+        .prefix("gungnir-preview-")
+        .tempdir()
+        .wrap_err("creating a scratch directory for the credentials")?;
+    let vault = Vault::open(
+        experiment.catalog(),
+        backends,
+        host.home,
+        scratch.path().join("homes"),
+    )?;
+    probe_versions(experiment, host, &vault, stop).await?;
+    let session = Session::start(repo)?;
+    let mut preview = Preview {
+        withdrawals: Vec::new(),
+        reparsed: 0,
+        pending: BTreeMap::new(),
+    };
+    for Found { trial, committed } in triage(experiment, host.toolchains, session.id())? {
+        match committed {
+            Some((_, Review::Current)) => continue,
+            Some((_, Review::Reparsed(_))) => {
+                preview.reparsed += 1;
+                continue;
+            }
+            Some((run, Review::Withdrawn(discarded))) => {
+                preview
+                    .withdrawals
+                    .push((trial.clone(), run.attempt(), discarded.reason));
+            }
+            None => {}
+        }
+        *preview
+            .pending
+            .entry(trial.system.backend().clone())
+            .or_default() += 1;
+    }
+    Ok(preview)
 }
 
 /// A trial as the run phase finds it before it schedules anything.
@@ -432,7 +494,7 @@ async fn reference(
 mod tests {
     use super::*;
     use crate::{
-        id::AttemptNo,
+        grade::tree,
         testing::{id, write},
         trial::FINAL,
     };
@@ -669,12 +731,9 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn a_committed_run_cut_at_the_wall_is_withdrawn_with_its_grade_and_run_again() {
-        let machine = Machine::new();
-        let experiment = machine.repo.experiment();
-        let trial = fixture::trial(&experiment, "opus");
-        let dir = experiment.results().trial(&trial);
+    /// Commits a first attempt of `trial` that the wall budget cut short, and grades it.
+    async fn commit_cut_at_the_wall(repo: &Repo, trial: &TrialKey) {
+        let dir = repo.experiment().results().trial(trial);
         let transcript = Play::transcript("claude-code/haiku-bash-success.jsonl").stdout;
         write(
             dir.attempt(AttemptNo::FIRST).path(),
@@ -683,11 +742,74 @@ mod tests {
         );
         let partial = PartialDir::begin(&dir.phase(Phase::Run)).unwrap();
         write(&partial.path().join(FINAL), "main.py", "print(input())\n");
-        let mut record = fixture::record(&machine.repo, &trial, Digest::of_bytes(b""));
+        let mut record = fixture::record(repo, trial, Digest::of_bytes(b""));
         record.outcome.exit = AgentExit::Killed;
         record.process.exit = ProcessExit::TimedOut;
         partial.commit(&record).unwrap();
-        fixture::commit_grade(&machine.repo, &trial).await;
+        fixture::commit_grade(repo, trial).await;
+    }
+
+    #[tokio::test]
+    async fn a_dry_run_names_the_runs_it_would_withdraw_and_changes_nothing() {
+        let machine = Machine::new();
+        let experiment = machine.repo.experiment();
+        let trial = fixture::trial(&experiment, "opus");
+        commit_cut_at_the_wall(&machine.repo, &trial).await;
+        let results = experiment.results();
+        let _running = results.lock(Phase::Run).unwrap();
+        let files = || -> Vec<(PathBuf, Vec<u8>)> {
+            let listed = tree::files(results.path(), &globset::GlobSet::empty()).unwrap();
+            listed
+                .into_iter()
+                .map(|(path, _)| {
+                    let bytes = fs::read(results.path().join(&path)).unwrap();
+                    (path, bytes)
+                })
+                .collect()
+        };
+        let before = files();
+        let live_homes = homes(machine.runtime.path(), results);
+        write(&live_homes, "home-1/.codex/auth.json", "{}");
+
+        let agent = solver();
+        let host = Host {
+            toolchains: &machine.repo.toolchains,
+            backend: &agent,
+            home: machine.home.path(),
+            runtime: machine.runtime.path(),
+        };
+        let preview = preview(
+            &experiment,
+            machine.repo.root.path(),
+            &host,
+            &Stop::default(),
+        )
+        .await
+        .unwrap();
+
+        let wall = Reason::TimedOut {
+            budget: records::Timeout::Wall,
+        };
+        assert_eq!(
+            preview,
+            Preview {
+                withdrawals: vec![(trial, AttemptNo::FIRST, wall)],
+                reparsed: 0,
+                pending: BTreeMap::from([(id("anthropic"), 1), (id("openai"), 1)]),
+            }
+        );
+        assert!(agent.launches().is_empty());
+        assert_eq!(files(), before);
+        assert!(live_homes.join("home-1/.codex/auth.json").is_file());
+    }
+
+    #[tokio::test]
+    async fn a_committed_run_cut_at_the_wall_is_withdrawn_with_its_grade_and_run_again() {
+        let machine = Machine::new();
+        let experiment = machine.repo.experiment();
+        let trial = fixture::trial(&experiment, "opus");
+        let dir = experiment.results().trial(&trial);
+        commit_cut_at_the_wall(&machine.repo, &trial).await;
 
         let agent = solver();
         let tally = machine.run(&agent).await.unwrap();

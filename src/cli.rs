@@ -93,6 +93,11 @@ enum Command {
         /// limits aside. Until then such a trial runs again after the rest of its lane.
         #[arg(long, value_name = "N", default_value = "5")]
         max_attempts: NonZeroU32,
+        /// Print the committed runs that would be withdrawn as no sample and the trials each
+        /// backend would schedule, after checking the pins, and change nothing. It takes no
+        /// lock and does not check the references.
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Grade each committed run that has no current grade, building and running it offline
     /// on the hidden cases. Safe to run while `run` is still going.
@@ -143,6 +148,7 @@ impl Cli {
                 deadlines,
                 max_errors,
                 max_attempts,
+                dry_run,
             } => {
                 let guard = Guard {
                     ceilings: ceilings.into_iter().collect(),
@@ -150,7 +156,7 @@ impl Cli {
                     max_errors: Some(max_errors),
                     max_attempts: Some(max_attempts),
                 };
-                run_trials(&experiment, &guard)
+                run_trials(&experiment, &guard, dry_run)
             }
             Command::Grade { experiment, jobs } => grade_trials(&experiment, jobs),
             Command::Status { experiment } => {
@@ -186,6 +192,51 @@ fn write_report(paths: &[PathBuf], out: &Path, prices: Option<NaiveDate>) -> Res
     Ok(())
 }
 
+/// What a run would do: each committed run it would withdraw and why, then the trials it would
+/// schedule on each backend.
+struct PreviewTable<'a>(&'a run::Preview);
+
+impl fmt::Display for PreviewTable<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let run::Preview {
+            withdrawals,
+            reparsed,
+            pending,
+        } = self.0;
+        writeln!(
+            f,
+            "would withdraw {} committed runs that are no sample",
+            withdrawals.len()
+        )?;
+        let withdrawn: Vec<[String; 3]> = withdrawals
+            .iter()
+            .map(|(trial, attempt, reason)| {
+                [
+                    format!("  {trial}"),
+                    format!("attempt {attempt}"),
+                    reason.to_string(),
+                ]
+            })
+            .collect();
+        write_rows(f, &withdrawn)?;
+        writeln!(
+            f,
+            "would re-derive {reparsed} committed runs with a newer parser"
+        )?;
+        writeln!(
+            f,
+            "would schedule {} trials",
+            pending.values().sum::<usize>()
+        )?;
+        let lanes: Vec<[String; 2]> = pending
+            .iter()
+            .map(|(backend, trials)| [format!("  {backend}"), trials.to_string()])
+            .collect();
+        write_rows(f, &lanes)?;
+        writeln!(f, "references not checked; nothing changed")
+    }
+}
+
 /// Each table of a report with its row count.
 struct ReportTable<'a>(&'a BTreeMap<&'static str, usize>);
 
@@ -202,8 +253,9 @@ impl fmt::Display for ReportTable<'_> {
 }
 
 /// Runs an experiment's pending trials, logging progress to stderr. Fails while any trial is
-/// still pending, so that a script can tell to run it again.
-fn run_trials(path: &Path, guard: &Guard) -> Result<()> {
+/// still pending, so that a script can tell to run it again. A dry run only prints what a run
+/// would do.
+fn run_trials(path: &Path, guard: &Guard, dry_run: bool) -> Result<()> {
     log_progress();
     let experiment = Experiment::load(path)?;
     let backends: Vec<&BackendId> = experiment.concurrency().keys().collect();
@@ -231,6 +283,14 @@ fn run_trials(path: &Path, guard: &Guard) -> Result<()> {
         runtime: &runtime_dir,
     };
     let runtime = tokio::runtime::Runtime::new().wrap_err("starting the async runtime")?;
+    if dry_run {
+        let preview = runtime.block_on(async {
+            let stop = Stop::on_ctrl_c()?;
+            run::preview(&experiment, &repo, &host, &stop).await
+        })?;
+        print!("{}", PreviewTable(&preview));
+        return Ok(());
+    }
     let tally = runtime.block_on(async {
         let stop = Stop::on_ctrl_c()?;
         run::run(&experiment, &repo, &host, guard, &stop).await
