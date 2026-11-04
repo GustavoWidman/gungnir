@@ -15,6 +15,7 @@ use gungnir::{
     toolchains::Toolchains,
 };
 use tempfile::TempDir;
+use tokio::sync::Mutex;
 
 /// The last CPU this process may use, which every run is pinned to.
 fn core() -> u32 {
@@ -87,7 +88,11 @@ impl Rig {
     }
 
     /// Builds both workspaces and compares them, returning the evidence directory alongside.
+    /// Comparisons run one at a time, as the measure phase runs them, since every test pins
+    /// its runs to the same CPU.
     async fn compare(&self, reference: &Path, candidate: &Path) -> Result<(Comparison, TempDir)> {
+        static ONE_AT_A_TIME: Mutex<()> = Mutex::const_new(());
+        let _turn = ONE_AT_A_TIME.lock().await;
         let stop = Stop::default();
         let (language, toolchains) = (&self.language, &self.toolchains);
         let reference =
