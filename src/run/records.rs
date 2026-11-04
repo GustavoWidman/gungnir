@@ -17,8 +17,9 @@ use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt, path::PathBuf, time::Duration};
 
-/// Everything a run depends on that gungnir controls. Equal inputs make the same kind of
-/// sample, so a committed run is stale exactly when its inputs differ from the current ones.
+/// Everything a run depends on that gungnir controls, and the time budgets it ran under.
+/// Equal inputs make the same kind of sample, so a committed run is stale exactly when
+/// [`RunInputs::is_stale`] says its inputs differ from the current ones.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RunInputs {
     system: String,
@@ -28,6 +29,7 @@ pub struct RunInputs {
     /// The workspace the agent starts in.
     workspace: Digest,
     toolchains: StoredToolchains,
+    /// Recorded, never compared, like `idle`.
     #[serde(with = "duration")]
     wall: Duration,
     #[serde(with = "duration")]
@@ -72,6 +74,32 @@ impl RunInputs {
             wall: budget.wall(),
             idle: budget.idle(),
         })
+    }
+
+    /// Whether a run made from these inputs is stale against `current`, the inputs of running
+    /// its trial now. The budgets are left out: they only bound how long gungnir waits for a
+    /// session to end on its own, and only such a session is a sample, so raising them changes
+    /// no sample already taken.
+    pub fn is_stale(&self, current: &Self) -> bool {
+        let Self {
+            system,
+            api_model,
+            endpoint,
+            prompt,
+            workspace,
+            toolchains,
+            wall: _,
+            idle: _,
+        } = self;
+        (system, api_model, endpoint, prompt, workspace, toolchains)
+            != (
+                &current.system,
+                &current.api_model,
+                &current.endpoint,
+                &current.prompt,
+                &current.workspace,
+                &current.toolchains,
+            )
     }
 
     /// The inputs of running `task` now, scaffolding its workspace in scratch to digest it.
@@ -549,7 +577,7 @@ mod tests {
     #[test]
     fn stored_inputs_go_stale_exactly_when_the_agent_would_see_something_else() {
         type Edit = fn(&Path);
-        let edits: [(Edit, bool); 8] = [
+        let edits: [(Edit, bool); 10] = [
             (
                 |root| write(root, "scenarios/echo/hidden/edge.out", "x\n"),
                 false,
@@ -586,8 +614,16 @@ mod tests {
                 true,
             ),
             (
-                |root| replace(root, "experiments/fixture.toml", "\"10m\"", "\"5m\""),
-                true,
+                |root| replace(root, "experiments/fixture.toml", "\"10m\"", "\"30m\""),
+                false,
+            ),
+            (
+                |root| replace(root, "experiments/fixture.toml", "\"40m\"", "\"4h\""),
+                false,
+            ),
+            (
+                |root| replace(root, "experiments/fixture.toml", "\"40m\"", "\"20m\""),
+                false,
             ),
         ];
         for (index, (edit, stale)) in edits.into_iter().enumerate() {
@@ -595,10 +631,21 @@ mod tests {
             let json = serde_json::to_string(&current(&repo)).unwrap();
             let stored: RunInputs = serde_json::from_str(&json).unwrap();
             assert_eq!(stored, current(&repo));
+            assert!(!stored.is_stale(&current(&repo)));
 
             edit(repo.root.path());
-            assert_eq!(stored != current(&repo), stale, "edit {index}");
+            assert_eq!(stored.is_stale(&current(&repo)), stale, "edit {index}");
         }
+    }
+
+    #[test]
+    fn the_budgets_a_run_ran_under_stay_on_its_record() {
+        let repo = Repo::new();
+        let json = serde_json::to_value(current(&repo)).unwrap();
+        assert_eq!(
+            (&json["wall"], &json["idle"]),
+            (&"40m".into(), &"10m".into())
+        );
     }
 
     #[test]

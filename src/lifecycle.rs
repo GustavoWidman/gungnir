@@ -46,7 +46,7 @@ impl Lifecycle {
                 stale: None,
             });
         };
-        let mut stale = (run.inputs() != current.run()).then_some(Phase::Run);
+        let mut stale = run.inputs().is_stale(current.run()).then_some(Phase::Run);
         let Some(grade) = read_record::<GradeRecord>(&dir.phase(Phase::Grade))? else {
             return Ok(Self {
                 stage: Stage::Ran { run: run.into() },

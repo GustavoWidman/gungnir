@@ -624,6 +624,22 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn raising_the_budgets_leaves_committed_runs_current() {
+        let machine = Machine::new();
+        let agent = solver();
+        machine.run(&agent).await.unwrap();
+        let experiment = machine.repo.root.path().join("experiments/fixture.toml");
+        let raised = fs::read_to_string(&experiment)
+            .unwrap()
+            .replace("wall = \"40m\"", "wall = \"4h\"")
+            .replace("idle = \"10m\"", "idle = \"30m\"");
+        fs::write(&experiment, raised).unwrap();
+
+        assert_eq!(machine.run(&agent).await.unwrap(), Tally::default());
+        assert_eq!(agent.launches().len(), 2);
+    }
+
+    #[tokio::test]
     async fn a_rate_limit_an_older_parser_missed_is_reparsed_and_its_trial_run_again() {
         let machine = Machine::new();
         let experiment = machine.repo.experiment();
