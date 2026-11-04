@@ -1,4 +1,4 @@
-packages = ["go_1_26"]
+packages = ["go_1_27"]
 build = [["go", "build", "-o", "solution", "."]]
 run = ["./solution"]
 version = ["sh", "-c", 'go env GOVERSION | sed -nE "s/^go([0-9]+[.][0-9]+).*/\1/p"']
