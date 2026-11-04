@@ -56,6 +56,20 @@ impl Judgement {
             .min()
             .map_or(Verdict::Pass, Verdict::Fail)
     }
+
+    /// What the sandbox said when it could not run a build step or a case, if it could not.
+    /// Such a judgement says nothing about the program, so a phase never commits it.
+    pub fn fault(&self) -> Option<&str> {
+        match &self.build.outcome {
+            BuildOutcome::Fault { message, .. } => Some(message),
+            BuildOutcome::Built | BuildOutcome::Failed { .. } => {
+                self.cases.values().find_map(|case| match &case.outcome {
+                    Outcome::Fault(message) => Some(message.as_str()),
+                    _ => None,
+                })
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -189,6 +189,12 @@ impl TrialDir {
     pub fn final_workspace(&self) -> PathBuf {
         self.phase(Phase::Run).join(FINAL)
     }
+
+    /// `<phase>/record.json`, the record [`crate::store::PartialDir`] commits last. Only a
+    /// record re-derived from what its directory already holds is ever rewritten in place.
+    pub fn record(&self, phase: Phase) -> PathBuf {
+        self.phase(phase).join("record.json")
+    }
 }
 
 /// One attempt's directory, `attempts/<n>/`.

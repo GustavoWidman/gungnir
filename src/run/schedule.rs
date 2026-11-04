@@ -27,8 +27,8 @@ pub struct Tally {
     pub discarded: usize,
     pub failed: usize,
     pub interrupted: usize,
-    /// Trials still pending when the invocation stopped scheduling.
-    pub pending: usize,
+    /// Trials not started because the invocation drained first.
+    pub unstarted: usize,
 }
 
 struct Lane {
@@ -41,7 +41,7 @@ struct Lane {
 /// Runs `attempt` for each of `trials`, in order within each backend's lane, until every trial
 /// is committed or failed, or `stop` drains. A rate-limited trial goes back to the front of its
 /// lane. A failed or interrupted one stays pending for the next invocation.
-pub async fn schedule(
+pub(super) async fn schedule(
     trials: Vec<TrialKey>,
     limits: &BTreeMap<BackendId, NonZeroUsize>,
     stop: &Stop,
@@ -119,7 +119,7 @@ pub async fn schedule(
             else => break,
         }
     }
-    tally.pending = lanes.values().map(|lane| lane.queue.len()).sum();
+    tally.unstarted = lanes.values().map(|lane| lane.queue.len()).sum();
     Ok(tally)
 }
 
@@ -401,7 +401,7 @@ mod tests {
             tally,
             Tally {
                 committed: 3,
-                pending: 13,
+                unstarted: 13,
                 ..Tally::default()
             }
         );

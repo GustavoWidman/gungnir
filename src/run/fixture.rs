@@ -115,6 +115,12 @@ impl Agent {
         }
     }
 
+    /// Makes `program --version` print `printed`.
+    pub fn printing(mut self, program: &str, printed: &str) -> Self {
+        self.versions.insert(program.to_owned(), printed.to_owned());
+        self
+    }
+
     /// Every agent launched so far.
     pub fn launches(&self) -> Vec<Launched> {
         self.launches.lock().unwrap().clone()
