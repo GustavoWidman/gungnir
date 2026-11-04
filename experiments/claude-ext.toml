@@ -13,7 +13,7 @@ wall = "40m"
 idle = "10m"
 
 [concurrency]
-anthropic = 2
+anthropic = 3
 
 [[systems]]
 model = "claude-sonnet-5-5"
