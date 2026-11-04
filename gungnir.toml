@@ -56,8 +56,8 @@ id = "claude-haiku-5-5"
 efforts = ["low", "medium", "high", "xhigh", "max"]
 served-by = { anthropic = "claude-haiku-5-5" }
 prices = [
-  { since = "2026-11-03", input = 0.1, output = 0.5, cache-read = 0.01 },
-  { since = "2026-11-03", above-prompt-tokens = 100000, input = 0.5, output = 2.5, cache-read = 0.05 },
+  { since = "2026-11-03", input = 0.1, output = 0.5, cache-read = 0.01, cache-write = 0.125, cache-write-1h = 0.2 },
+  { since = "2026-11-03", above-prompt-tokens = 100000, input = 0.5, output = 2.5, cache-read = 0.05, cache-write = 0.625, cache-write-1h = 1.0 },
 ]
 
 [[models]]
