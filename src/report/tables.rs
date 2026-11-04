@@ -93,7 +93,7 @@ row! {
 }
 
 row! {
-    /// A trial with a committed run.
+    /// A trial whose committed run is a sample.
     pub struct TrialRow {
         pub key: Key,
         pub spec: SystemSpec,
@@ -102,9 +102,8 @@ row! {
         pub stale_phase: Option<&'static str>,
         pub run_session: String,
         pub started: DateTime<Utc>,
-        /// `completed`, `refused`, `errored`, `crashed` or `killed`.
+        /// `completed`, or `refused` when the model declined the task.
         pub exit: &'static str,
-        pub error: Option<String>,
         /// `code`, `signal`, `timed-out`, `out-of-memory` or `killed`.
         pub process_exit: &'static str,
         /// The exit code or signal number.
@@ -434,12 +433,12 @@ impl TrialRow {
         } = trial;
         let outcome = run.outcome();
         let process = run.process();
-        let (exit, error) = match &outcome.exit {
-            AgentExit::Completed => ("completed", None),
-            AgentExit::Refused => ("refused", None),
-            AgentExit::Errored { message } => ("errored", Some(message.clone())),
-            AgentExit::Crashed => ("crashed", None),
-            AgentExit::Killed => ("killed", None),
+        let exit = match &outcome.exit {
+            AgentExit::Completed => "completed",
+            AgentExit::Refused => "refused",
+            AgentExit::Errored { .. } => "errored",
+            AgentExit::Crashed => "crashed",
+            AgentExit::Killed => "killed",
         };
         let (process_exit, process_status) = match process.exit {
             ProcessExit::Code(code) => ("code", Some(code)),
@@ -469,7 +468,6 @@ impl TrialRow {
             run_session: run.session().to_string(),
             started: run.started(),
             exit,
-            error,
             process_exit,
             process_status,
             cut: process.cut.map(|cut| match cut {

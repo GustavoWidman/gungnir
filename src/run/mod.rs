@@ -5,7 +5,7 @@ mod attempt;
 pub(crate) mod fixture;
 mod gate;
 mod records;
-mod reparse;
+mod review;
 mod schedule;
 mod workspace;
 
@@ -34,7 +34,7 @@ use crate::{
     vault::Vault,
 };
 use eyre::{Result, WrapErr, ensure, eyre};
-use reparse::{Reparsed, reparse};
+use review::{Review, apply, review};
 use schedule::schedule;
 use serde::Serialize;
 use std::{
@@ -141,7 +141,16 @@ pub async fn run(
         write_json(&results.manifest(), &manifest)?;
     }
     check_references(experiment, host, session.id(), stop).await?;
-    let pending = pending_trials(experiment, host.toolchains, session.id())?;
+    for trial in experiment.trials() {
+        sweep_partial(&results.trial(&trial).phase(Phase::Run))?;
+    }
+    let pending = settle(results, triage(experiment, host.toolchains, session.id())?)?;
+    info!(
+        "{}: {} of {} trials pending",
+        experiment.name(),
+        pending.len(),
+        experiment.trials().len()
+    );
     let rig = Rig {
         results,
         toolchains: host.toolchains,
@@ -158,22 +167,27 @@ pub async fn run(
     .await
 }
 
-/// The experiment's trials without a committed run, in order, after refusing every committed
-/// run that is stale and reparsing the rest, which may withdraw a run and leave its trial
-/// pending.
-fn pending_trials(
+/// A trial as the run phase finds it before it schedules anything.
+struct Found {
+    trial: TrialKey,
+    /// The committed run and what reviewing it calls for, unless the trial is pending.
+    committed: Option<(Box<RunRecord>, Review)>,
+}
+
+/// Every trial of `experiment` as the run phase finds it, in order, after refusing every
+/// committed run that is stale. Reads only: reviewing a run decides what to do with it, and
+/// [`settle`] does it.
+fn triage(
     experiment: &Experiment,
     toolchains: &Toolchains,
     session: &SessionId,
-) -> Result<Vec<TrialKey>> {
+) -> Result<Vec<Found>> {
     let results = experiment.results();
     let trials = experiment.trials();
     let mut lifecycles = Vec::with_capacity(trials.len());
     for trial in &trials {
-        let dir = results.trial(trial);
-        sweep_partial(&dir.phase(Phase::Run))?;
         let current = Current::of(experiment, trial, toolchains)?;
-        lifecycles.push(Lifecycle::read(&dir, &current)?);
+        lifecycles.push(Lifecycle::read(&results.trial(trial), &current)?);
     }
     let stale: Vec<String> = trials
         .iter()
@@ -190,30 +204,47 @@ fn pending_trials(
         stale.concat()
     );
 
-    let mut pending = Vec::new();
-    for (trial, lifecycle) in trials.into_iter().zip(&lifecycles) {
-        let Some(committed) = lifecycle.run() else {
-            pending.push(trial);
+    let mut found = Vec::with_capacity(trials.len());
+    for (trial, lifecycle) in trials.into_iter().zip(lifecycles) {
+        let Some(run) = lifecycle.run() else {
+            found.push(Found {
+                trial,
+                committed: None,
+            });
             continue;
         };
         let harness = Harness::named(trial.system.harness())
             .ok_or_else(|| eyre!("no driver for harness {}", trial.system.harness()))?;
-        let attempt = committed.attempt();
-        match reparse(results, &results.trial(&trial), committed, harness, session)? {
-            Reparsed::Current => {}
-            Reparsed::Updated => info!("{trial}: reparsed attempt {attempt}"),
-            Reparsed::Demoted => {
-                info!("{trial}: reparsing found a rate limit, attempt {attempt} discarded");
+        let review = review(&results.trial(&trial), run, harness, session)?;
+        let committed = Some((Box::new(run.clone()), review));
+        found.push(Found { trial, committed });
+    }
+    Ok(found)
+}
+
+/// Carries out the review of each committed run in `found`, and returns the trials pending
+/// once it is done, in order: those without a committed run and those whose run was withdrawn.
+fn settle(results: &ResultsDir, found: Vec<Found>) -> Result<Vec<TrialKey>> {
+    let mut pending = Vec::new();
+    for Found { trial, committed } in found {
+        let Some((run, review)) = committed else {
+            pending.push(trial);
+            continue;
+        };
+        apply(results, &results.trial(&trial), &run, &review)?;
+        let attempt = run.attempt();
+        match review {
+            Review::Current => {}
+            Review::Reparsed(_) => info!("{trial}: reparsed attempt {attempt}"),
+            Review::Withdrawn(discarded) => {
+                info!(
+                    "{trial}: withdrew attempt {attempt}, no sample: {}",
+                    discarded.reason
+                );
                 pending.push(trial);
             }
         }
     }
-    info!(
-        "{}: {} of {} trials pending",
-        experiment.name(),
-        pending.len(),
-        lifecycles.len()
-    );
     Ok(pending)
 }
 
@@ -620,5 +651,42 @@ mod tests {
             committed_attempt(&results, &trial),
             Some(AttemptNo::FIRST.next())
         );
+    }
+
+    #[tokio::test]
+    async fn a_committed_run_cut_at_the_wall_is_withdrawn_with_its_grade_and_run_again() {
+        let machine = Machine::new();
+        let experiment = machine.repo.experiment();
+        let trial = fixture::trial(&experiment, "opus");
+        let dir = experiment.results().trial(&trial);
+        let transcript = Play::transcript("claude-code/haiku-bash-success.jsonl").stdout;
+        write(
+            dir.attempt(AttemptNo::FIRST).path(),
+            "transcript.jsonl",
+            transcript[..2].join("\n"),
+        );
+        let partial = PartialDir::begin(&dir.phase(Phase::Run)).unwrap();
+        write(&partial.path().join(FINAL), "main.py", "print(input())\n");
+        let mut record = fixture::record(&machine.repo, &trial, Digest::of_bytes(b""));
+        record.outcome.exit = AgentExit::Killed;
+        record.process.exit = ProcessExit::TimedOut;
+        partial.commit(&record).unwrap();
+        fixture::commit_grade(&machine.repo, &trial).await;
+
+        let agent = solver();
+        let tally = machine.run(&agent).await.unwrap();
+        assert_eq!(tally.committed, 2);
+        assert_eq!(agent.launches().len(), 2);
+        let discarded = fs::read_to_string(dir.attempt(AttemptNo::FIRST).discarded()).unwrap();
+        let discarded: serde_json::Value = serde_json::from_str(&discarded).unwrap();
+        assert_eq!(
+            discarded["reason"],
+            serde_json::json!({ "kind": "timed-out", "budget": "wall" })
+        );
+        assert_eq!(
+            committed_attempt(&machine.results(), &trial),
+            Some(AttemptNo::FIRST.next())
+        );
+        assert!(!dir.phase(Phase::Grade).exists());
     }
 }

@@ -238,6 +238,35 @@ async fn the_committed_run_describes_its_trial_and_attempts_that_committed_nothi
 }
 
 #[test]
+fn a_committed_run_that_is_no_sample_is_left_out() {
+    let repo = Repo::new();
+    let experiment = repo.experiment();
+    for (model, exit, process) in [
+        ("opus", "completed", json!({ "code": 0 })),
+        ("luna", "killed", json!("timed-out")),
+    ] {
+        let trial = fixture::trial(&experiment, model);
+        let dir = experiment.results().trial(&trial);
+        let partial = PartialDir::begin(&dir.phase(Phase::Run)).unwrap();
+        write(&partial.path().join(FINAL), "main.py", "print(input())\n");
+        let mut record =
+            serde_json::to_value(fixture::record(&repo, &trial, Digest::of_bytes(b"")))
+                .expect("a run record serializes");
+        record["outcome"]["exit"] = json!(exit);
+        record["process"]["exit"] = process;
+        record["outcome"]["usage"] = json!([sample("msg_1", 10, 0, 5)]);
+        partial.commit(&record).unwrap();
+    }
+    let out = TempDir::new().unwrap();
+    let out = out.path().join("report");
+
+    write_report(&repo, &out).unwrap();
+    let trials = table(&out, "trials.csv");
+    assert_eq!(cells(&trials, &["model", "exit"]), [["opus", "completed"]]);
+    assert_eq!(table(&out, "usage.csv").len(), 1);
+}
+
+#[test]
 fn a_report_replaces_the_last_one_and_nothing_else() {
     let repo = Repo::new();
     let parent = TempDir::new().unwrap();

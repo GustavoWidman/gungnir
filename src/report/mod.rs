@@ -12,6 +12,7 @@ use crate::{
     experiment::Experiment,
     lifecycle::{Current, Lifecycle, Stage},
     provenance::{Session, SessionId},
+    run::Reason,
     store::{read_record, write_atomic, write_json},
     toolchains::Toolchains,
     trial::Phase,
@@ -105,13 +106,20 @@ pub fn report(
     Ok(manifest)
 }
 
-/// Every trial of `experiment` with a committed run, as its records stand now.
+/// Every trial of `experiment` whose committed run is a sample, as its records stand now. A
+/// committed run that is no sample, made before the policy or by an older gungnir, is left out
+/// until `run` withdraws it.
 fn read(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<Trial>> {
     let mut trials = Vec::new();
     for key in experiment.trials() {
         let dir = experiment.results().trial(&key);
         let current = Current::of(experiment, &key, toolchains)?;
         let lifecycle = Lifecycle::read(&dir, &current)?;
+        if let Some(run) = lifecycle.run()
+            && Reason::of(&run.outcome().exit, run.process()).is_some()
+        {
+            continue;
+        }
         let stale = lifecycle.stale;
         let trial = match lifecycle.stage {
             Stage::Pending => continue,
