@@ -1,19 +1,30 @@
 //! What judging a workspace found, and the verdict that follows from it.
+use super::complexity::Complexity;
 use crate::{id::CaseId, sandbox::Exit};
 use eyre::{Result, bail};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt, time::Duration};
 
-/// The build, and the result of every hidden case when the build succeeded.
+/// The build, the result of every hidden case when the build succeeded, and the complexity
+/// of the sources.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Judgement {
     build: Build,
     cases: BTreeMap<CaseId, Case>,
+    complexity: Option<Complexity>,
 }
 
 impl Judgement {
-    pub(super) fn new(build: Build, cases: BTreeMap<CaseId, Case>) -> Self {
-        Self { build, cases }
+    pub(super) fn new(
+        build: Build,
+        cases: BTreeMap<CaseId, Case>,
+        complexity: Option<Complexity>,
+    ) -> Self {
+        Self {
+            build,
+            cases,
+            complexity,
+        }
     }
 
     pub fn build(&self) -> &Build {
@@ -23,6 +34,11 @@ impl Judgement {
     /// Every hidden case, or none when the build did not succeed.
     pub fn cases(&self) -> &BTreeMap<CaseId, Case> {
         &self.cases
+    }
+
+    /// `None` when the language names no lizard language.
+    pub fn complexity(&self) -> Option<&Complexity> {
+        self.complexity.as_ref()
     }
 
     /// Pass when the build succeeded and every case passed. Otherwise the failure with the

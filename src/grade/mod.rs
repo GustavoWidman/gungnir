@@ -1,7 +1,8 @@
 //! Grading. A workspace is copied into fresh scratch, built in an offline sandbox, and run on
 //! every hidden case in a sandbox of its own. Each case's stdout is compared on the host, so
-//! expected outputs never enter a sandbox.
+//! expected outputs never enter a sandbox. Lizard measures the sources' complexity.
 mod compare;
+mod complexity;
 mod judgement;
 #[cfg(test)]
 pub(crate) mod scripted;
@@ -9,6 +10,7 @@ pub(crate) mod scripted;
 mod tests;
 mod tree;
 
+pub use complexity::{Complexity, FileComplexity, Function};
 pub use judgement::{
     Abnormal, Build, BuildOutcome, Case, Crash, Failure, Judgement, Outcome, Verdict,
 };
@@ -46,8 +48,8 @@ const BUILD_LOG_CAP: u64 = 1 << 20;
 const STDOUT_CAP: u64 = 8 << 20;
 const CASE_TASKS: u32 = 256;
 
-/// Judges `workspace` as a `language` solution to `scenario`: builds a copy of it offline and,
-/// if the build succeeds, runs every hidden case. Writes `build.log` into `evidence`, and
+/// Judges `workspace` as a `language` solution to `scenario`: measures the complexity of a
+/// copy of it, builds the copy offline and, if the build succeeds, runs every hidden case. Writes `build.log` into `evidence`, and
 /// `cases/<case>.out` with the stdout kept from each case that ran and did not pass.
 ///
 /// A sandbox that cannot run a command is judged an environment fault. An error means there
@@ -68,6 +70,7 @@ pub async fn judge(
         .wrap_err("creating grading scratch")?;
     let work = scratch.path().join("work");
     tree::copy(workspace, &work, language.ignore())?;
+    let complexity = complexity::measure(language, &work).await?;
 
     let offline = Offline {
         backend,
@@ -87,7 +90,7 @@ pub async fn judge(
         BuildOutcome::Built => offline.run(language.run(), scenario, evidence).await?,
         BuildOutcome::Failed { .. } | BuildOutcome::Fault { .. } => BTreeMap::new(),
     };
-    Ok(Judgement::new(build, cases))
+    Ok(Judgement::new(build, cases, complexity))
 }
 
 /// Runs commands in offline sandboxes over one scratch copy of a workspace, with the

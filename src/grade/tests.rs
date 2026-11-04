@@ -134,6 +134,7 @@ async fn a_program_that_prints_the_expected_output_passes() {
 
     assert_eq!(judgement.verdict(), Verdict::Pass);
     assert_eq!(judgement.build().outcome, BuildOutcome::Built);
+    assert_eq!(judgement.complexity(), None);
     assert_eq!(
         outcomes(&judgement),
         [("edge", &Outcome::Pass), ("many", &Outcome::Pass)]
