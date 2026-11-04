@@ -58,6 +58,14 @@ The contract also specifies parts that are not in the crate yet: the measure pha
 3. The experiment picks its scenarios and languages, turns each `[[systems]]` entry into one `System` per effort, and checks the pins, the concurrency keys and the references.
 4. `cli::Plan` prints one row per model with its efforts, then the scenarios, languages, repetitions and trial count.
 
+## How `gungnir run` runs an experiment
+
+1. `run::run` takes the run lock, sweeps `.scratch/run/`, and opens the `Vault`, which reads every credential and sweeps the isolated homes a crashed run left.
+2. It asks each harness CLI for `--version` in an offline sandbox, refuses a version other than the pin, and writes the session.
+3. It judges every requested reference into `references/` and refuses unless all pass.
+4. `pending_trials` reads each trial's `Lifecycle`, refuses stale committed runs by name, and reparses runs an older parser folded. A run whose transcript turns out to be rate limited is withdrawn and its trial is pending again.
+5. `schedule` starts the pending trials in one lane per backend behind its `Gate`, and `Rig::attempt` makes each attempt.
+
 ## Invariants to keep
 
 - Parse external data at the boundary. Each loader deserializes into a private `Raw*` type with `deny_unknown_fields` and converts it into the domain type, so code after the loader trusts its input.

@@ -140,13 +140,38 @@ pub async fn run(
         write_json(&results.manifest(), &manifest)?;
     }
     check_references(experiment, host, session.id(), stop).await?;
+    let pending = pending_trials(experiment, host.toolchains, session.id())?;
+    let rig = Rig {
+        results,
+        toolchains: host.toolchains,
+        vault: &vault,
+        backend: host.backend,
+        session: session.id(),
+        budget: experiment.budget(),
+        stop,
+    };
+    let limits = experiment.concurrency();
+    schedule(pending, limits, stop, async |trial: &TrialKey| {
+        rig.attempt(&Task::of(experiment, trial)?).await
+    })
+    .await
+}
 
+/// The experiment's trials without a committed run, in order, after refusing every committed
+/// run that is stale and reparsing the rest, which may withdraw a run and leave its trial
+/// pending.
+fn pending_trials(
+    experiment: &Experiment,
+    toolchains: &Toolchains,
+    session: &SessionId,
+) -> Result<Vec<TrialKey>> {
+    let results = experiment.results();
     let trials = experiment.trials();
     let mut lifecycles = Vec::with_capacity(trials.len());
     for trial in &trials {
         let dir = results.trial(trial);
         sweep_partial(&dir.phase(Phase::Run))?;
-        let current = Current::of(experiment, trial, host.toolchains)?;
+        let current = Current::of(experiment, trial, toolchains)?;
         lifecycles.push(Lifecycle::read(&dir, &current)?);
     }
     let stale: Vec<String> = trials
@@ -172,15 +197,12 @@ pub async fn run(
         };
         let harness = Harness::named(trial.system.harness())
             .ok_or_else(|| eyre!("no driver for harness {}", trial.system.harness()))?;
-        let dir = results.trial(&trial);
-        match reparse(results, &dir, committed, harness, session.id())? {
+        let attempt = committed.attempt();
+        match reparse(results, &results.trial(&trial), committed, harness, session)? {
             Reparsed::Current => {}
-            Reparsed::Updated => info!("{trial}: reparsed attempt {}", committed.attempt()),
+            Reparsed::Updated => info!("{trial}: reparsed attempt {attempt}"),
             Reparsed::Demoted => {
-                info!(
-                    "{trial}: reparsing found a rate limit, attempt {} discarded",
-                    committed.attempt()
-                );
+                info!("{trial}: reparsing found a rate limit, attempt {attempt} discarded");
                 pending.push(trial);
             }
         }
@@ -191,20 +213,7 @@ pub async fn run(
         pending.len(),
         lifecycles.len()
     );
-    let rig = Rig {
-        results,
-        toolchains: host.toolchains,
-        vault: &vault,
-        backend: host.backend,
-        session: session.id(),
-        budget: experiment.budget(),
-        stop,
-    };
-    let limits = experiment.concurrency();
-    schedule(pending, limits, stop, async |trial: &TrialKey| {
-        rig.attempt(&Task::of(experiment, trial)?).await
-    })
-    .await
+    Ok(pending)
 }
 
 /// Where the experiment's isolated homes live: a directory of `$XDG_RUNTIME_DIR/gungnir/`
