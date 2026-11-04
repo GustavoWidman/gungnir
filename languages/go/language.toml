@@ -1,0 +1,13 @@
+packages = ["go_1_26"]
+build = [["go", "build", "-o", "solution", "."]]
+run = ["./solution"]
+sources = ["**/*.go"]
+ignore = ["solution"]
+lizard = "go"
+
+[env]
+CGO_ENABLED = "0"
+GOCACHE = "/tmp/go-cache"
+GOPATH = "/tmp/go-path"
+GOPROXY = "off"
+GOTOOLCHAIN = "local"
