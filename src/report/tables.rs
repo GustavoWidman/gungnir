@@ -9,7 +9,7 @@ use crate::{
     grade::{Abnormal, Crash, GradeRecord, Outcome as CaseOutcome, Verdict},
     harness::TokenUsage,
     id::WorkloadId,
-    measure::{self, MeasureRecord, Side, Spread},
+    measure::{self, MeasureRecord, Side},
     provenance::SessionId,
     run::{AgentExit, Cut, ProcessExit, RunRecord},
     trial::{Phase, TrialKey},
@@ -201,9 +201,11 @@ row! {
         pub candidate_median_s: Option<f64>,
         pub candidate_min_s: Option<f64>,
         pub candidate_max_s: Option<f64>,
-        /// The candidate's median instructions over the reference's, when every run counted them.
+        /// The candidate's median user-space instructions over the reference's, when every run
+        /// of both counted them.
         pub instructions_ratio: Option<f64>,
-        /// The largest peak resident memory of any run.
+        /// Each program's peak resident memory in its output check, as GNU time read it, when
+        /// it did.
         pub reference_peak_memory_bytes: Option<u64>,
         pub candidate_peak_memory_bytes: Option<u64>,
     }
@@ -222,6 +224,7 @@ row! {
         pub wall_s: f64,
         pub user_s: f64,
         pub system_s: f64,
+        /// hyperfine's figure, which never falls below its own footprint of about 3 MiB.
         pub peak_memory_bytes: u64,
         pub instructions: Option<u64>,
     }
@@ -510,15 +513,6 @@ impl TrialRow {
 impl WorkloadRow {
     fn timed(key: &Key, workload: &WorkloadId, timed: &measure::Timed) -> Self {
         let summary = timed.summary();
-        let runs = |side| timed.blocks.iter().flat_map(move |block| block.side(side));
-        let instructions = |side| {
-            runs(side)
-                .map(|run| run.instructions.map(|count| count as f64))
-                .collect::<Option<Vec<f64>>>()
-                .filter(|counts| !counts.is_empty())
-                .map(|counts| Spread::of(counts).median)
-        };
-        let peak = |side| runs(side).map(|run| run.peak_memory).max();
         let interval = summary.ratio.interval;
         Self {
             key: key.clone(),
@@ -535,11 +529,9 @@ impl WorkloadRow {
             candidate_median_s: Some(summary.candidate.median),
             candidate_min_s: Some(summary.candidate.min),
             candidate_max_s: Some(summary.candidate.max),
-            instructions_ratio: instructions(Side::Candidate)
-                .zip(instructions(Side::Reference))
-                .map(|(candidate, reference)| candidate / reference),
-            reference_peak_memory_bytes: peak(Side::Reference),
-            candidate_peak_memory_bytes: peak(Side::Candidate),
+            instructions_ratio: summary.instructions,
+            reference_peak_memory_bytes: summary.peak_memory.reference,
+            candidate_peak_memory_bytes: summary.peak_memory.candidate,
         }
     }
 
@@ -634,7 +626,10 @@ mod tests {
                 testing::id("large"),
                 measure::Outcome::Timed(Timed {
                     blocks,
-                    peak_memory: PeakMemory::default(),
+                    peak_memory: PeakMemory {
+                        reference: Some(48 << 20),
+                        candidate: None,
+                    },
                 }),
             ),
             (
@@ -680,12 +675,13 @@ mod tests {
             [Some(4.0), Some(2.0), Some(6.0)]
         );
         assert_eq!(large.instructions_ratio, Some(3.0));
+        // The output check's peaks, not the largest of hyperfine's, which the timings keep.
         assert_eq!(
             (
                 large.reference_peak_memory_bytes,
                 large.candidate_peak_memory_bytes
             ),
-            (Some(20), Some(30))
+            (Some(48 << 20), None)
         );
         assert_eq!(
             (
@@ -697,22 +693,25 @@ mod tests {
             ("wrong-output", 0, None, Some("wrong output"))
         );
 
-        let order: Vec<(usize, &str, usize, f64)> = tables
+        let order: Vec<(usize, &str, usize, f64, u64)> = tables
             .timings
             .iter()
-            .map(|row| (row.block, row.side, row.run, row.wall_s))
+            .map(|row| {
+                let peak = row.peak_memory_bytes;
+                (row.block, row.side, row.run, row.wall_s, peak)
+            })
             .collect();
         assert_eq!(
             order,
             [
-                (1, "reference", 1, 1.0),
-                (1, "reference", 2, 3.0),
-                (1, "candidate", 1, 2.0),
-                (1, "candidate", 2, 6.0),
-                (2, "reference", 1, 1.0),
-                (2, "reference", 2, 3.0),
-                (2, "candidate", 1, 2.0),
-                (2, "candidate", 2, 6.0),
+                (1, "reference", 1, 1.0, 10),
+                (1, "reference", 2, 3.0, 20),
+                (1, "candidate", 1, 2.0, 30),
+                (1, "candidate", 2, 6.0, 30),
+                (2, "reference", 1, 1.0, 15),
+                (2, "reference", 2, 3.0, 12),
+                (2, "candidate", 1, 2.0, 25),
+                (2, "candidate", 2, 6.0, 25),
             ]
         );
         assert!(tables.timings.iter().all(|row| row.workload == "large"));
