@@ -9,7 +9,7 @@ use crate::{
     stop::{Stage, Stop},
     trial::TrialKey,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use eyre::{Result, eyre};
 use futures_util::{StreamExt, stream::FuturesUnordered};
 use std::{
@@ -31,11 +31,61 @@ pub struct Tally {
     pub unstarted: usize,
 }
 
+/// How much of each backend's account one invocation may spend. A backend whose guard trips
+/// starts nothing more; its running attempts finish and its other trials stay pending.
+#[derive(Clone, Debug, Default)]
+pub struct Guard {
+    /// Stop a backend once any of its quota windows reports at least this fraction used.
+    pub ceilings: BTreeMap<BackendId, f64>,
+    /// Stop starting attempts on a backend at this time.
+    pub deadlines: BTreeMap<BackendId, DateTime<Utc>>,
+    /// Stop a backend after this many attempts in a row errored, crashed or failed, since an
+    /// expired login or an outage would otherwise turn every remaining trial into an error.
+    pub max_errors: Option<u32>,
+}
+
+impl Guard {
+    /// Why `backend` must start nothing more, given the quota its latest attempt reported, the
+    /// errors in a row it has had, and the time.
+    fn stops(
+        &self,
+        backend: &BackendId,
+        quota: Option<(&str, f64)>,
+        errors: u32,
+        now: DateTime<Utc>,
+    ) -> Option<String> {
+        if let (Some(ceiling), Some((window, used))) = (self.ceilings.get(backend), quota)
+            && used >= *ceiling
+        {
+            return Some(format!(
+                "its {window} quota is {:.0}% used, at or past the {:.0}% ceiling",
+                used * 100.0,
+                ceiling * 100.0
+            ));
+        }
+        if let Some(deadline) = self.deadlines.get(backend)
+            && now >= *deadline
+        {
+            return Some(format!("its deadline {deadline} has passed"));
+        }
+        if let Some(max) = self.max_errors
+            && errors >= max
+        {
+            return Some(format!("{errors} attempts in a row errored or failed"));
+        }
+        None
+    }
+}
+
 struct Lane {
     limit: usize,
     queue: VecDeque<TrialKey>,
     gate: Gate,
     running: usize,
+    /// Attempts in a row that errored, crashed or failed.
+    errors: u32,
+    /// Why the lane starts nothing more, once its guard tripped.
+    stopped: Option<String>,
 }
 
 /// Runs `attempt` for each of `trials`, in order within each backend's lane, until every trial
@@ -44,6 +94,7 @@ struct Lane {
 pub(super) async fn schedule(
     trials: Vec<TrialKey>,
     limits: &BTreeMap<BackendId, NonZeroUsize>,
+    guard: &Guard,
     stop: &Stop,
     attempt: impl AsyncFn(&TrialKey) -> Result<Attempted>,
 ) -> Result<Tally> {
@@ -55,6 +106,8 @@ pub(super) async fn schedule(
                 queue: VecDeque::new(),
                 gate: Gate::Open,
                 running: 0,
+                errors: 0,
+                stopped: None,
             };
             (backend, lane)
         })
@@ -74,6 +127,15 @@ pub(super) async fn schedule(
         let now = Instant::now();
         if stop.stage() == Stage::Running {
             for (backend, lane) in &mut lanes {
+                if lane.stopped.is_none()
+                    && let Some(reason) = guard.stops(backend, None, lane.errors, Utc::now())
+                {
+                    warn!("{backend}: starting nothing more, because {reason}");
+                    lane.stopped = Some(reason);
+                }
+                if lane.stopped.is_some() {
+                    continue;
+                }
                 for _ in 0..lane.gate.room(now, lane.running, lane.limit) {
                     let Some(trial) = lane.queue.pop_front() else {
                         break;
@@ -90,14 +152,25 @@ pub(super) async fn schedule(
                 }
             }
         }
-        let idle = stop.stage() != Stage::Running || lanes.values().all(|l| l.queue.is_empty());
+        let idle = stop.stage() != Stage::Running
+            || lanes
+                .values()
+                .all(|lane| lane.queue.is_empty() || lane.stopped.is_some());
         if running.is_empty() && idle {
             break;
         }
+        let deadline = lanes
+            .iter()
+            .filter(|(_, lane)| !lane.queue.is_empty() && lane.stopped.is_none())
+            .filter_map(|(backend, _)| guard.deadlines.get(*backend))
+            .filter_map(|at| (*at - Utc::now()).to_std().ok())
+            .map(|left| Instant::now() + left)
+            .min();
         let wake = lanes
             .values()
-            .filter(|lane| !lane.queue.is_empty())
+            .filter(|lane| !lane.queue.is_empty() && lane.stopped.is_none())
             .filter_map(|lane| lane.gate.wakes())
+            .chain(deadline)
             .min();
         tokio::select! {
             Some((trial, result)) = running.next(), if !running.is_empty() => {
@@ -106,6 +179,34 @@ pub(super) async fn schedule(
                     .get_mut(backend)
                     .ok_or_else(|| eyre!("no lane for backend {backend}"))?;
                 lane.running -= 1;
+                lane.errors = match &result {
+                    Ok(Attempted::Committed(record)) => match record.outcome().exit {
+                        AgentExit::Errored { .. } | AgentExit::Crashed => lane.errors + 1,
+                        AgentExit::Completed | AgentExit::Refused | AgentExit::Killed => 0,
+                    },
+                    Ok(Attempted::RateLimited { .. } | Attempted::Interrupted { .. }) => {
+                        lane.errors
+                    }
+                    Err(_) => lane.errors + 1,
+                };
+                let quota = match &result {
+                    Ok(Attempted::Committed(record)) => most_used(record),
+                    _ => None,
+                };
+                if let Some((window, used)) = &quota {
+                    info!("{backend}: {window} quota {:.0}% used", used * 100.0);
+                }
+                if lane.stopped.is_none()
+                    && let Some(reason) = guard.stops(
+                        backend,
+                        quota.as_ref().map(|(window, used)| (window.as_str(), *used)),
+                        lane.errors,
+                        Utc::now(),
+                    )
+                {
+                    warn!("{backend}: starting nothing more, because {reason}");
+                    lane.stopped = Some(reason);
+                }
                 let before = lane.gate;
                 let event = settle(&mut tally, &trial, result);
                 lane.gate = lane.gate.next(event, Instant::now());
@@ -121,6 +222,16 @@ pub(super) async fn schedule(
     }
     tally.unstarted = lanes.values().map(|lane| lane.queue.len()).sum();
     Ok(tally)
+}
+
+/// The quota window the attempt saw most used at its end, and how much of it was used.
+fn most_used(record: &RunRecord) -> Option<(String, f64)> {
+    record
+        .outcome()
+        .quota
+        .iter()
+        .map(|(window, quota)| (window.clone(), quota.last))
+        .max_by(|a, b| a.1.total_cmp(&b.1))
 }
 
 /// Counts and logs how an attempt of `trial` ended, and names it for the lane's gate.
@@ -224,6 +335,7 @@ mod tests {
     struct Bench {
         experiment: Experiment,
         record: RunRecord,
+        guard: Guard,
         t0: Instant,
         log: Mutex<Vec<Start>>,
     }
@@ -250,6 +362,7 @@ mod tests {
             Self {
                 experiment,
                 record,
+                guard: Guard::default(),
                 t0: Instant::now(),
                 log: Mutex::default(),
             }
@@ -264,6 +377,7 @@ mod tests {
             schedule(
                 self.experiment.trials(),
                 self.experiment.concurrency(),
+                &self.guard,
                 stop,
                 async |trial: &TrialKey| {
                     let backend = trial.system.backend().clone();
@@ -406,5 +520,74 @@ mod tests {
             }
         );
         assert_eq!(bench.log.lock().unwrap().len(), 3);
+    }
+
+    fn backend(name: &str) -> BackendId {
+        name.parse().unwrap()
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_passed_deadline_stops_only_its_backend() {
+        let mut bench = Bench::new();
+        let past = Utc::now() - chrono::Duration::minutes(1);
+        bench.guard.deadlines.insert(backend("openai"), past);
+        let tally = bench
+            .schedule(&Stop::default(), |_, _| (10 * MINUTE, bench.committed()))
+            .await;
+        assert_eq!(tally.committed, 8);
+        assert_eq!(tally.unstarted, 8);
+        assert!(bench.starts("openai").is_empty());
+        assert_eq!(bench.starts("anthropic").len(), 8);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_quota_at_its_ceiling_stops_the_backend_after_running_attempts_finish() {
+        let mut bench = Bench::new();
+        bench.guard.ceilings.insert(backend("anthropic"), 0.75);
+        let mut spent = bench.record.clone();
+        spent.outcome.quota.insert(
+            "seven_day".to_owned(),
+            crate::run::Quota {
+                first: 0.7,
+                last: 0.76,
+            },
+        );
+        let tally = bench
+            .schedule(&Stop::default(), |trial, _| {
+                let record = if trial.system.backend().as_str() == "anthropic" {
+                    spent.clone()
+                } else {
+                    bench.record.clone()
+                };
+                (10 * MINUTE, Attempted::Committed(Box::new(record)))
+            })
+            .await;
+        assert_eq!(bench.starts("anthropic").len(), 2, "the two running finish");
+        assert_eq!(bench.starts("openai").len(), 8);
+        assert_eq!(tally.committed, 10);
+        assert_eq!(tally.unstarted, 6);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn errors_in_a_row_stop_the_backend_and_a_clean_attempt_resets_the_count() {
+        let mut bench = Bench::new();
+        bench.guard.max_errors = Some(3);
+        let mut errored = bench.record.clone();
+        errored.outcome.exit = AgentExit::Errored {
+            message: "authentication failed".to_owned(),
+        };
+        let tally = bench
+            .schedule(&Stop::default(), |trial, _| {
+                let record = if trial.system.backend().as_str() == "openai" {
+                    errored.clone()
+                } else {
+                    bench.record.clone()
+                };
+                (10 * MINUTE, Attempted::Committed(Box::new(record)))
+            })
+            .await;
+        assert_eq!(bench.starts("openai").len(), 3);
+        assert_eq!(bench.starts("anthropic").len(), 8);
+        assert_eq!(tally.unstarted, 5);
     }
 }

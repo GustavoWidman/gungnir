@@ -14,7 +14,7 @@ pub use records::{
     AgentExit, Cut, DiscardedAttempt, Outcome, Process, ProcessExit, Quota, RunInputs, RunRecord,
     Sample, Tokens,
 };
-pub use schedule::Tally;
+pub use schedule::{Guard, Tally};
 
 use crate::{
     catalog::{Backend, System},
@@ -114,6 +114,7 @@ pub async fn run(
     experiment: &Experiment,
     repo: &Path,
     host: &Host<'_>,
+    guard: &Guard,
     stop: &Stop,
 ) -> Result<Tally> {
     let results = experiment.results();
@@ -151,7 +152,7 @@ pub async fn run(
         stop,
     };
     let limits = experiment.concurrency();
-    schedule(pending, limits, stop, async |trial: &TrialKey| {
+    schedule(pending, limits, guard, stop, async |trial: &TrialKey| {
         rig.attempt(&Task::of(experiment, trial)?).await
     })
     .await
@@ -432,7 +433,14 @@ mod tests {
                 runtime: self.runtime.path(),
             };
             let experiment = self.repo.experiment();
-            run(&experiment, self.repo.root.path(), &host, &Stop::default()).await
+            run(
+                &experiment,
+                self.repo.root.path(),
+                &host,
+                &Guard::default(),
+                &Stop::default(),
+            )
+            .await
         }
 
         fn results(&self) -> ResultsDir {

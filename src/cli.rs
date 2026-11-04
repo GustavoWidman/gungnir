@@ -3,12 +3,13 @@ use crate::{
     catalog::SystemId,
     experiment::Experiment,
     grade::{self, Graded, Judgement, Outcome, Verdict},
+    id::BackendId,
     id::{LanguageId, ScenarioId, WorkloadId},
     language::Language,
     lifecycle::{self, Current, Fate, Lifecycle},
     measure::{self, Machine, MeasureInputs, MeasureRecord, Program, Settings, Spread, Summary},
     provenance::Session,
-    run::{self, Host, Tally},
+    run::{self, Guard, Host, Tally},
     sandbox::{Backend, Bubblewrap},
     scenario::Scenario,
     stop::{Stage, Stop},
@@ -16,6 +17,7 @@ use crate::{
     toolchains::Toolchains,
     workload::{self, Ensured},
 };
+use chrono::{DateTime, Utc};
 use clap::{Args, Parser, Subcommand};
 use eyre::{Result, WrapErr, bail, ensure, eyre};
 use futures_util::{StreamExt, stream};
@@ -73,6 +75,17 @@ enum Command {
     Run {
         /// The experiment file, such as experiments/smoke.toml.
         experiment: PathBuf,
+        /// Stop starting attempts on a backend once any of its quota windows reports this
+        /// fraction used, as BACKEND=FRACTION, such as anthropic=0.75. Repeat for several.
+        #[arg(long = "quota-ceiling", value_name = "BACKEND=FRACTION", value_parser = ceiling)]
+        ceilings: Vec<(BackendId, f64)>,
+        /// Stop starting attempts on a backend at a time, as BACKEND=RFC3339, such as
+        /// anthropic=2026-11-04T04:00:00-03:00. Repeat for several.
+        #[arg(long = "stop-at", value_name = "BACKEND=TIME", value_parser = deadline)]
+        deadlines: Vec<(BackendId, DateTime<Utc>)>,
+        /// Stop a backend after this many attempts in a row errored, crashed or failed.
+        #[arg(long, value_name = "N", default_value_t = 3)]
+        max_errors: u32,
     },
     /// Grade each committed run that has no current grade, building and running it offline
     /// on the hidden cases. Safe to run while `run` is still going.
@@ -104,7 +117,19 @@ impl Cli {
                 jobs,
             } => run_check(&scenarios, &languages, jobs),
             Command::Bench(bench) => bench.run(),
-            Command::Run { experiment } => run_trials(&experiment),
+            Command::Run {
+                experiment,
+                ceilings,
+                deadlines,
+                max_errors,
+            } => {
+                let guard = Guard {
+                    ceilings: ceilings.into_iter().collect(),
+                    deadlines: deadlines.into_iter().collect(),
+                    max_errors: Some(max_errors),
+                };
+                run_trials(&experiment, &guard)
+            }
             Command::Grade { experiment, jobs } => grade_trials(&experiment, jobs),
             Command::Status { experiment } => {
                 let experiment = Experiment::load(&experiment)?;
@@ -118,9 +143,22 @@ impl Cli {
 
 /// Runs an experiment's pending trials, logging progress to stderr. Fails while any trial is
 /// still pending, so that a script can tell to run it again.
-fn run_trials(path: &Path) -> Result<()> {
+fn run_trials(path: &Path, guard: &Guard) -> Result<()> {
     log_progress();
     let experiment = Experiment::load(path)?;
+    let backends: Vec<&BackendId> = experiment.concurrency().keys().collect();
+    for backend in guard.ceilings.keys().chain(guard.deadlines.keys()) {
+        ensure!(
+            backends.contains(&backend),
+            "backend {backend} is not in {}; it uses {}",
+            path.display(),
+            backends
+                .iter()
+                .map(|b| b.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
     let repo = repository_of(path)?;
     let toolchains = Toolchains::from_env()?;
     let backend = Bubblewrap::new(toolchains.base().clone())?;
@@ -135,7 +173,7 @@ fn run_trials(path: &Path) -> Result<()> {
     let runtime = tokio::runtime::Runtime::new().wrap_err("starting the async runtime")?;
     let tally = runtime.block_on(async {
         let stop = Stop::on_ctrl_c()?;
-        run::run(&experiment, &repo, &host, &stop).await
+        run::run(&experiment, &repo, &host, guard, &stop).await
     })?;
     let Tally {
         committed,
@@ -154,6 +192,31 @@ fn run_trials(path: &Path) -> Result<()> {
         "{pending} trials are still pending; run again to continue"
     );
     Ok(())
+}
+
+/// Parses `BACKEND=FRACTION` with the fraction in (0, 1].
+fn ceiling(arg: &str) -> Result<(BackendId, f64)> {
+    let (backend, fraction) = arg
+        .split_once('=')
+        .ok_or_else(|| eyre!("expected BACKEND=FRACTION, got {arg:?}"))?;
+    let fraction: f64 = fraction
+        .parse()
+        .wrap_err_with(|| format!("{fraction:?} is not a number"))?;
+    ensure!(
+        fraction > 0.0 && fraction <= 1.0,
+        "a quota ceiling is a fraction in (0, 1], got {fraction}"
+    );
+    Ok((backend.parse()?, fraction))
+}
+
+/// Parses `BACKEND=TIME` with an RFC 3339 time.
+fn deadline(arg: &str) -> Result<(BackendId, DateTime<Utc>)> {
+    let (backend, time) = arg
+        .split_once('=')
+        .ok_or_else(|| eyre!("expected BACKEND=TIME, got {arg:?}"))?;
+    let time = DateTime::parse_from_rfc3339(time)
+        .wrap_err_with(|| format!("{time:?} is not an RFC 3339 time"))?;
+    Ok((backend.parse()?, time.with_timezone(&Utc)))
 }
 
 /// Grades an experiment's committed runs, logging each verdict to stderr. Fails while any
