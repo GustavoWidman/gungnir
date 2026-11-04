@@ -1,7 +1,7 @@
 //! The lanes: one per backend, each starting its pending trials in order, up to the backend's
 //! concurrency, behind a gate that only that backend's rate limits close.
 use super::{
-    AgentExit, Attempted, RunRecord,
+    AgentExit, Attempted, Quota, RunRecord,
     gate::{Event, Gate},
 };
 use crate::{
@@ -44,27 +44,33 @@ pub struct Guard {
     pub max_errors: Option<u32>,
 }
 
-/// A quota ceiling, counted only from attempts that started at or after `from`, so that a
-/// ceiling meant for a quota window that has not reset yet ignores the window before it.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// A quota ceiling on one window, or on every window when `window` is `None`, counted only from
+/// attempts that started at or after `from`, so that a ceiling meant for a quota window that
+/// has not reset yet ignores the window before it.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Ceiling {
+    pub window: Option<String>,
     pub fraction: f64,
     pub from: Option<DateTime<Utc>>,
 }
 
 impl Guard {
-    /// Why `backend` must start nothing more, given the quota its latest attempt reported with
-    /// when that attempt started, the errors in a row it has had, and the time.
+    /// Why `backend` must start nothing more, given the quota windows its latest attempt
+    /// reported with when that attempt started, the errors in a row it has had, and the time.
     fn stops(
         &self,
         backend: &BackendId,
-        quota: Option<(&str, f64, DateTime<Utc>)>,
+        quota: Option<(&BTreeMap<String, Quota>, DateTime<Utc>)>,
         errors: u32,
         now: DateTime<Utc>,
     ) -> Option<String> {
-        if let (Some(ceiling), Some((window, used, started))) = (self.ceilings.get(backend), quota)
+        if let (Some(ceiling), Some((windows, started))) = (self.ceilings.get(backend), quota)
             && ceiling.from.is_none_or(|from| started >= from)
-            && used >= ceiling.fraction
+            && let Some((window, used)) = windows
+                .iter()
+                .filter(|(window, _)| ceiling.window.as_ref().is_none_or(|only| only == *window))
+                .map(|(window, quota)| (window, quota.last))
+                .find(|(_, used)| *used >= ceiling.fraction)
         {
             return Some(format!(
                 "its {window} quota is {:.0}% used, at or past the {:.0}% ceiling",
@@ -199,19 +205,20 @@ pub(super) async fn schedule(
                     Err(_) => lane.errors + 1,
                 };
                 let quota = match &result {
-                    Ok(Attempted::Committed(record)) => most_used(record)
-                        .map(|(window, used)| (window, used, record.started())),
+                    Ok(Attempted::Committed(record)) => {
+                        Some((&record.outcome().quota, record.started()))
+                    }
                     _ => None,
                 };
-                if let Some((window, used, _)) = &quota {
-                    info!("{backend}: {window} quota {:.0}% used", used * 100.0);
+                if let Some((windows, _)) = quota {
+                    for (window, used) in windows {
+                        info!("{backend}: {window} quota {:.0}% used", used.last * 100.0);
+                    }
                 }
                 if lane.stopped.is_none()
                     && let Some(reason) = guard.stops(
                         backend,
-                        quota.as_ref().map(|(window, used, started)| {
-                            (window.as_str(), *used, *started)
-                        }),
+                        quota,
                         lane.errors,
                         Utc::now(),
                     )
@@ -234,16 +241,6 @@ pub(super) async fn schedule(
     }
     tally.unstarted = lanes.values().map(|lane| lane.queue.len()).sum();
     Ok(tally)
-}
-
-/// The quota window the attempt saw most used at its end, and how much of it was used.
-fn most_used(record: &RunRecord) -> Option<(String, f64)> {
-    record
-        .outcome()
-        .quota
-        .iter()
-        .map(|(window, quota)| (window.clone(), quota.last))
-        .max_by(|a, b| a.1.total_cmp(&b.1))
 }
 
 /// Counts and logs how an attempt of `trial` ended, and names it for the lane's gate.
@@ -558,6 +555,7 @@ mod tests {
         bench.guard.ceilings.insert(
             backend("anthropic"),
             Ceiling {
+                window: Some("seven_day".to_owned()),
                 fraction: 0.75,
                 from: None,
             },
@@ -593,6 +591,7 @@ mod tests {
         bench.guard.ceilings.insert(
             backend("anthropic"),
             Ceiling {
+                window: None,
                 fraction: 0.35,
                 from: Some(later),
             },
