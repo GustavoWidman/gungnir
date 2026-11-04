@@ -7,7 +7,7 @@ use eyre::Result;
 use gungnir::{
     id::{LanguageId, WorkloadId},
     language::Language,
-    measure::{self, Comparison, Failure, Outcome, Program, Settings},
+    measure::{self, Comparison, Failure, Outcome, Program, Protocol, Settings},
     sandbox::Bubblewrap,
     scenario::Workload,
     stop::Stop,
@@ -26,9 +26,11 @@ fn core() -> u32 {
 fn settings() -> Settings {
     Settings {
         core: core(),
-        blocks: NonZeroU32::new(2).expect("non-zero"),
-        runs: NonZeroU32::new(3).expect("non-zero"),
-        warmup: 1,
+        protocol: Protocol {
+            blocks: NonZeroU32::new(2).expect("non-zero"),
+            runs: NonZeroU32::new(3).expect("non-zero"),
+            warmup: 1,
+        },
         memory: 512 << 20,
     }
 }

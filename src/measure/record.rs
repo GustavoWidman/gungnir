@@ -1,13 +1,16 @@
 //! A committed measurement and the inputs it was made from, so a later phase can tell a stale
 //! measurement by comparing the stored inputs with the current ones.
-use super::{Comparison, Machine, Outcome, Program, Settings};
+use super::{Comparison, Machine, Outcome, Protocol};
 use crate::{
-    id::WorkloadId, language::Language, provenance::SessionId, scenario::Workload, store::Digest,
+    id::WorkloadId, language::Language, provenance::SessionId, scenario::Scenario, store::Digest,
     toolchains::Toolchains,
 };
-use eyre::Result;
+use eyre::{Result, eyre};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
 /// Raised whenever measuring would time the same inputs differently, which makes every stored
 /// measurement stale.
@@ -65,7 +68,9 @@ pub struct MeasureInputs {
     build: Vec<Vec<String>>,
     run: Vec<String>,
     env: BTreeMap<String, String>,
-    settings: Settings,
+    protocol: Protocol,
+    /// The memory one run may use, in bytes: the scenario's limit.
+    memory: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -76,21 +81,24 @@ struct Environments {
 }
 
 impl MeasureInputs {
-    /// The inputs of timing `candidate` against `reference`, both `language` programs, on
-    /// `workloads` under `settings` now.
+    /// The inputs of timing the `language` workspace `candidate` against the scenario's
+    /// reference in that language, on the scenario's workloads under `protocol`, now.
     pub fn new(
         language: &Language,
         toolchains: &Toolchains,
-        reference: &Program<'_>,
-        candidate: &Program<'_>,
-        workloads: &BTreeMap<WorkloadId, Workload>,
-        settings: &Settings,
+        scenario: &Scenario,
+        candidate: &Path,
+        protocol: &Protocol,
     ) -> Result<Self> {
+        let reference = scenario
+            .reference(language.id())
+            .ok_or_else(|| eyre!("{} has no {} reference", scenario.id(), language.id()))?;
         Ok(Self {
             measure: MEASURE_VERSION,
             reference: reference.digest(),
-            candidate: candidate.digest(),
-            workloads: workloads
+            candidate: Digest::of_tree(candidate, language.ignore())?,
+            workloads: scenario
+                .workloads()
                 .iter()
                 .map(|(id, workload)| (id.clone(), workload.digest))
                 .collect(),
@@ -109,7 +117,8 @@ impl MeasureInputs {
                 .collect(),
             run: language.run().args().to_vec(),
             env: language.env().clone(),
-            settings: *settings,
+            protocol: *protocol,
+            memory: scenario.limits().memory_bytes(),
         })
     }
 }

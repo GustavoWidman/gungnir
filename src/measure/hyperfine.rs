@@ -1,5 +1,5 @@
 //! hyperfine, the timer: the command line that times one program, and its JSON export.
-use super::{Sample, Settings, WORKLOAD};
+use super::{Protocol, Sample, WORKLOAD};
 use eyre::{Result, WrapErr, ensure};
 use serde::Deserialize;
 use std::{ffi::OsString, num::NonZeroU32};
@@ -11,11 +11,11 @@ const SCHEMA: u32 = 2;
 /// with `/dev/null`.
 const OUTPUT: &str = "--output=pipe";
 
-/// Times `run` without a shell, with the workload on stdin, `settings.warmup` untimed runs and
-/// `settings.runs` timed ones. hyperfine prints only its export, on stdout.
-pub(super) fn argv(run: &[String], settings: &Settings) -> Vec<OsString> {
-    let warmup = settings.warmup.to_string();
-    let runs = settings.runs.to_string();
+/// Times `run` without a shell, with the workload on stdin, `protocol.warmup` untimed runs and
+/// `protocol.runs` timed ones. hyperfine prints only its export, on stdout.
+pub(super) fn argv(run: &[String], protocol: &Protocol) -> Vec<OsString> {
+    let warmup = protocol.warmup.to_string();
+    let runs = protocol.runs.to_string();
     let command = quote(run);
     [
         "hyperfine",
@@ -236,15 +236,13 @@ mod tests {
 
     #[test]
     fn the_command_line_times_one_quoted_command_on_the_workload() {
-        let settings = Settings {
-            core: 5,
+        let protocol = Protocol {
             blocks: runs(4),
             runs: runs(7),
             warmup: 2,
-            memory: 1 << 30,
         };
         let run = ["./my solution".to_owned(), "it's".to_owned()];
-        let argv: Vec<String> = argv(&run, &settings)
+        let argv: Vec<String> = argv(&run, &protocol)
             .into_iter()
             .map(|arg| arg.into_string().unwrap())
             .collect();

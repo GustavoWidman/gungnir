@@ -1,10 +1,11 @@
 use super::*;
 use crate::{
     grade::fake::{self, Scripted, finished},
-    id::LanguageId,
+    id::{LanguageId, ScenarioId},
     provenance::SessionId,
     sandbox::{Collected, Exit, Fault, Network, WORK},
-    store::{PartialDir, read_record},
+    scenario::Scenario,
+    store::{Digest, PartialDir, read_record},
     testing::{self, id, write},
 };
 use eyre::eyre;
@@ -16,18 +17,21 @@ use std::{
 };
 
 const CORE: u32 = 3;
-const SETTINGS: Settings = Settings {
-    core: CORE,
+const PROTOCOL: Protocol = Protocol {
     blocks: NonZeroU32::new(2).unwrap(),
     runs: NonZeroU32::new(3).unwrap(),
     warmup: 1,
+};
+const SETTINGS: Settings = Settings {
+    core: CORE,
+    protocol: PROTOCOL,
     memory: 1 << 30,
 };
 
 /// The fixture `python` language, which builds with `python3 -m compileall -q .` and `true`
-/// and runs `python3 main.py`, and the workloads `large` and `small`, whose bytes are their
-/// names. Each program's `main.py` holds a word that tells [`script`] how the program
-/// behaves.
+/// and runs `python3 main.py`, the fixture scenario `echo`, and the workloads `large` and
+/// `small`, whose bytes are their names. Each program's `main.py` holds a word that tells
+/// [`script`] how the program behaves.
 struct Fixture {
     root: TempDir,
     language: Language,
@@ -38,6 +42,7 @@ struct Fixture {
 fn fixture() -> Fixture {
     let root = TempDir::new().unwrap();
     testing::language(root.path(), "python");
+    testing::scenario(root.path(), "echo", &["python"]);
     let mut languages = Language::load_all(&root.path().join("languages")).unwrap();
     let language = languages.remove(&id::<LanguageId>("python")).unwrap();
     let toolchains = fake::toolchains(&root.path().join("toolchains"), &["python"]);
@@ -66,6 +71,21 @@ impl Fixture {
         let dir = self.root.path().join("programs").join(behaviour);
         write(&dir, "main.py", behaviour);
         dir
+    }
+
+    /// The inputs of measuring `candidate` against the `echo` scenario as it is on disk now.
+    fn inputs(&self, candidate: &Path, protocol: &Protocol) -> MeasureInputs {
+        let languages = Language::load_all(&self.root.path().join("languages")).unwrap();
+        let scenarios = Scenario::load_all(&self.root.path().join("scenarios"), &languages);
+        let scenario = &scenarios.unwrap()[&id::<ScenarioId>("echo")];
+        MeasureInputs::new(
+            &self.language,
+            &self.toolchains,
+            scenario,
+            candidate,
+            protocol,
+        )
+        .unwrap()
     }
 
     async fn program<'a>(
@@ -277,7 +297,7 @@ async fn every_run_is_offline_read_only_and_pinned_with_hyperfine_beside_the_lan
         assert!(spec.closure.contains(measure.root()));
         assert!(spec.path.contains(&measure.bin()));
         if argv[0] == "hyperfine" {
-            let expected = hyperfine::argv(&["python3".into(), "main.py".into()], &SETTINGS);
+            let expected = hyperfine::argv(&["python3".into(), "main.py".into()], &PROTOCOL);
             let expected: Vec<String> = expected
                 .into_iter()
                 .map(|arg| arg.into_string().unwrap())
@@ -445,15 +465,7 @@ async fn a_committed_measurement_reads_back_beside_its_evidence() {
     .unwrap();
     assert_eq!(comparison.machine.core, CORE);
     assert!(comparison.machine.cpus >= 1 && !comparison.machine.kernel.is_empty());
-    let inputs = MeasureInputs::new(
-        &fixture.language,
-        &fixture.toolchains,
-        &reference,
-        &candidate,
-        workloads,
-        &SETTINGS,
-    )
-    .unwrap();
+    let inputs = fixture.inputs(&fixture.workspace("slow-echo"), &PROTOCOL);
     let session: SessionId = serde_json::from_str("\"20261103T120000Z-42\"").unwrap();
     let record = MeasureRecord::new(session, inputs, comparison.clone());
     partial.commit(&record).unwrap();
@@ -469,42 +481,39 @@ async fn a_committed_measurement_reads_back_beside_its_evidence() {
     assert!(target.join("record.json").is_file());
 }
 
-#[tokio::test]
-async fn stored_inputs_go_stale_exactly_when_timing_could_change() {
+#[test]
+fn stored_inputs_go_stale_exactly_when_timing_could_change() {
     let fixture = fixture();
-    let (backend, stop) = (Scripted::new(script), Stop::default());
-    let reference = fixture.program(&backend, &stop, "echo").await;
-    let inputs = |candidate: &Program<'_>, workloads: &BTreeMap<_, _>, settings: &Settings| {
-        let (language, toolchains) = (&fixture.language, &fixture.toolchains);
-        MeasureInputs::new(
-            language, toolchains, &reference, candidate, workloads, settings,
-        )
-        .unwrap()
-    };
-    let candidate = fixture.program(&backend, &stop, "echo").await;
-    let json = serde_json::to_string(&inputs(&candidate, &fixture.workloads, &SETTINGS));
+    let candidate = fixture.workspace("echo");
+    let json = serde_json::to_string(&fixture.inputs(&candidate, &PROTOCOL));
     let stored: MeasureInputs = serde_json::from_str(&json.unwrap()).unwrap();
-    assert_eq!(stored, inputs(&candidate, &fixture.workloads, &SETTINGS));
+    assert_eq!(stored, fixture.inputs(&candidate, &PROTOCOL));
 
-    let rebuilt = fixture.program(&backend, &stop, "echo").await;
-    assert_eq!(stored, inputs(&rebuilt, &fixture.workloads, &SETTINGS));
-    write(
-        &fixture.workspace("echo"),
-        "__pycache__/main.pyc",
-        "build output",
-    );
-    let with_output = fixture.program(&backend, &stop, "echo").await;
-    assert_eq!(stored, inputs(&with_output, &fixture.workloads, &SETTINGS));
+    write(&candidate, "__pycache__/main.pyc", "build output");
+    assert_eq!(stored, fixture.inputs(&candidate, &PROTOCOL));
 
-    let edited = fixture.program(&backend, &stop, "slow-echo").await;
-    assert_ne!(stored, inputs(&edited, &fixture.workloads, &SETTINGS));
-    let mut workloads = fixture.workloads.clone();
-    let large = workloads.get_mut(&id::<WorkloadId>("large")).unwrap();
-    large.digest = Digest::of_bytes(b"other");
-    assert_ne!(stored, inputs(&candidate, &workloads, &SETTINGS));
-    let more_blocks = Settings {
+    let edited = fixture.workspace("slow-echo");
+    assert_ne!(stored, fixture.inputs(&edited, &PROTOCOL));
+    let more_blocks = Protocol {
         blocks: NonZeroU32::new(4).unwrap(),
-        ..SETTINGS
+        ..PROTOCOL
     };
-    assert_ne!(stored, inputs(&candidate, &fixture.workloads, &more_blocks));
+    assert_ne!(stored, fixture.inputs(&candidate, &more_blocks));
+
+    let root = fixture.root.path();
+    write(
+        root,
+        "scenarios/echo/reference/python/main.py",
+        "print(1)\n",
+    );
+    assert_ne!(stored, fixture.inputs(&candidate, &PROTOCOL));
+    write(
+        root,
+        "scenarios/echo/reference/python/main.py",
+        "print(input())\n",
+    );
+    assert_eq!(stored, fixture.inputs(&candidate, &PROTOCOL));
+    let other = "0000000000000000000000000000000000000000000000000000000000000000  large.in\n";
+    write(root, "scenarios/echo/workloads.sha256", other);
+    assert_ne!(stored, fixture.inputs(&candidate, &PROTOCOL));
 }

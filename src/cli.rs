@@ -3,11 +3,12 @@ use crate::{
     catalog::SystemId,
     experiment::Experiment,
     grade::{self, Graded, Judgement, Outcome, Verdict},
-    id::BackendId,
-    id::{LanguageId, ScenarioId, WorkloadId},
+    id::{BackendId, LanguageId, ScenarioId, WorkloadId},
     language::Language,
     lifecycle::{self, Current, Lifecycle},
-    measure::{self, Machine, MeasureInputs, MeasureRecord, Program, Settings, Spread, Summary},
+    measure::{
+        self, Machine, MeasureInputs, MeasureRecord, Program, Protocol, Settings, Spread, Summary,
+    },
     provenance::Session,
     report,
     run::{self, Ceiling, Guard, Host, Tally},
@@ -719,11 +720,14 @@ impl Bench {
             .ok_or_else(|| eyre!("{} has no {} reference", scenario.id(), language.id()))?
             .dir();
         let candidate = self.candidate.as_deref().unwrap_or(reference);
-        let settings = Settings {
-            core: pinned_core(self.core)?,
+        let protocol = Protocol {
             blocks: self.blocks,
             runs: self.runs,
             warmup: self.warmup,
+        };
+        let settings = Settings {
+            core: pinned_core(self.core)?,
+            protocol,
             memory: scenario.limits().memory_bytes(),
         };
         let session = Session::start(&root)?;
@@ -745,22 +749,14 @@ impl Bench {
             }
             let build =
                 |workspace| Program::build(language, &toolchains, workspace, &backend, &stop);
+            let inputs = MeasureInputs::new(language, &toolchains, scenario, candidate, &protocol)?;
             let reference = build(reference).await.wrap_err("building the reference")?;
             let candidate = build(candidate).await.wrap_err("building the candidate")?;
-            let workloads = scenario.workloads();
-            let inputs = MeasureInputs::new(
-                language,
-                &toolchains,
-                &reference,
-                &candidate,
-                workloads,
-                &settings,
-            )?;
             let partial = PartialDir::begin(&target)?;
             let comparison = measure::compare(
                 &reference,
                 &candidate,
-                workloads,
+                scenario.workloads(),
                 &settings,
                 &backend,
                 &stop,

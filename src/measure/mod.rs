@@ -21,7 +21,7 @@ use crate::{
     sandbox::{Backend, Finished, Input, Io, Kill, Limits, Mount, Output, Spec},
     scenario::Workload,
     stop::{Stage, Stop},
-    store::{Digest, write_atomic},
+    store::write_atomic,
     toolchains::{Closure, Toolchain, Toolchains},
 };
 use eyre::{Result, WrapErr, bail, ensure};
@@ -45,18 +45,25 @@ const STDERR_CAP: u64 = 16 << 10;
 const LOG_TAIL: usize = 4 << 10;
 
 /// How a comparison runs.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Settings {
     /// The CPU that every run of either program is pinned to.
     pub core: u32,
+    pub protocol: Protocol,
+    /// The memory one run of a program may use, in bytes.
+    pub memory: u64,
+}
+
+/// How many runs a comparison times. A measurement records its protocol among its inputs, so
+/// measuring with another one makes it stale; the CPU it was pinned to is only provenance.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Protocol {
     /// ABBA blocks per workload. Each block times both programs once.
     pub blocks: NonZeroU32,
     /// hyperfine's timed runs of one program in one block.
     pub runs: NonZeroU32,
     /// hyperfine's untimed runs before them.
     pub warmup: u32,
-    /// The memory one run of a program may use, in bytes.
-    pub memory: u64,
 }
 
 /// A workspace built offline the way grading builds it, ready to run on workloads.
@@ -66,7 +73,6 @@ pub struct Program<'a> {
     _scratch: TempDir,
     measure: Toolchain,
     run: Vec<String>,
-    digest: Digest,
 }
 
 impl<'a> Program<'a> {
@@ -85,7 +91,6 @@ impl<'a> Program<'a> {
             .wrap_err("creating measurement scratch")?;
         let work = scratch.path().join("work");
         tree::copy(workspace, &work, language.ignore())?;
-        let digest = Digest::of_tree(&work, language.ignore())?;
         let offline = Offline::new(language, toolchains, work, backend, stop)?;
         let (build, log) = offline.build(language.build()).await?;
         if build.outcome != BuildOutcome::Built {
@@ -102,13 +107,7 @@ impl<'a> Program<'a> {
             _scratch: scratch,
             measure: toolchains.measure().clone(),
             run: language.run().args().to_vec(),
-            digest,
         })
-    }
-
-    /// The digest of the workspace that was built, without its build output.
-    pub fn digest(&self) -> Digest {
-        self.digest
     }
 
     /// A read-only sandbox over the built copy and `workload`, with the measurement tools
@@ -247,7 +246,7 @@ impl Bench<'_> {
         }
 
         let mut blocks = Vec::new();
-        for (index, order) in schedule(self.settings.blocks.get()).enumerate() {
+        for (index, order) in schedule(self.settings.protocol.blocks.get()).enumerate() {
             let mut block = Block::default();
             for side in order {
                 let export = evidence.join(format!("{index}-{side}.json"));
@@ -287,8 +286,9 @@ impl Bench<'_> {
     /// Times the `side` program on `workload` with hyperfine and keeps its export at `export`.
     async fn time(&self, side: Side, workload: &Path, export: &Path) -> Result<Timing> {
         let (program, settings) = (self.program(side), self.settings);
+        let protocol = settings.protocol;
         let limits = Limits {
-            wall: RUN_TIMEOUT.saturating_mul(settings.warmup.saturating_add(settings.runs.get())),
+            wall: RUN_TIMEOUT.saturating_mul(protocol.warmup.saturating_add(protocol.runs.get())),
             memory: settings.memory.saturating_add(TIMER_MEMORY),
             tasks: TASKS,
             cpu: Some(settings.core),
@@ -299,7 +299,7 @@ impl Bench<'_> {
             stderr: Output::Capture { cap: STDERR_CAP },
             kill: Kill::default(),
         };
-        let argv = hyperfine::argv(&program.run, settings);
+        let argv = hyperfine::argv(&program.run, &protocol);
         let finished = self
             .exec(&program.spec(workload, limits), &argv, io)
             .await?;
@@ -309,7 +309,7 @@ impl Bench<'_> {
             return Ok(Timing::Failed(why));
         }
         write_atomic(export, &finished.stdout.bytes)?;
-        let samples = hyperfine::samples(&finished.stdout.bytes, settings.runs)
+        let samples = hyperfine::samples(&finished.stdout.bytes, protocol.runs)
             .wrap_err_with(|| format!("reading {}", export.display()))?;
         Ok(Timing::Timed(samples))
     }
