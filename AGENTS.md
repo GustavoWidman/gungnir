@@ -86,6 +86,8 @@ An experiment's results are tied to the toolchain set it ran with. A committed r
 
 The pilot, `claude-ext` and `openai-ext` ran with `/nix/store/76fa1jkl6f76s2w73mhhlhfcm6dlgw4c-gungnir-toolchains`, which holds only the python, rust and zig languages. Run every command on them with that set, for example `GUNGNIR_TOOLCHAINS=/nix/store/76fa1jkl6f76s2w73mhhlhfcm6dlgw4c-gungnir-toolchains gungnir status experiments/pilot.toml` inside the dev shell, which sets the variable to the current set otherwise.
 
+A measurement also records the `measure/` environment it timed with, and that set predates GNU time in `measure/` and has no `profile/`: `measure` and `profile` cannot run on it, and the pilot's measurements read as stale against it. Measure, profile and report those experiments with a set that keeps its base, language and harness environments and adds the current measurement and profiling tools, such as `/nix/store/nqyqmxzf4d76l96j5s3zyi8fvwj011xf-gungnir-toolchains`, the set the pilot's measurements were made with.
+
 ## Invariants to keep
 
 - Parse external data at the boundary. Each loader deserializes into a private `Raw*` type with `deny_unknown_fields` and converts it into the domain type, so code after the loader trusts its input.
