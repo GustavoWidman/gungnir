@@ -113,6 +113,37 @@ pub fn perf_event_paranoid() -> Option<i32> {
         .ok()
 }
 
+/// The CPUs the kernel keeps the scheduler off (`isolcpus`), in order, or none when it reports
+/// none.
+pub fn isolated_cpus() -> Vec<u32> {
+    fs::read_to_string("/sys/devices/system/cpu/isolated")
+        .ok()
+        .and_then(|list| parse_cpu_list(&list))
+        .unwrap_or_default()
+}
+
+/// A kernel CPU list such as `14-15` or `0,2-4`, or `None` when it is malformed.
+fn parse_cpu_list(text: &str) -> Option<Vec<u32>> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Some(Vec::new());
+    }
+    let mut cpus = Vec::new();
+    for part in text.split(',') {
+        match part.split_once('-') {
+            Some((first, last)) => {
+                let (first, last) = (first.parse::<u32>().ok()?, last.parse::<u32>().ok()?);
+                if first > last {
+                    return None;
+                }
+                cpus.extend(first..=last);
+            }
+            None => cpus.push(part.parse().ok()?),
+        }
+    }
+    Some(cpus)
+}
+
 /// The 1, 5 and 15 minute load averages now.
 pub(super) fn load_average() -> Result<[f64; 3]> {
     let text = fs::read_to_string("/proc/loadavg").wrap_err("reading /proc/loadavg")?;
@@ -183,6 +214,15 @@ mod tests {
     fn here_is_probed_once() {
         let here = Identity::here().unwrap();
         assert!(std::ptr::eq(here, Identity::here().unwrap()));
+    }
+
+    #[test]
+    fn a_cpu_list_names_single_cpus_and_ranges() {
+        assert_eq!(parse_cpu_list("14-15\n"), Some(vec![14, 15]));
+        assert_eq!(parse_cpu_list("0,2-4,7"), Some(vec![0, 2, 3, 4, 7]));
+        assert_eq!(parse_cpu_list("\n"), Some(vec![]));
+        assert_eq!(parse_cpu_list("4-2"), None);
+        assert_eq!(parse_cpu_list("a-b"), None);
     }
 
     #[test]

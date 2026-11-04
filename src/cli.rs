@@ -439,7 +439,8 @@ struct Measure {
     /// Untimed runs of each program before its timed runs in each block.
     #[arg(long, value_name = "W", default_value_t = Protocol::DEFAULT.warmup)]
     warmup: u32,
-    /// The CPU every run is pinned to. Defaults to the last one gungnir may run on.
+    /// The CPU every run is pinned to. Defaults to the first CPU the kernel isolates from the
+    /// scheduler, or else the last one gungnir may run on.
     #[arg(long, value_name = "N")]
     core: Option<u32>,
     /// Measure while other work runs: skip the load check, and do not hold the run and grade
@@ -865,7 +866,8 @@ struct Bench {
     /// The candidate's workspace. Defaults to the reference.
     #[arg(long, value_name = "DIR")]
     candidate: Option<PathBuf>,
-    /// The CPU every run is pinned to. Defaults to the last one gungnir may run on.
+    /// The CPU every run is pinned to. Defaults to the first CPU the kernel isolates from the
+    /// scheduler, or else the last one gungnir may run on.
     #[arg(long, value_name = "N")]
     core: Option<u32>,
     /// ABBA blocks per workload. An even count puts each program first equally often.
@@ -1062,7 +1064,9 @@ impl fmt::Display for StatusTable<'_> {
     }
 }
 
-/// `core` when gungnir may run on it, or else the last CPU gungnir may run on.
+/// `core` when gungnir may run on it. Without one, the first isolated CPU gungnir may run on,
+/// since a machine set up for measuring keeps the scheduler off its isolated CPUs, or else the
+/// last CPU gungnir may run on.
 fn pinned_core(core: Option<u32>) -> Result<u32> {
     let affinity = sched_getaffinity(Pid::from_raw(0)).wrap_err("reading the CPU affinity")?;
     let allowed: Vec<u32> = (0..CpuSet::count())
@@ -1077,9 +1081,10 @@ fn pinned_core(core: Option<u32>) -> Result<u32> {
             );
             Ok(core)
         }
-        None => allowed
-            .last()
-            .copied()
+        None => measure::isolated_cpus()
+            .into_iter()
+            .find(|cpu| allowed.contains(cpu))
+            .or_else(|| allowed.last().copied())
             .ok_or_else(|| eyre!("gungnir may run on no CPU")),
     }
 }
