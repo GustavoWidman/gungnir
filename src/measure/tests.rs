@@ -433,19 +433,26 @@ async fn a_sandbox_fault_or_a_stop_leaves_no_comparison() {
     let stop = Stop::default();
     let backend = Scripted::new(script);
     let program = fixture.program(&backend, &stop, "echo").await;
-    stop.escalate();
     let evidence = TempDir::new().unwrap();
     let workloads = &fixture.workloads;
-    let stopped = compare(
-        &program,
-        &program,
-        workloads,
-        &SETTINGS,
-        &backend,
-        &stop,
-        evidence.path(),
+    let compared = || {
+        compare(
+            &program,
+            &program,
+            workloads,
+            &SETTINGS,
+            &backend,
+            &stop,
+            evidence.path(),
+        )
+    };
+    stop.escalate();
+    assert!(
+        compared().await.is_ok(),
+        "draining lets a comparison finish"
     );
-    let message = format!("{:#}", stopped.await.unwrap_err());
+    stop.escalate();
+    let message = format!("{:#}", compared().await.unwrap_err());
     assert!(message.contains("interrupted"), "{message}");
 }
 

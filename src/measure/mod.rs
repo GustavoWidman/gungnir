@@ -178,7 +178,8 @@ impl fmt::Display for Failure {
 /// On each workload both programs first run once under GNU time, which reports their peak
 /// resident memory, and a candidate that does not print exactly what the reference prints
 /// fails the workload untimed. An error means there is no comparison: the reference failed, a
-/// sandbox could not run, the host failed, or the stop interrupted it.
+/// sandbox could not run, the host failed, or the second Ctrl-C interrupted it. The first
+/// Ctrl-C lets a comparison finish.
 pub async fn compare(
     reference: &Program<'_>,
     candidate: &Program<'_>,
@@ -332,7 +333,7 @@ impl Bench<'_> {
 
     async fn exec(&self, spec: &Spec, argv: &[OsString], io: Io) -> Result<Finished> {
         ensure!(
-            self.stop.stage() == Stage::Running,
+            self.stop.stage() < Stage::Killing,
             "interrupted before it finished"
         );
         Ok(self.backend.exec(spec, argv, io, self.stop).await?)
