@@ -66,7 +66,13 @@ mod tests {
         );
 
         drop(held);
-        Lock::acquire(&path).unwrap();
+        // A test running in parallel may have forked while the lock was held; its child
+        // shares the lock until it execs, so the release can take a moment to land.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while let Err(err) = Lock::acquire(&path) {
+            assert!(std::time::Instant::now() < deadline, "{err}");
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
     }
 
     #[test]
