@@ -118,7 +118,15 @@ fn git_state(repo: &Path) -> Result<Option<GitState>> {
 
 fn git(repo: &Path, args: &[&str]) -> Result<String> {
     let command = format!("git {} in {}", args.join(" "), repo.display());
-    let output = Command::new("git")
+    let mut git = Command::new("git");
+    // An enclosing git, such as a hook or `rebase --exec`, exports variables like GIT_DIR that
+    // would point this git at its repository instead of `repo`.
+    for (name, _) in std::env::vars_os() {
+        if name.as_encoded_bytes().starts_with(b"GIT_") {
+            git.env_remove(name);
+        }
+    }
+    let output = git
         .arg("-C")
         .arg(repo)
         .args(args)
