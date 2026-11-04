@@ -70,9 +70,9 @@ enum Command {
     /// candidate the reference is timed against itself, an A/A test whose ratio interval
     /// shows the noise floor.
     Bench(Bench),
-    /// Run each pending trial of an experiment until it commits one attempt, after checking
-    /// the harness pins and the references. The first Ctrl-C lets running agents finish, the
-    /// second kills them.
+    /// Run each pending trial of an experiment until it commits one attempt that is a sample,
+    /// a session that completed or was refused, after checking the harness pins and the
+    /// references. The first Ctrl-C lets running agents finish, the second kills them.
     Run {
         /// The experiment file, such as experiments/smoke.toml.
         experiment: PathBuf,
@@ -89,6 +89,10 @@ enum Command {
         /// Stop a backend after this many attempts in a row errored, crashed or failed.
         #[arg(long, value_name = "N", default_value_t = 3)]
         max_errors: u32,
+        /// Leave a trial pending once this many of its attempts were no sample or failed, rate
+        /// limits aside. Until then such a trial runs again after the rest of its lane.
+        #[arg(long, value_name = "N", default_value = "5")]
+        max_attempts: NonZeroU32,
     },
     /// Grade each committed run that has no current grade, building and running it offline
     /// on the hidden cases. Safe to run while `run` is still going.
@@ -138,11 +142,13 @@ impl Cli {
                 ceilings,
                 deadlines,
                 max_errors,
+                max_attempts,
             } => {
                 let guard = Guard {
                     ceilings: ceilings.into_iter().collect(),
                     deadlines: deadlines.into_iter().collect(),
                     max_errors: Some(max_errors),
+                    max_attempts: Some(max_attempts),
                 };
                 run_trials(&experiment, &guard)
             }

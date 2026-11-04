@@ -1,5 +1,6 @@
 //! The lanes: one per backend, each starting its pending trials in order, up to the backend's
-//! concurrency, behind a gate that only that backend's rate limits close.
+//! concurrency, behind a gate that only that backend's rate limits close. A trial whose attempt
+//! is no sample goes back into its lane until one is.
 use super::{
     AgentExit, Attempted, Quota, Reason, RunRecord,
     gate::{Event, Gate},
@@ -13,8 +14,8 @@ use chrono::{DateTime, Utc};
 use eyre::{Result, eyre};
 use futures_util::{StreamExt, stream::FuturesUnordered};
 use std::{
-    collections::{BTreeMap, VecDeque},
-    num::NonZeroUsize,
+    collections::{BTreeMap, HashMap, VecDeque},
+    num::{NonZeroU32, NonZeroUsize},
     time::Duration,
 };
 use tokio::time::Instant;
@@ -44,6 +45,9 @@ pub struct Guard {
     /// Stop a backend after this many attempts in a row errored, crashed or failed, since an
     /// expired login or an outage would otherwise turn every remaining trial into an error.
     pub max_errors: Option<u32>,
+    /// Leave a trial pending once this many of its attempts were discarded or failed, rate
+    /// limits aside, so that a trial its agent can never finish does not run forever.
+    pub max_attempts: Option<NonZeroU32>,
 }
 
 /// A quota ceiling on one window, or on every window when `window` is `None`, counted only from
@@ -105,10 +109,19 @@ struct Lane {
     stopped: Option<String>,
 }
 
+/// Where a trial whose attempt left it pending goes back into its lane.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Retry {
+    /// Ahead of the lane's other trials: the account ended the attempt, not the trial.
+    First,
+    /// Behind them, so that the lane's other trials run between this one's attempts.
+    Last,
+}
+
 /// Runs `attempt` for each of `trials`, in order within each backend's lane, until every trial
-/// is committed or failed, or `stop` drains. A rate-limited trial goes back to the front of its
-/// lane. One whose attempt was otherwise discarded or failed stays pending for the next
-/// invocation.
+/// is committed, `stop` drains, or the guard stops each lane that still has trials. A trial
+/// whose attempt was not committed goes back into its lane as [`retry`] says, until it has
+/// reached the guard's cap on attempts.
 pub(super) async fn schedule(
     trials: Vec<TrialKey>,
     limits: &BTreeMap<BackendId, NonZeroUsize>,
@@ -142,6 +155,7 @@ pub(super) async fn schedule(
     let attempt = &attempt;
     let mut running = FuturesUnordered::new();
     let mut tally = Tally::default();
+    let mut retried: HashMap<TrialKey, u32> = HashMap::new();
     loop {
         let now = Instant::now();
         if stop.stage() == Stage::Running {
@@ -222,11 +236,25 @@ pub(super) async fn schedule(
                     lane.stopped = Some(reason);
                 }
                 let before = lane.gate;
+                let again = retry(&result);
                 let event = settle(&mut tally, &trial, result);
                 lane.gate = lane.gate.next(event, Instant::now());
                 log_gate(backend, before, lane.gate);
-                if let Event::Limited { .. } = event {
-                    lane.queue.push_front(trial);
+                match again {
+                    Some(Retry::First) => lane.queue.push_front(trial),
+                    Some(Retry::Last) => {
+                        let tries = retried.entry(trial.clone()).or_default();
+                        *tries += 1;
+                        if guard.max_attempts.is_some_and(|max| *tries >= max.get()) {
+                            warn!(
+                                "{trial}: {tries} attempts in this invocation were no sample, \
+                                 the cap; leaving it pending"
+                            );
+                        } else {
+                            lane.queue.push_back(trial);
+                        }
+                    }
+                    None => {}
                 }
             }
             () = sleep_until(wake), if wake.is_some() => {}
@@ -236,6 +264,23 @@ pub(super) async fn schedule(
     }
     tally.pending = scheduled - tally.committed;
     Ok(tally)
+}
+
+/// Where the trial of an attempt that ended as `result` goes back into its lane, if anywhere.
+/// A stop leaves it pending, since the invocation is ending.
+fn retry(result: &Result<Attempted>) -> Option<Retry> {
+    match result {
+        Ok(Attempted::Committed(_)) => None,
+        Ok(Attempted::Discarded { reason, .. }) => match reason {
+            Reason::RateLimited { .. } => Some(Retry::First),
+            Reason::Stopped => None,
+            Reason::Errored { .. }
+            | Reason::Crashed
+            | Reason::TimedOut { .. }
+            | Reason::Fault { .. } => Some(Retry::Last),
+        },
+        Err(_) => Some(Retry::Last),
+    }
 }
 
 /// The errors in a row after an attempt that ended as `result`, from `errors` before it. An
@@ -336,7 +381,10 @@ mod tests {
     use crate::{
         experiment::Experiment,
         id::AttemptNo,
-        run::fixture::{self, Repo},
+        run::{
+            fixture::{self, Repo},
+            records::Timeout,
+        },
         store::Digest,
     };
     use std::sync::Mutex;
@@ -384,7 +432,7 @@ mod tests {
         async fn schedule(
             &self,
             stop: &Stop,
-            ending: impl Fn(&TrialKey, usize) -> (Duration, Attempted),
+            ending: impl Fn(&TrialKey, usize) -> (Duration, Result<Attempted>),
         ) -> Tally {
             let running: Mutex<BTreeMap<BackendId, usize>> = Mutex::default();
             schedule(
@@ -413,15 +461,15 @@ mod tests {
                     let (takes, attempted) = ending(trial, earlier);
                     tokio::time::sleep(takes).await;
                     *running.lock().unwrap().get_mut(&backend).unwrap() -= 1;
-                    Ok(attempted)
+                    attempted
                 },
             )
             .await
             .unwrap()
         }
 
-        fn committed(&self) -> Attempted {
-            Attempted::Committed(Box::new(self.record.clone()))
+        fn committed(&self) -> Result<Attempted> {
+            Ok(Attempted::Committed(Box::new(self.record.clone())))
         }
 
         /// The starts on `backend`, in order.
@@ -447,11 +495,11 @@ mod tests {
         starts.iter().map(|start| start.trial.clone()).collect()
     }
 
-    fn discarded(reason: Reason) -> Attempted {
-        Attempted::Discarded {
+    fn discarded(reason: Reason) -> Result<Attempted> {
+        Ok(Attempted::Discarded {
             attempt: AttemptNo::FIRST,
             reason,
-        }
+        })
     }
 
     #[tokio::test(start_paused = true)]
@@ -585,7 +633,7 @@ mod tests {
                 } else {
                     bench.record.clone()
                 };
-                (10 * MINUTE, Attempted::Committed(Box::new(record)))
+                (10 * MINUTE, Ok(Attempted::Committed(Box::new(record))))
             })
             .await;
         assert_eq!(bench.starts("anthropic").len(), 2, "the two running finish");
@@ -616,7 +664,10 @@ mod tests {
         );
         let tally = bench
             .schedule(&Stop::default(), |_, _| {
-                (10 * MINUTE, Attempted::Committed(Box::new(spent.clone())))
+                (
+                    10 * MINUTE,
+                    Ok(Attempted::Committed(Box::new(spent.clone()))),
+                )
             })
             .await;
         assert_eq!(tally.committed, 16);
@@ -642,5 +693,124 @@ mod tests {
         assert_eq!(bench.starts("openai").len(), 3);
         assert_eq!(bench.starts("anthropic").len(), 8);
         assert_eq!(tally.pending, 8);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_trial_whose_attempt_is_no_sample_runs_again_after_the_rest_of_its_lane() {
+        type Ending = fn() -> Result<Attempted>;
+        let endings: [(&str, Ending); 6] = [
+            ("errored", || {
+                discarded(Reason::Errored {
+                    message: "overloaded".to_owned(),
+                })
+            }),
+            ("crashed", || discarded(Reason::Crashed)),
+            ("wall budget", || {
+                discarded(Reason::TimedOut {
+                    budget: Timeout::Wall,
+                })
+            }),
+            ("idle budget", || {
+                discarded(Reason::TimedOut {
+                    budget: Timeout::Idle,
+                })
+            }),
+            ("sandbox fault", || {
+                discarded(Reason::Fault {
+                    message: "sandbox fault: no scope".to_owned(),
+                })
+            }),
+            ("failed", || Err(eyre!("disk full"))),
+        ];
+        for (label, ending) in endings {
+            let bench = Bench::new();
+            let first = bench.trials("anthropic")[0].clone();
+            let tally = bench
+                .schedule(&Stop::default(), |trial, earlier| {
+                    if trial == &first && earlier == 0 {
+                        (5 * MINUTE, ending())
+                    } else {
+                        (10 * MINUTE, bench.committed())
+                    }
+                })
+                .await;
+            assert_eq!(tally.committed, 16, "{label}");
+            assert_eq!(tally.pending, 0, "{label}");
+            let mut expected = bench.trials("anthropic");
+            expected.push(first);
+            assert_eq!(trials(&bench.starts("anthropic")), expected, "{label}");
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_stopped_attempt_leaves_its_trial_pending() {
+        let bench = Bench::new();
+        let first = bench.trials("anthropic")[0].clone();
+        let tally = bench
+            .schedule(&Stop::default(), |trial, _| {
+                if trial == &first {
+                    (5 * MINUTE, discarded(Reason::Stopped))
+                } else {
+                    (10 * MINUTE, bench.committed())
+                }
+            })
+            .await;
+        assert_eq!(
+            trials(&bench.starts("anthropic")),
+            bench.trials("anthropic")
+        );
+        assert_eq!(
+            (tally.committed, tally.discarded, tally.pending),
+            (15, 1, 1)
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_trial_is_left_pending_once_its_attempts_reach_the_cap() {
+        let mut bench = Bench::new();
+        bench.guard.max_attempts = NonZeroU32::new(3);
+        let first = bench.trials("anthropic")[0].clone();
+        let tally = bench
+            .schedule(&Stop::default(), |trial, _| {
+                if trial == &first {
+                    (5 * MINUTE, discarded(Reason::Crashed))
+                } else {
+                    (10 * MINUTE, bench.committed())
+                }
+            })
+            .await;
+        let tries = bench
+            .starts("anthropic")
+            .iter()
+            .filter(|start| start.trial == first)
+            .count();
+        assert_eq!(tries, 3);
+        assert_eq!(
+            tally,
+            Tally {
+                committed: 15,
+                discarded: 3,
+                failed: 0,
+                pending: 1,
+            }
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn rate_limits_do_not_count_towards_the_cap() {
+        let mut bench = Bench::new();
+        bench.guard.max_attempts = NonZeroU32::new(1);
+        let first = bench.trials("anthropic")[0].clone();
+        let tally = bench
+            .schedule(&Stop::default(), |trial, earlier| {
+                if trial == &first && earlier < 2 {
+                    let reason = Reason::RateLimited { resets_at: None };
+                    (MINUTE, discarded(reason))
+                } else {
+                    (10 * MINUTE, bench.committed())
+                }
+            })
+            .await;
+        assert_eq!((tally.committed, tally.pending), (16, 0));
     }
 }

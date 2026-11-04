@@ -65,7 +65,7 @@ The contract also specifies a part that is not in the crate yet: the measure pha
 2. It asks each harness CLI for `--version` in an offline sandbox, refuses a version other than the pin, and writes the session.
 3. It judges every requested reference into `references/` and refuses unless all pass.
 4. `pending_trials` reads each trial's `Lifecycle`, refuses stale committed runs by name, and reparses runs an older parser folded. A run whose transcript turns out to be rate limited is withdrawn and its trial is pending again.
-5. `schedule` starts the pending trials in one lane per backend behind its `Gate`, and `Rig::attempt` makes each attempt.
+5. `schedule` starts the pending trials in one lane per backend behind its `Gate`, and `Rig::attempt` makes each attempt. A discarded or failed attempt puts its trial back into the lane as `retry` says, a rate limit at the front and anything else at the back, until the trial reaches `--max-attempts`.
 
 ## How `gungnir report` writes a report
 

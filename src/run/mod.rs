@@ -406,7 +406,10 @@ mod tests {
         trial::FINAL,
     };
     use fixture::{Agent, Play, Repo};
-    use std::fs;
+    use std::{
+        fs,
+        sync::atomic::{AtomicBool, Ordering},
+    };
     use tempfile::TempDir;
 
     /// The fixture repository, a user home with its credentials, and a runtime directory.
@@ -450,16 +453,18 @@ mod tests {
 
     /// Agents that complete the task: a captured transcript of their harness, and a solution.
     fn solver() -> Agent {
-        Agent::new(|spec| {
-            let codex = spec.env.iter().any(|(name, _)| name == "CODEX_HOME");
-            let mut play = Play::transcript(if codex {
-                "codex/luna-command-success.jsonl"
-            } else {
-                "claude-code/haiku-bash-success.jsonl"
-            });
-            play.workspace = vec![("main.py".to_owned(), "print(input())\n".to_owned())];
-            play
-        })
+        Agent::new(solving)
+    }
+
+    fn solving(spec: &Spec) -> Play {
+        let codex = spec.env.iter().any(|(name, _)| name == "CODEX_HOME");
+        let mut play = Play::transcript(if codex {
+            "codex/luna-command-success.jsonl"
+        } else {
+            "claude-code/haiku-bash-success.jsonl"
+        });
+        play.workspace = vec![("main.py".to_owned(), "print(input())\n".to_owned())];
+        play
     }
 
     fn committed_attempt(results: &ResultsDir, trial: &TrialKey) -> Option<AttemptNo> {
@@ -508,6 +513,39 @@ mod tests {
 
         assert_eq!(machine.run(&agent).await.unwrap(), Tally::default());
         assert_eq!(agent.launches().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn a_crashed_attempt_is_discarded_and_its_trial_run_again_in_the_same_invocation() {
+        let machine = Machine::new();
+        let crashed = AtomicBool::new(false);
+        let agent = Agent::new(move |spec| {
+            let mut play = solving(spec);
+            let claude = !spec.env.iter().any(|(name, _)| name == "CODEX_HOME");
+            if claude && !crashed.swap(true, Ordering::SeqCst) {
+                play.stdout.truncate(2);
+                play.exit = sandbox::Exit::Code(1);
+            }
+            play
+        });
+        let tally = machine.run(&agent).await.unwrap();
+        assert_eq!(
+            tally,
+            Tally {
+                committed: 2,
+                discarded: 1,
+                ..Tally::default()
+            }
+        );
+        let results = machine.results();
+        let opus = fixture::trial(&machine.repo.experiment(), "opus");
+        assert_eq!(
+            committed_attempt(&results, &opus),
+            Some(AttemptNo::FIRST.next())
+        );
+        let first = fs::read_to_string(results.trial(&opus).attempt(AttemptNo::FIRST).discarded());
+        let first: serde_json::Value = serde_json::from_str(&first.unwrap()).unwrap();
+        assert_eq!(first["reason"]["kind"], "crashed");
     }
 
     #[tokio::test]
