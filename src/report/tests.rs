@@ -100,7 +100,9 @@ fn commit_measure(repo: &Repo, trial: &TrialKey, protocol: Protocol) {
             host: here.host.clone(),
             cpus: 1,
             core: 0,
+            isolated: false,
             governor: None,
+            turbo: None,
             kernel: "7.3.0".into(),
             perf_event_paranoid: Some(3),
             load: Load {

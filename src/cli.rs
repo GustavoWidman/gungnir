@@ -1155,11 +1155,17 @@ impl fmt::Display for BenchTable<'_> {
         let load = |load: [f64; 3]| format!("{:.2} {:.2} {:.2}", load[0], load[1], load[2]);
         writeln!(
             f,
-            "pinned to CPU {} of {} ({}), governor {}",
+            "pinned to {}CPU {} of {} ({}), governor {}, turbo {}",
+            if machine.isolated { "isolated " } else { "" },
             machine.core,
             machine.cpus,
             machine.cpu.as_deref().unwrap_or("unknown model"),
-            machine.governor.as_deref().unwrap_or("unknown")
+            machine.governor.as_deref().unwrap_or("unknown"),
+            match machine.turbo {
+                Some(true) => "on",
+                Some(false) => "off",
+                None => "unknown",
+            }
         )?;
         writeln!(
             f,
@@ -1298,7 +1304,9 @@ mod tests {
             host: None,
             cpus: 16,
             core: 15,
+            isolated: false,
             governor: None,
+            turbo: None,
             kernel: "7.3.0".into(),
             perf_event_paranoid: Some(1),
             load: Load {
@@ -1316,7 +1324,7 @@ mod tests {
             "workload    reference  range              candidate             range             ratio  95% interval    instructions  peak memory\n\
              full-range  750.0ms    [500.0ms, 1.000s]  1.500s                [1.000s, 2.000s]  2.000  [2.000, 2.000]  2.000         - (reference 48.0MiB)\n\
              uniform     -          -                  failed: wrong output  -                 -      -               -             -\n\
-             pinned to CPU 15 of 16 (AMD Ryzen 7 5800U), governor unknown\n\
+             pinned to CPU 15 of 16 (AMD Ryzen 7 5800U), governor unknown, turbo unknown\n\
              load average 6.65 4.26 3.28 at the start, 7.00 5.00 3.50 at the end\n"
         );
     }

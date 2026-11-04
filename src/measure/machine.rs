@@ -45,8 +45,14 @@ pub struct Machine {
     pub cpus: usize,
     /// The CPU every run was pinned to.
     pub core: u32,
+    /// Whether the kernel kept the scheduler off that CPU (`isolcpus`).
+    #[serde(default)]
+    pub isolated: bool,
     /// The frequency governor of that CPU, when the kernel exposes one.
     pub governor: Option<String>,
+    /// Whether the CPU could boost above its base clock, when the kernel says.
+    #[serde(default)]
+    pub turbo: Option<bool>,
     pub kernel: String,
     /// `kernel.perf_event_paranoid`, when readable. Above 2 the kernel refuses hyperfine's
     /// user-space counters, so no run has an instruction count.
@@ -75,9 +81,11 @@ impl Machine {
                 .wrap_err("counting the CPUs")?
                 .get(),
             core,
+            isolated: isolated_cpus().contains(&core),
             governor: fs::read_to_string(governor)
                 .ok()
                 .map(|governor| governor.trim().to_owned()),
+            turbo: turbo(),
             kernel: read("/proc/sys/kernel/osrelease")?.trim().to_owned(),
             perf_event_paranoid: perf_event_paranoid(),
             load: Load {
@@ -111,6 +119,19 @@ pub fn perf_event_paranoid() -> Option<i32> {
         .trim()
         .parse()
         .ok()
+}
+
+/// Whether CPUs may boost above their base clock: intel_pstate's `no_turbo`, or else the
+/// generic `cpufreq/boost`, and `None` when neither is readable.
+fn turbo() -> Option<bool> {
+    let read = |path: &str| {
+        fs::read_to_string(path)
+            .ok()
+            .map(|value| value.trim() == "1")
+    };
+    read("/sys/devices/system/cpu/intel_pstate/no_turbo")
+        .map(|no_turbo| !no_turbo)
+        .or_else(|| read("/sys/devices/system/cpu/cpufreq/boost"))
 }
 
 /// The CPUs the kernel keeps the scheduler off (`isolcpus`), in order, or none when it reports
@@ -166,7 +187,9 @@ mod tests {
             host: host.map(str::to_owned),
             cpus: 16,
             core: 15,
+            isolated: false,
             governor: Some("performance".into()),
+            turbo: Some(true),
             kernel: "7.3.0".into(),
             perf_event_paranoid: Some(1),
             load: Load {
@@ -185,7 +208,9 @@ mod tests {
         assert!(machine(Some("AMD Ryzen 7 5800U"), Some("4a7c1e90")).is(&vm));
         let mut busier = machine(Some("AMD Ryzen 7 5800U"), Some("4a7c1e90"));
         busier.core = 3;
+        busier.isolated = true;
         busier.governor = None;
+        busier.turbo = Some(false);
         busier.kernel = "7.4.0".into();
         busier.load.end = [9.0, 9.0, 9.0];
         assert!(busier.is(&vm));
