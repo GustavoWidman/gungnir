@@ -1,11 +1,14 @@
 //! The command line.
 use crate::{
+    catalog::SystemId,
     experiment::Experiment,
-    grade::{self, Judgement, Outcome, Verdict},
+    grade::{self, Graded, Judgement, Outcome, Verdict},
     id::{LanguageId, ScenarioId, WorkloadId},
     language::Language,
+    lifecycle::{self, Current, Fate, Lifecycle},
     measure::{self, Machine, MeasureInputs, MeasureRecord, Program, Settings, Spread, Summary},
     provenance::Session,
+    run::{self, Host, Tally},
     sandbox::{Backend, Bubblewrap},
     scenario::Scenario,
     stop::{Stage, Stop},
@@ -23,7 +26,9 @@ use nix::{
 use std::{
     collections::BTreeMap,
     fmt,
+    io::IsTerminal,
     num::{NonZeroU32, NonZeroUsize},
+    ops::Add,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -62,6 +67,28 @@ enum Command {
     /// candidate the reference is timed against itself, an A/A test whose ratio interval
     /// shows the noise floor.
     Bench(Bench),
+    /// Run each pending trial of an experiment until it commits one attempt, after checking
+    /// the harness pins and the references. The first Ctrl-C lets running agents finish, the
+    /// second kills them.
+    Run {
+        /// The experiment file, such as experiments/smoke.toml.
+        experiment: PathBuf,
+    },
+    /// Grade each committed run that has no current grade, building and running it offline
+    /// on the hidden cases. Safe to run while `run` is still going.
+    Grade {
+        /// The experiment file, such as experiments/smoke.toml.
+        experiment: PathBuf,
+        /// How many runs to grade at once.
+        #[arg(long, value_name = "N", default_value_t = default_jobs())]
+        jobs: NonZeroUsize,
+    },
+    /// Count each system's trials by stage, the stale ones, and the attempts discarded for a
+    /// rate limit or interrupted. An attempt running now counts as interrupted.
+    Status {
+        /// The experiment file, such as experiments/smoke.toml.
+        experiment: PathBuf,
+    },
 }
 
 impl Cli {
@@ -77,8 +104,114 @@ impl Cli {
                 jobs,
             } => run_check(&scenarios, &languages, jobs),
             Command::Bench(bench) => bench.run(),
+            Command::Run { experiment } => run_trials(&experiment),
+            Command::Grade { experiment, jobs } => grade_trials(&experiment, jobs),
+            Command::Status { experiment } => {
+                let experiment = Experiment::load(&experiment)?;
+                let toolchains = Toolchains::from_env()?;
+                print!("{}", StatusTable(&status(&experiment, &toolchains)?));
+                Ok(())
+            }
         }
     }
+}
+
+/// Runs an experiment's pending trials, logging progress to stderr. Fails while any trial is
+/// still pending, so that a script can tell to run it again.
+fn run_trials(path: &Path) -> Result<()> {
+    log_progress();
+    let experiment = Experiment::load(path)?;
+    let repo = repository_of(path)?;
+    let toolchains = Toolchains::from_env()?;
+    let backend = Bubblewrap::new(toolchains.base().clone())?;
+    let home = env_path("HOME")?;
+    let runtime_dir = env_path("XDG_RUNTIME_DIR")?;
+    let host = Host {
+        toolchains: &toolchains,
+        backend: &backend,
+        home: &home,
+        runtime: &runtime_dir,
+    };
+    let runtime = tokio::runtime::Runtime::new().wrap_err("starting the async runtime")?;
+    let tally = runtime.block_on(async {
+        let stop = Stop::on_ctrl_c()?;
+        run::run(&experiment, &repo, &host, &stop).await
+    })?;
+    let Tally {
+        committed,
+        discarded,
+        failed,
+        interrupted,
+        unstarted,
+    } = tally;
+    println!(
+        "committed {committed}, discarded {discarded}, failed {failed}, interrupted \
+         {interrupted}, not started {unstarted}"
+    );
+    let pending = failed + interrupted + unstarted;
+    ensure!(
+        pending == 0,
+        "{pending} trials are still pending; run again to continue"
+    );
+    Ok(())
+}
+
+/// Grades an experiment's committed runs, logging each verdict to stderr. Fails while any
+/// committed run is left ungraded.
+fn grade_trials(path: &Path, jobs: NonZeroUsize) -> Result<()> {
+    log_progress();
+    let experiment = Experiment::load(path)?;
+    let repo = repository_of(path)?;
+    let toolchains = Toolchains::from_env()?;
+    let backend = Bubblewrap::new(toolchains.base().clone())?;
+    let runtime = tokio::runtime::Runtime::new().wrap_err("starting the async runtime")?;
+    let graded = runtime.block_on(async {
+        let stop = Stop::on_ctrl_c()?;
+        grade::grade_runs(&experiment, &repo, &toolchains, &backend, jobs, &stop).await
+    })?;
+    let Graded {
+        passed,
+        failed,
+        faulted,
+        errors,
+        unstarted,
+    } = graded;
+    println!(
+        "passed {passed}, failed {failed}, environment faults {faulted}, errors {errors}, not \
+         started {unstarted}"
+    );
+    let left = faulted + errors + unstarted;
+    ensure!(left == 0, "{left} runs are still ungraded; grade again");
+    Ok(())
+}
+
+/// Logs the phases' progress to stderr, in color only on a terminal.
+fn log_progress() {
+    // Only fails when a subscriber is already set, which then logs instead.
+    let _ = tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .with_ansi(std::io::stderr().is_terminal())
+        .with_target(false)
+        .try_init();
+}
+
+/// The repository holding the experiment at `path`: the nearest directory above it with a
+/// `gungnir.toml`, as `Experiment::load` finds it.
+fn repository_of(path: &Path) -> Result<PathBuf> {
+    let path = path
+        .canonicalize()
+        .wrap_err_with(|| format!("reading {}", path.display()))?;
+    path.ancestors()
+        .skip(1)
+        .find(|dir| dir.join("gungnir.toml").is_file())
+        .map(Path::to_path_buf)
+        .ok_or_else(|| eyre!("no directory above {} has a gungnir.toml", path.display()))
+}
+
+fn env_path(name: &str) -> Result<PathBuf> {
+    std::env::var_os(name)
+        .map(PathBuf::from)
+        .ok_or_else(|| eyre!("{name} is not set"))
 }
 
 /// A quarter of the CPUs, since one reference's build may use them all.
@@ -415,6 +548,120 @@ impl Bench {
             kept.join("measure").display()
         );
         Ok(())
+    }
+}
+
+/// One system's trials by stage, and its attempts by fate.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct Counts {
+    pending: usize,
+    ran: usize,
+    passed: usize,
+    failed: usize,
+    /// Trials with a committed record made from other inputs than the current ones.
+    stale: usize,
+    discarded: usize,
+    interrupted: usize,
+}
+
+impl Add for Counts {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            pending: self.pending + other.pending,
+            ran: self.ran + other.ran,
+            passed: self.passed + other.passed,
+            failed: self.failed + other.failed,
+            stale: self.stale + other.stale,
+            discarded: self.discarded + other.discarded,
+            interrupted: self.interrupted + other.interrupted,
+        }
+    }
+}
+
+/// Counts each system's trials and attempts, in the order the experiment lists the systems.
+fn status(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<(SystemId, Counts)>> {
+    let mut systems: Vec<(SystemId, Counts)> = experiment
+        .systems()
+        .iter()
+        .map(|system| (system.id(), Counts::default()))
+        .collect();
+    for trial in experiment.trials() {
+        let dir = experiment.results().trial(&trial);
+        let current = Current::of(experiment, &trial, toolchains)?;
+        let lifecycle = Lifecycle::read(&dir, &current)?;
+        let id = trial.system.id();
+        let (_, counts) = systems
+            .iter_mut()
+            .find(|(system, _)| system == &id)
+            .ok_or_else(|| eyre!("experiment lists no system {id}"))?;
+        match &lifecycle.stage {
+            lifecycle::Stage::Pending => counts.pending += 1,
+            lifecycle::Stage::Ran { .. } => counts.ran += 1,
+            lifecycle::Stage::Graded { grade, .. }
+                if grade.judgement().verdict() == Verdict::Pass =>
+            {
+                counts.passed += 1;
+            }
+            lifecycle::Stage::Graded { .. } => counts.failed += 1,
+        }
+        counts.stale += usize::from(lifecycle.stale.is_some());
+        for (_, fate) in lifecycle.attempts(&dir) {
+            match fate {
+                Fate::Discarded => counts.discarded += 1,
+                Fate::Interrupted => counts.interrupted += 1,
+                Fate::Committed => {}
+            }
+        }
+    }
+    Ok(systems)
+}
+
+/// One row per system with its counts, then their total.
+struct StatusTable<'a>(&'a [(SystemId, Counts)]);
+
+impl fmt::Display for StatusTable<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let header = [
+            "system",
+            "pending",
+            "ran",
+            "pass",
+            "fail",
+            "stale",
+            "discarded",
+            "interrupted",
+        ];
+        let total = self
+            .0
+            .iter()
+            .fold(Counts::default(), |sum, (_, counts)| sum + *counts);
+        let systems = self.0.iter().map(|(id, counts)| (id.to_string(), *counts));
+        let mut rows = vec![header.map(String::from)];
+        for (system, counts) in systems.chain([("total".to_owned(), total)]) {
+            let Counts {
+                pending,
+                ran,
+                passed,
+                failed,
+                stale,
+                discarded,
+                interrupted,
+            } = counts;
+            let n = |count: usize| count.to_string();
+            rows.push([
+                system,
+                n(pending),
+                n(ran),
+                n(passed),
+                n(failed),
+                n(stale),
+                n(discarded),
+                n(interrupted),
+            ]);
+        }
+        write_rows(f, &rows)
     }
 }
 
@@ -805,5 +1052,67 @@ mod tests {
                  trials       20\n"
             )
         );
+    }
+
+    #[tokio::test]
+    async fn status_counts_trials_by_stage_and_attempts_by_fate() {
+        use crate::{id::AttemptNo, run::fixture};
+        let repo = fixture::Repo::new();
+        let experiment = repo.experiment();
+        let (opus, luna) = (
+            fixture::trial(&experiment, "opus"),
+            fixture::trial(&experiment, "luna"),
+        );
+        let opus_dir = experiment.results().trial(&opus);
+        write(
+            opus_dir.attempt(AttemptNo::FIRST).path(),
+            "transcript.jsonl",
+            "",
+        );
+        fixture::commit_run(&repo, &opus, &[("main.py", "print(input())\n")]);
+        fixture::commit_grade(&repo, &opus).await;
+        let luna_dir = experiment.results().trial(&luna);
+        write(
+            luna_dir.attempt(AttemptNo::FIRST).path(),
+            "discarded.json",
+            "{}",
+        );
+        write(
+            luna_dir.attempt(AttemptNo::FIRST.next()).path(),
+            "transcript.jsonl",
+            "",
+        );
+        write(repo.root.path(), "scenarios/echo/hidden/edge.out", "x\n");
+
+        let rows = status(&repo.experiment(), &repo.toolchains).unwrap();
+        let counts: Vec<(String, Counts)> = rows
+            .iter()
+            .map(|(system, counts)| (system.to_string(), *counts))
+            .collect();
+        assert_eq!(
+            counts,
+            [
+                (
+                    opus.system.id().to_string(),
+                    Counts {
+                        passed: 1,
+                        stale: 1,
+                        ..Counts::default()
+                    }
+                ),
+                (
+                    luna.system.id().to_string(),
+                    Counts {
+                        pending: 1,
+                        discarded: 1,
+                        interrupted: 1,
+                        ..Counts::default()
+                    }
+                ),
+            ]
+        );
+        let table = StatusTable(&rows).to_string();
+        let total: Vec<&str> = table.lines().last().unwrap().split_whitespace().collect();
+        assert_eq!(total, ["total", "1", "0", "1", "0", "1", "1", "1"]);
     }
 }
