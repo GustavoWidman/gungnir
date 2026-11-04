@@ -201,7 +201,7 @@ impl Failure {
 }
 
 /// Durations as humantime text such as `"1s 250ms"`, which reads back exactly.
-pub(super) mod duration {
+pub(crate) mod duration {
     use serde::{Deserialize, Deserializer, Serializer, de};
     use std::time::Duration;
 

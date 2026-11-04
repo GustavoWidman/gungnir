@@ -12,6 +12,7 @@ mod tests;
 pub(crate) mod tree;
 
 pub use complexity::{Complexity, FileComplexity, Function};
+pub(crate) use judgement::duration;
 pub use judgement::{
     Abnormal, Build, BuildOutcome, Case, Crash, Failure, Judgement, Outcome, Verdict,
 };

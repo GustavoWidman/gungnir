@@ -32,7 +32,7 @@ pub(crate) fn copy(from: &Path, to: &Path, ignore: &GlobSet) -> Result<()> {
 
 /// The files and symlinks under `root` that `ignore` does not match, by path relative to
 /// `root`, in sorted order. Anything but a file, directory or symlink is an error.
-pub(super) fn files(root: &Path, ignore: &GlobSet) -> Result<Vec<(PathBuf, FileType)>> {
+pub(crate) fn files(root: &Path, ignore: &GlobSet) -> Result<Vec<(PathBuf, FileType)>> {
     let mut found = Vec::new();
     let mut pending = vec![PathBuf::new()];
     while let Some(dir) = pending.pop() {

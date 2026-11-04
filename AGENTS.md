@@ -45,6 +45,8 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/harness/` holds the `Driver` registry (`DRIVERS`), the `Harness` handle, the Claude Code and Codex drivers, the harness-neutral `Event` and `TokenUsage`, and the pure `Fold` into an `Ending`. Captured transcripts for its tests live in `tests/fixtures/harness/`.
 - `src/grade/` judges a workspace: an offline build, every hidden case in its own sandbox compared on the host, lizard complexity, and the `GradeRecord` with its `GradeInputs`.
 - `src/workload.rs` regenerates a scenario's workloads in a sandbox and verifies them against `workloads.sha256`.
+- `src/run/` is the run phase. `Task` is one trial as an agent sees it, with a `Brief` and never a `Scenario`. `records.rs` holds `RunInputs`, `RunRecord`, `DiscardedAttempt` and the stored form of the agent's outcome, and `workspace.rs` scaffolds the agent's starting workspace.
+- `src/lifecycle.rs` derives a trial's `Stage` and its first stale phase from the committed records, comparing each record's inputs with `Current`.
 - `src/testing.rs` holds the fixture writers the unit tests share. It compiles only for tests.
 
 The contract also specifies parts that are not in the crate yet: the run, grade and measure phases over trials, and the report. Give each its own module and update this map when it lands.

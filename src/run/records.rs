@@ -1,0 +1,519 @@
+//! What the run phase commits: the inputs a run was made from, the run record with the
+//! agent's outcome, and the record of an attempt a rate limit discarded.
+use super::{Task, workspace};
+use crate::{
+    experiment::Budget,
+    grade::duration,
+    harness::{self, AgentOutcome, ProcessEnd, QuotaSpan, TokenUsage, UsageSample},
+    id::AttemptNo,
+    provenance::SessionId,
+    sandbox,
+    store::Digest,
+    toolchains::Toolchains,
+};
+use chrono::{DateTime, Utc};
+use eyre::{Result, WrapErr};
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeMap, path::PathBuf, time::Duration};
+
+/// Everything a run depends on that gungnir controls. Equal inputs make the same kind of
+/// sample, so a committed run is stale exactly when its inputs differ from the current ones.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RunInputs {
+    system: String,
+    api_model: String,
+    endpoint: Option<String>,
+    prompt: Digest,
+    /// The workspace the agent starts in.
+    workspace: Digest,
+    toolchains: StoredToolchains,
+    #[serde(with = "duration")]
+    wall: Duration,
+    #[serde(with = "duration")]
+    idle: Duration,
+}
+
+/// The store paths of the environments an agent runs in, each naming its whole closure.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct StoredToolchains {
+    base: PathBuf,
+    language: PathBuf,
+    harness: PathBuf,
+}
+
+impl RunInputs {
+    /// The inputs of running `task` now, for an agent that starts in a workspace with digest
+    /// `workspace`.
+    pub(crate) fn new(
+        task: &Task<'_>,
+        toolchains: &Toolchains,
+        budget: Budget,
+        workspace: Digest,
+    ) -> Result<Self> {
+        let system = &task.trial.system;
+        Ok(Self {
+            system: system.id().to_string(),
+            api_model: system.api_model().to_owned(),
+            endpoint: task.backend.endpoint().map(|url| url.as_str().to_owned()),
+            prompt: Digest::of_bytes(task.language.prompt(task.brief).as_bytes()),
+            workspace,
+            toolchains: StoredToolchains {
+                base: toolchains.base().root().to_owned(),
+                language: toolchains
+                    .language(task.language.id().as_str())?
+                    .root()
+                    .to_owned(),
+                harness: toolchains
+                    .harness(system.harness().as_str())?
+                    .root()
+                    .to_owned(),
+            },
+            wall: budget.wall(),
+            idle: budget.idle(),
+        })
+    }
+
+    /// The inputs of running `task` now, scaffolding its workspace in scratch to digest it.
+    pub(crate) fn current(
+        task: &Task<'_>,
+        toolchains: &Toolchains,
+        budget: Budget,
+    ) -> Result<Self> {
+        let scratch = tempfile::Builder::new()
+            .prefix("gungnir-scaffold-")
+            .tempdir()
+            .wrap_err("creating scaffolding scratch")?;
+        let digest = workspace::scaffold(task.language, task.brief, scratch.path())?;
+        Self::new(task, toolchains, budget, digest)
+    }
+}
+
+/// `run/record.json`: the attempt a trial committed as its sample. The run directory also holds
+/// the agent's `prompt.md` and its workspace as it left it in `final/`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RunRecord {
+    pub(super) session: SessionId,
+    pub(super) inputs: RunInputs,
+    pub(super) attempt: AttemptNo,
+    pub(super) started: DateTime<Utc>,
+    pub(super) process: Process,
+    /// The version of the harness's parser that folded `outcome` from the transcript.
+    pub(super) parser: u32,
+    pub(super) outcome: Outcome,
+    /// The digest of `final/`, which is what grading judges.
+    pub(super) snapshot: Digest,
+}
+
+impl RunRecord {
+    /// The invocation that ran the attempt.
+    pub fn session(&self) -> &SessionId {
+        &self.session
+    }
+
+    pub fn inputs(&self) -> &RunInputs {
+        &self.inputs
+    }
+
+    /// The attempt this run committed, whose transcript is under `attempts/<n>/`.
+    pub fn attempt(&self) -> AttemptNo {
+        self.attempt
+    }
+
+    pub fn started(&self) -> DateTime<Utc> {
+        self.started
+    }
+
+    pub fn process(&self) -> &Process {
+        &self.process
+    }
+
+    pub fn parser(&self) -> u32 {
+        self.parser
+    }
+
+    pub fn outcome(&self) -> &Outcome {
+        &self.outcome
+    }
+
+    pub fn snapshot(&self) -> Digest {
+        self.snapshot
+    }
+}
+
+/// `attempts/<n>/discarded.json`: an attempt the account's quota ended. Its tokens are
+/// overhead, never a sample.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DiscardedAttempt {
+    /// The invocation that discarded the attempt: the one that ran it, or a later one whose
+    /// parser found the rate limit in its transcript.
+    pub(super) session: SessionId,
+    pub(super) started: DateTime<Utc>,
+    pub(super) process: Process,
+    pub(super) parser: u32,
+    /// When the vendor said the quota resets, if it did.
+    pub(super) resets_at: Option<DateTime<Utc>>,
+    /// What the attempt spent before the limit.
+    pub(super) usage: Vec<Sample>,
+}
+
+impl DiscardedAttempt {
+    pub fn usage(&self) -> &[Sample] {
+        &self.usage
+    }
+
+    pub fn resets_at(&self) -> Option<DateTime<Utc>> {
+        self.resets_at
+    }
+}
+
+/// How the agent's process ended, as the runner saw it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Process {
+    pub exit: ProcessExit,
+    /// Why gungnir ended the process before it exited, when it did.
+    pub cut: Option<Cut>,
+    /// From launch to exit, sandbox setup included.
+    #[serde(with = "duration")]
+    pub wall: Duration,
+    pub stdout_bytes: u64,
+    pub stderr_bytes: u64,
+}
+
+impl Process {
+    /// Whether the process ended on its own or the runner ended it, as the fold needs to know.
+    pub fn end(&self) -> ProcessEnd {
+        match self.exit {
+            ProcessExit::TimedOut | ProcessExit::Killed => ProcessEnd::Killed,
+            ProcessExit::Code(_) | ProcessExit::Signal(_) | ProcessExit::OutOfMemory => {
+                ProcessEnd::Exited
+            }
+        }
+    }
+}
+
+/// [`sandbox::Exit`] as a record stores it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ProcessExit {
+    Code(i32),
+    Signal(i32),
+    TimedOut,
+    OutOfMemory,
+    Killed,
+}
+
+impl From<sandbox::Exit> for ProcessExit {
+    fn from(exit: sandbox::Exit) -> Self {
+        match exit {
+            sandbox::Exit::Code(code) => Self::Code(code),
+            sandbox::Exit::Signal(signal) => Self::Signal(signal),
+            sandbox::Exit::TimedOut => Self::TimedOut,
+            sandbox::Exit::OutOfMemory => Self::OutOfMemory,
+            sandbox::Exit::Killed => Self::Killed,
+        }
+    }
+}
+
+/// Why gungnir ended an agent early.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Cut {
+    /// No stdout line arrived within the idle budget.
+    Idle,
+    /// The agent's stdout reported that the account's quota ended the session.
+    RateLimited,
+}
+
+/// [`AgentOutcome`] as a record stores it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Outcome {
+    pub exit: AgentExit,
+    pub turns: Option<u32>,
+    pub usage: Vec<Sample>,
+    #[serde(with = "optional_duration")]
+    pub api_time: Option<Duration>,
+    pub model: Option<String>,
+    pub quota: BTreeMap<String, Quota>,
+    pub unrecognised: BTreeMap<String, u32>,
+}
+
+impl Outcome {
+    pub fn total(&self) -> TokenUsage {
+        self.usage.iter().map(|sample| sample.tokens.into()).sum()
+    }
+}
+
+impl From<AgentOutcome> for Outcome {
+    fn from(outcome: AgentOutcome) -> Self {
+        let AgentOutcome {
+            exit,
+            turns,
+            usage,
+            api_time,
+            model,
+            quota,
+            unrecognised,
+        } = outcome;
+        Self {
+            exit: exit.into(),
+            turns,
+            usage: samples(usage),
+            api_time,
+            model,
+            quota: quota
+                .into_iter()
+                .map(|(window, QuotaSpan { first, last })| (window, Quota { first, last }))
+                .collect(),
+            unrecognised,
+        }
+    }
+}
+
+/// [`harness::Exit`] as a record stores it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentExit {
+    Completed,
+    Refused,
+    Errored { message: String },
+    Crashed,
+    Killed,
+}
+
+impl From<harness::Exit> for AgentExit {
+    fn from(exit: harness::Exit) -> Self {
+        match exit {
+            harness::Exit::Completed => Self::Completed,
+            harness::Exit::Refused => Self::Refused,
+            harness::Exit::Errored { message } => Self::Errored { message },
+            harness::Exit::Crashed => Self::Crashed,
+            harness::Exit::Killed => Self::Killed,
+        }
+    }
+}
+
+/// [`UsageSample`] as a record stores it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Sample {
+    pub request: Option<String>,
+    pub model: Option<String>,
+    pub tokens: Tokens,
+}
+
+/// [`TokenUsage`] as a record stores it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tokens {
+    pub input: u64,
+    pub cache_read: u64,
+    pub cache_write: u64,
+    pub cache_write_long: u64,
+    pub output: u64,
+    pub reasoning: Option<u64>,
+}
+
+impl From<Tokens> for TokenUsage {
+    fn from(tokens: Tokens) -> Self {
+        let Tokens {
+            input,
+            cache_read,
+            cache_write,
+            cache_write_long,
+            output,
+            reasoning,
+        } = tokens;
+        Self {
+            input,
+            cache_read,
+            cache_write,
+            cache_write_long,
+            output,
+            reasoning,
+        }
+    }
+}
+
+/// [`QuotaSpan`] as a record stores it.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Quota {
+    pub first: f64,
+    pub last: f64,
+}
+
+pub(super) fn samples(usage: Vec<UsageSample>) -> Vec<Sample> {
+    usage
+        .into_iter()
+        .map(
+            |UsageSample {
+                 request,
+                 model,
+                 tokens,
+             }| {
+                let TokenUsage {
+                    input,
+                    cache_read,
+                    cache_write,
+                    cache_write_long,
+                    output,
+                    reasoning,
+                } = tokens;
+                Sample {
+                    request,
+                    model,
+                    tokens: Tokens {
+                        input,
+                        cache_read,
+                        cache_write,
+                        cache_write_long,
+                        output,
+                        reasoning,
+                    },
+                }
+            },
+        )
+        .collect()
+}
+
+/// Optional durations as humantime text, like every other duration in the results.
+mod optional_duration {
+    use serde::{Deserialize, Deserializer, Serializer, de};
+    use std::time::Duration;
+
+    pub fn serialize<S: Serializer>(
+        duration: &Option<Duration>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        match duration {
+            Some(duration) => serializer.collect_str(&humantime::format_duration(*duration)),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<Duration>, D::Error> {
+        Option::<String>::deserialize(deserializer)?
+            .map(|text| humantime::parse_duration(&text).map_err(de::Error::custom))
+            .transpose()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        harness::{Ending, Harness},
+        run::fixture::{self, Repo},
+        testing::write,
+    };
+    use std::{fs, path::Path};
+
+    fn current(repo: &Repo) -> RunInputs {
+        let experiment = repo.experiment();
+        let trial = fixture::trial(&experiment, "opus");
+        let task = Task::of(&experiment, &trial).unwrap();
+        RunInputs::current(&task, &repo.toolchains, experiment.budget()).unwrap()
+    }
+
+    /// Replaces `from`, which must occur, with `to` in the file at `root/path`.
+    fn replace(root: &Path, path: &str, from: &str, to: &str) {
+        let before = fs::read_to_string(root.join(path)).unwrap();
+        assert!(before.contains(from), "{path} lacks {from}");
+        write(root, path, before.replace(from, to));
+    }
+
+    #[test]
+    fn stored_inputs_go_stale_exactly_when_the_agent_would_see_something_else() {
+        type Edit = fn(&Path);
+        let edits: [(Edit, bool); 8] = [
+            (
+                |root| write(root, "scenarios/echo/hidden/edge.out", "x\n"),
+                false,
+            ),
+            (
+                |root| write(root, "scenarios/echo/reference/python/main.py", "pass\n"),
+                false,
+            ),
+            (
+                |root| write(root, "scenarios/echo/spec.md", "Echo.\n"),
+                true,
+            ),
+            (
+                |root| write(root, "scenarios/echo/examples/basic.out", "b\n"),
+                true,
+            ),
+            (
+                |root| write(root, "languages/python/template/main.py", "#\n"),
+                true,
+            ),
+            (
+                |root| replace(root, "languages/python/preamble.md", "Build", "Compile"),
+                true,
+            ),
+            (
+                |root| {
+                    replace(
+                        root,
+                        "languages/python/language.toml",
+                        "[\"true\"]",
+                        "[\"false\"]",
+                    )
+                },
+                true,
+            ),
+            (
+                |root| replace(root, "experiments/fixture.toml", "\"10m\"", "\"5m\""),
+                true,
+            ),
+        ];
+        for (index, (edit, stale)) in edits.into_iter().enumerate() {
+            let repo = Repo::new();
+            let json = serde_json::to_string(&current(&repo)).unwrap();
+            let stored: RunInputs = serde_json::from_str(&json).unwrap();
+            assert_eq!(stored, current(&repo));
+
+            edit(repo.root.path());
+            assert_eq!(stored != current(&repo), stale, "edit {index}");
+        }
+    }
+
+    #[test]
+    fn a_run_record_reads_back_with_its_outcome() {
+        let repo = Repo::new();
+        let transcript = fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/fixtures/harness/claude-code/haiku-bash-success.jsonl"),
+        )
+        .unwrap();
+        let claude = Harness::named(&"claude-code".parse().unwrap()).unwrap();
+        let Ending::Finished(outcome) = claude.replay(&transcript, &[]).finish(ProcessEnd::Exited)
+        else {
+            panic!("the fixture finishes");
+        };
+        let total = outcome.total();
+        let record = RunRecord {
+            session: serde_json::from_str("\"20261103T120000Z-42\"").unwrap(),
+            inputs: current(&repo),
+            attempt: AttemptNo::FIRST,
+            started: Utc::now(),
+            process: Process {
+                exit: sandbox::Exit::Code(0).into(),
+                cut: None,
+                wall: Duration::from_millis(91_250),
+                stdout_bytes: 12_000,
+                stderr_bytes: 0,
+            },
+            parser: claude.parser_version(),
+            outcome: outcome.into(),
+            snapshot: Digest::of_bytes(b"final"),
+        };
+
+        let json = serde_json::to_string_pretty(&record).unwrap();
+        let read: RunRecord = serde_json::from_str(&json).unwrap();
+        assert_eq!(read, record);
+        assert_eq!(read.outcome().total(), total);
+        assert_eq!(read.outcome().exit, AgentExit::Completed);
+        assert_eq!(read.outcome().api_time, Some(Duration::from_millis(1634)));
+        assert_eq!(read.process().end(), ProcessEnd::Exited);
+        assert!(json.contains("\"wall\": \"1m 31s 250ms\""), "{json}");
+    }
+}

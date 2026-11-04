@@ -92,7 +92,7 @@ results/<experiment>/
 
 **Commit protocol.** A phase builds `<phase>.partial/` and publishes it with one directory rename, writing `record.json` last before the rename. A phase directory is therefore complete or absent. A crash leaves `<phase>.partial/`, which the next invocation of that phase sweeps under its lock. An attempt directory that has neither a `discarded.json` nor a committed `run/record.json` naming it is an interrupted attempt. Its transcript is kept because it may have spent tokens.
 
-**Lifecycle.** A trial's state is never stored. `Trial::lifecycle` reads the committed records in phase order and returns:
+**Lifecycle.** A trial's state is never stored. `Lifecycle::read` (`src/lifecycle.rs`) reads the committed records in phase order, stopping at the first phase that is not committed, and compares each record's inputs with `Current`, what each phase would use for that trial now. It returns:
 
 ```rust
 enum Stage {
@@ -104,7 +104,9 @@ enum Stage {
 struct Lifecycle { stage: Stage, stale: Option<Phase> }
 ```
 
-Every record embeds the inputs it was made from (`RunInputs`, `GradeInputs`, `MeasureInputs`): digests of the prompt, initial workspace, hidden suite, workloads and reference, the closure store paths, the build argv, and the grader and parser versions. `stale` names the first phase whose stored inputs differ from what it would use now. Editing a hidden case regrades exactly the affected trials. A stale run is never redone automatically: `run` refuses and names the trials, because rerunning spends quota and changes the sample. A record also names the session that produced it.
+The records are boxed in the code. A grade whose run is not committed, left behind when a run is withdrawn, does not count: the trial is pending.
+
+Every record embeds the inputs it was made from (`RunInputs`, `GradeInputs`, `MeasureInputs`): digests of the prompt, initial workspace, hidden suite, workloads and reference, the closure store paths, the build argv, and the grader version. `RunInputs` holds the system id, the API model, the endpoint, the digests of the prompt and of the workspace the agent starts in, the store paths of the base, language and harness environments, and the wall and idle budgets. `stale` names the first phase whose stored inputs differ from what it would use now. Editing a hidden case regrades exactly the affected trials. A stale run is never redone automatically: `run` refuses and names the trials, because rerunning spends quota and changes the sample. The parser version is not an input: a run record stores the version that folded its outcome, and an older one is reparsed rather than refused. A record also names the session that produced it.
 
 **Writers.** Each phase writes only its own directories, so `grade` can run while `run` is still going. A phase lock stops two copies of the same phase. `measure` takes all three locks because it needs a quiet machine.
 
