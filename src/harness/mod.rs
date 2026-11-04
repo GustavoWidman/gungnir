@@ -36,6 +36,12 @@ trait Driver: Sync {
     fn diagnose_exit(&self, _stderr_tail: &str) -> Option<Event> {
         None
     }
+    fn artifacts(&self) -> &'static [&'static str] {
+        &[]
+    }
+    fn decode_artifact(&self, _line: &str) -> Vec<Event> {
+        Vec::new()
+    }
 }
 
 static DRIVERS: &[&dyn Driver] = &[&ClaudeCode, &Codex];
@@ -91,14 +97,29 @@ impl Harness {
         self.0.diagnose_exit(stderr_tail)
     }
 
-    /// Folds a stored transcript line by line, exactly as the runner folds a live one.
-    pub fn replay(self, transcript: &str) -> Fold {
+    /// Glob patterns, relative to the isolated home, of the files the CLI leaves there that
+    /// [`Harness::decode_artifact`] reads once the process is gone.
+    pub fn artifacts(self) -> &'static [&'static str] {
+        self.0.artifacts()
+    }
+
+    /// The events in one line of an artifact, given without its newline.
+    pub fn decode_artifact(self, line: &str) -> Vec<Event> {
+        self.0.decode_artifact(line)
+    }
+
+    /// Folds a stored transcript and then each stored artifact line by line, exactly as the
+    /// runner folds a live attempt.
+    pub fn replay(self, transcript: &str, artifacts: &[&str]) -> Fold {
         let mut fold = Fold::default();
-        for line in transcript.lines() {
-            for event in self.decode(line) {
-                fold.push(event);
-            }
-        }
+        let events = transcript.lines().flat_map(|line| self.decode(line));
+        let artifact_events = artifacts
+            .iter()
+            .flat_map(|artifact| artifact.lines())
+            .flat_map(|line| self.decode_artifact(line));
+        events
+            .chain(artifact_events)
+            .for_each(|event| fold.push(event));
         fold
     }
 }
@@ -322,6 +343,15 @@ mod tests {
             );
         }
         assert!(Harness::named(&"gemini-cli".parse().unwrap()).is_none());
+    }
+
+    #[test]
+    fn every_artifact_pattern_is_a_glob() {
+        for harness in Harness::all() {
+            for pattern in harness.artifacts() {
+                assert!(globset::Glob::new(pattern).is_ok(), "{pattern}");
+            }
+        }
     }
 
     #[test]

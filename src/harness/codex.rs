@@ -1,9 +1,11 @@
-//! Codex, run headless as `codex exec --json` with the prompt on stdin.
+//! Codex, run headless as `codex exec --json` with the prompt on stdin. Its quota is read
+//! afterwards from the session rollout it writes under `CODEX_HOME`.
 use super::{
     CredentialMaterial, Driver, Event, Granularity, HomeFile, Launch, LaunchRequest, TokenUsage,
     UNPARSABLE, UsageSample, mentions, plain, utf8,
 };
 use crate::id::{Effort, HarnessVersion};
+use chrono::DateTime;
 use eyre::{Result, bail, eyre};
 use serde::Deserialize;
 use std::path::Path;
@@ -41,7 +43,7 @@ impl Driver for Codex {
     }
 
     fn parser_version(&self) -> u32 {
-        1
+        2
     }
 
     fn granularity(&self) -> Granularity {
@@ -75,7 +77,6 @@ impl Driver for Codex {
             "exec",
             "--json",
             "--skip-git-repo-check",
-            "--ephemeral",
             "--dangerously-bypass-approvals-and-sandbox",
             "-m",
             req.system.api_model(),
@@ -113,6 +114,27 @@ impl Driver for Codex {
 
     fn diagnose_exit(&self, stderr_tail: &str) -> Option<Event> {
         mentions(stderr_tail, USAGE_LIMIT).then_some(Event::RateLimited { resets_at: None })
+    }
+
+    fn artifacts(&self) -> &'static [&'static str] {
+        &[".codex/sessions/**/rollout-*.jsonl"]
+    }
+
+    fn decode_artifact(&self, line: &str) -> Vec<Event> {
+        let Ok(RolloutLine { payload }) = serde_json::from_str(line) else {
+            return Vec::new();
+        };
+        match payload {
+            RolloutPayload::Known(RolloutEvent::TokenCount { rate_limits }) => {
+                rate_limits.map_or_else(Vec::new, RawRateLimits::events)
+            }
+            // A token count that no longer parses is named, so a format change cannot silently
+            // stop the quota being read.
+            RolloutPayload::Other { kind } if kind == "token_count" => {
+                vec![Event::Unrecognised(kind)]
+            }
+            RolloutPayload::Other { .. } => Vec::new(),
+        }
     }
 }
 
@@ -159,6 +181,69 @@ struct RawUsage {
 #[derive(Deserialize)]
 struct RawError {
     message: String,
+}
+
+#[derive(Deserialize)]
+struct RolloutLine {
+    payload: RolloutPayload,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum RolloutPayload {
+    Known(RolloutEvent),
+    Other {
+        #[serde(rename = "type")]
+        kind: String,
+    },
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum RolloutEvent {
+    TokenCount { rate_limits: Option<RawRateLimits> },
+}
+
+#[derive(Deserialize)]
+struct RawRateLimits {
+    primary: Option<RawWindow>,
+    secondary: Option<RawWindow>,
+    rate_limit_reached_type: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct RawWindow {
+    used_percent: f64,
+    window_minutes: u32,
+    resets_at: Option<i64>,
+}
+
+impl RawRateLimits {
+    fn events(self) -> Vec<Event> {
+        let allowed = self.rate_limit_reached_type.is_none();
+        [self.primary, self.secondary]
+            .into_iter()
+            .flatten()
+            .map(|window| Event::Quota {
+                window: window_name(window.window_minutes),
+                utilization: window.used_percent / 100.0,
+                resets_at: window
+                    .resets_at
+                    .and_then(|seconds| DateTime::from_timestamp(seconds, 0)),
+                allowed,
+            })
+            .collect()
+    }
+}
+
+/// Names a window by its length, because which window Codex calls primary depends on the plan.
+fn window_name(minutes: u32) -> String {
+    const DAY: u32 = 24 * 60;
+    match minutes {
+        m if m % DAY == 0 => format!("{}d", m / DAY),
+        m if m % 60 == 0 => format!("{}h", m / 60),
+        m => format!("{m}m"),
+    }
 }
 
 impl Known {
@@ -218,7 +303,7 @@ impl RawUsage {
 mod tests {
     use super::*;
     use crate::{
-        harness::{AgentOutcome, Ending, Exit, Fold, Harness, ProcessEnd},
+        harness::{AgentOutcome, Ending, Exit, Fold, Harness, ProcessEnd, QuotaSpan},
         secret::{EnvValue, Secret},
         testing::{self, id},
     };
@@ -237,7 +322,7 @@ mod tests {
 
     fn outcome(name: &str) -> AgentOutcome {
         match harness()
-            .replay(&transcript(name))
+            .replay(&transcript(name), &[])
             .finish(ProcessEnd::Exited)
         {
             Ending::Finished(outcome) => outcome,
@@ -269,7 +354,6 @@ mod tests {
                 "exec",
                 "--json",
                 "--skip-git-repo-check",
-                "--ephemeral",
                 "--dangerously-bypass-approvals-and-sandbox",
                 "-m",
                 "gpt-luna",
@@ -449,5 +533,101 @@ mod tests {
         let diagnosis = harness().diagnose_exit("Error: You've hit your usage limit.\n");
         assert_eq!(diagnosis, Some(Event::RateLimited { resets_at: None }));
         assert_eq!(harness().diagnose_exit("Error: bad config\n"), None);
+    }
+
+    fn token_count(rate_limits: &str) -> String {
+        format!(
+            r#"{{"timestamp":"2026-11-04T01:13:05.786Z","type":"event_msg","payload":{{"type":"token_count","info":null,"rate_limits":{rate_limits}}}}}"#
+        )
+    }
+
+    #[test]
+    fn the_rollout_is_where_codex_writes_its_session() {
+        let [pattern] = harness().artifacts() else {
+            panic!("expected one artifact, got {:?}", harness().artifacts());
+        };
+        let glob = globset::Glob::new(pattern).unwrap().compile_matcher();
+        assert!(glob.is_match(
+            ".codex/sessions/2026/11/04/rollout-2026-11-04T01-13-04-019a4c5e-0000-7000-8000-000000000000.jsonl"
+        ));
+        assert!(!glob.is_match(".codex/auth.json"));
+    }
+
+    #[test]
+    fn a_luna_rollout_reports_the_weekly_quota_and_nothing_else() {
+        let events: Vec<Event> = transcript("luna-low-rollout.jsonl")
+            .lines()
+            .flat_map(|line| harness().decode_artifact(line))
+            .collect();
+        assert_eq!(
+            events,
+            [Event::Quota {
+                window: "7d".into(),
+                utilization: 0.59,
+                resets_at: DateTime::from_timestamp(1_793_775_613, 0),
+                allowed: true,
+            }]
+        );
+    }
+
+    #[test]
+    fn a_reached_limit_disallows_every_window_named_by_its_length() {
+        let line = token_count(
+            r#"{"limit_id":"codex","primary":{"used_percent":100.0,"window_minutes":300,"resets_at":1793762400},"secondary":{"used_percent":72.5,"window_minutes":10080,"resets_at":null},"credits":null,"plan_type":"plus","rate_limit_reached_type":"primary"}"#,
+        );
+        assert_eq!(
+            harness().decode_artifact(&line),
+            [
+                Event::Quota {
+                    window: "5h".into(),
+                    utilization: 1.0,
+                    resets_at: DateTime::from_timestamp(1_793_762_400, 0),
+                    allowed: false,
+                },
+                Event::Quota {
+                    window: "7d".into(),
+                    utilization: 0.725,
+                    resets_at: None,
+                    allowed: false,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn a_token_count_without_rate_limits_says_nothing_but_a_changed_one_is_named() {
+        assert_eq!(harness().decode_artifact(&token_count("null")), []);
+        assert_eq!(
+            harness().decode_artifact(&token_count(r#"{"primary":{"used_percent":"59"}}"#)),
+            [Event::Unrecognised("token_count".into())]
+        );
+        assert_eq!(harness().decode_artifact("not json"), []);
+    }
+
+    #[test]
+    fn replay_folds_the_rollout_quota_into_the_outcome() {
+        let rollout = transcript("luna-low-rollout.jsonl");
+        let later = token_count(
+            r#"{"primary":{"used_percent":61.0,"window_minutes":10080,"resets_at":1793775613},"secondary":null,"rate_limit_reached_type":null}"#,
+        );
+        let ending = harness()
+            .replay(&transcript("luna-none-success.jsonl"), &[&rollout, &later])
+            .finish(ProcessEnd::Exited);
+        let Ending::Finished(outcome) = ending else {
+            panic!("expected a finished attempt, got {ending:?}");
+        };
+        assert_eq!(outcome.exit, Exit::Completed);
+        assert_eq!(
+            outcome.quota,
+            [(
+                "7d".to_owned(),
+                QuotaSpan {
+                    first: 0.59,
+                    last: 0.61
+                }
+            )]
+            .into()
+        );
+        assert!(outcome.unrecognised.is_empty());
     }
 }

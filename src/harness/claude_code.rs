@@ -385,7 +385,7 @@ mod tests {
     }
 
     fn replay(name: &str, end: ProcessEnd) -> Ending {
-        harness().replay(&transcript(name)).finish(end)
+        harness().replay(&transcript(name), &[]).finish(end)
     }
 
     fn outcome(name: &str) -> AgentOutcome {

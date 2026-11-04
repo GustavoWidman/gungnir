@@ -122,6 +122,8 @@ trait Driver: Sync {
     fn launch(&self, req: &LaunchRequest<'_>) -> Result<Launch>;   // pure
     fn decode(&self, line: &str) -> Vec<Event>;                    // pure, one stdout line
     fn diagnose_exit(&self, stderr_tail: &str) -> Option<Event> { None }
+    fn artifacts(&self) -> &'static [&'static str] { &[] }         // globs under the isolated home
+    fn decode_artifact(&self, line: &str) -> Vec<Event> { vec![] } // pure, one artifact line
 }
 
 static DRIVERS: &[&dyn Driver] = &[&ClaudeCode, &Codex];
@@ -143,7 +145,7 @@ enum Ending {
 }
 ```
 
-The runner feeds stdout lines to `decode` and `Fold` live, so it can kill the process on a rate limit or after an idle timeout. The same decoder and fold replay any stored transcript. A run record stores the `parser_version` that produced its outcome. When a driver's version increases, `run` re-derives every committed outcome from its transcript without calling a model. If the new parser finds a rate limit the old one missed, the attempt is demoted to discarded and the trial is pending again.
+The runner feeds stdout lines to `decode` and `Fold` live, so it can kill the process on a rate limit or after an idle timeout. Some CLIs report more in files they leave in the isolated home than on stdout. After the process exits, the runner copies every file matching one of the driver's `artifacts` patterns into the attempt directory, redacts it, and feeds its lines to `decode_artifact` and the same `Fold` before `finish`. Codex runs without `--ephemeral` for this reason: its session rollout under `CODEX_HOME/sessions/` carries the account's rate limits, which `exec --json` never prints, and each window becomes a `Quota` event named by its length (`5h`, `7d`), since which window Codex calls primary depends on the plan. The same decoders and fold replay any stored transcript with its artifacts. A run record stores the `parser_version` that produced its outcome. When a driver's version increases, `run` re-derives every committed outcome from its transcript without calling a model. If the new parser finds a rate limit the old one missed, the attempt is demoted to discarded and the trial is pending again.
 
 Adding a harness is one file implementing `Driver`, one line in `DRIVERS`, and one `[harnesses.<name>]` table in `gungnir.toml`. Adding a backend or model for an existing harness (DeepSeek through Claude Code) is catalog data only.
 
