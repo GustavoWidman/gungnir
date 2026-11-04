@@ -9,6 +9,7 @@ pub mod grade;
 pub mod harness;
 pub mod id;
 pub mod language;
+pub mod measure;
 pub mod provenance;
 pub mod sandbox;
 pub mod scenario;
