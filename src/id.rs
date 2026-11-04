@@ -91,6 +91,10 @@ impl Rep {
         NonZeroU32::new(number).map(Self)
     }
 
+    pub fn get(self) -> u32 {
+        self.0.get()
+    }
+
     /// `r1` through `r<count>`, in order.
     pub fn up_to(count: NonZeroU32) -> impl Iterator<Item = Self> {
         std::iter::successors(Some(Self(NonZeroU32::MIN)), |rep| {
@@ -113,6 +117,10 @@ pub struct AttemptNo(NonZeroU32);
 
 impl AttemptNo {
     pub const FIRST: Self = Self(NonZeroU32::MIN);
+
+    pub fn get(self) -> u32 {
+        self.0.get()
+    }
 
     pub fn next(self) -> Self {
         Self(self.0.saturating_add(1))
@@ -149,6 +157,11 @@ impl Effort {
             Self::Xhigh => "xhigh",
             Self::Max => "max",
         }
+    }
+
+    /// The position in the order, from 0 for `None` to 6 for `Max`.
+    pub fn rank(self) -> u8 {
+        self as u8
     }
 }
 
@@ -204,6 +217,7 @@ mod tests {
             .map(|rep| rep.to_string())
             .collect();
         assert_eq!(reps, ["r1", "r2", "r3"]);
+        assert_eq!(Rep::new(3).map(Rep::get), Some(3));
         assert_eq!(Rep::new(0), None);
     }
 
@@ -211,6 +225,7 @@ mod tests {
     fn attempts_count_from_one() {
         assert_eq!(AttemptNo::FIRST.to_string(), "1");
         assert_eq!(AttemptNo::FIRST.next().to_string(), "2");
+        assert_eq!(AttemptNo::FIRST.next().get(), 2);
     }
 
     #[test]
@@ -218,8 +233,9 @@ mod tests {
         let names = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
         let efforts: Vec<Effort> = names.iter().map(|name| name.parse().unwrap()).collect();
         assert!(efforts.is_sorted());
-        for (effort, name) in efforts.iter().zip(names) {
+        for ((rank, effort), name) in efforts.iter().enumerate().zip(names) {
             assert_eq!(effort.to_string(), name);
+            assert_eq!(usize::from(effort.rank()), rank);
         }
         assert!("extra-high".parse::<Effort>().is_err());
     }

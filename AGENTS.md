@@ -27,7 +27,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 
 - `src/main.rs` parses the command line and calls `Cli::run`.
 - `src/lib.rs` declares the modules in sorted order.
-- `src/cli.rs` defines the clap commands. `plan` loads an experiment and prints its trial matrix. `check` grades every reference solution and regenerates missing workloads. `run` runs an experiment's pending trials with progress logged to stderr through `tracing`, and fails while any trial is still pending. `grade` grades the committed runs that lack a current grade. `status` counts each system's trials by stage and its attempts by fate.
+- `src/cli.rs` defines the clap commands. `plan` loads an experiment and prints its trial matrix. `check` grades every reference solution and regenerates missing workloads. `run` runs an experiment's pending trials with progress logged to stderr through `tracing`, and fails while any trial is still pending. `grade` grades the committed runs that lack a current grade. `status` counts each system's trials by stage and its attempts by fate. `report` folds the committed records of one or more experiments into CSV tables in `--out`, `runs/report/` by default.
 - `src/id.rs` holds the identifiers every module shares. The `slug!` macro makes the validated newtypes `LanguageId`, `ScenarioId`, `ModelId`, `BackendId`, `HarnessName`, `HarnessVersion`, `CaseId` and `WorkloadId`. `Rep`, `AttemptNo` and the rank-ordered `Effort` enum live there too.
 - `src/catalog.rs` loads `gungnir.toml` into `Catalog`, `Backend`, `Credential`, `Model` and dated price tiers. `Catalog::system` is the only constructor of `System`, and `System::id` derives the `SystemId`.
 - `src/language.rs` loads `languages/` into `Language` profiles. `Language::prompt` renders the agent's prompt from a `Brief`.
@@ -47,9 +47,10 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/workload.rs` regenerates a scenario's workloads in a sandbox and verifies them against `workloads.sha256`.
 - `src/run/` is the run phase. `Task` is one trial as an agent sees it, with a `Brief` and never a `Scenario`. `records.rs` holds `RunInputs`, `RunRecord`, `DiscardedAttempt` and the stored form of the agent's outcome. `workspace.rs` scaffolds the agent's starting workspace and keeps it, without build output or secrets, for the run directory. `attempt.rs` makes one attempt: an isolated home, an egress proxy, the sandbox, the transcript streamed, redacted and folded live, and then the run committed or the attempt discarded. `schedule.rs` runs pending trials in one lane per backend behind the pure `Gate` in `gate.rs`, and `reparse.rs` re-derives committed outcomes for a newer parser. `run::run` is the phase: pins, session, references, staleness, reparsing, then the lanes. Tests play agents through the `Agent` backend in `fixture.rs`.
 - `src/lifecycle.rs` derives a trial's `Stage` and its first stale phase from the committed records, comparing each record's inputs with `Current`, and the `Fate` of each attempt: committed, discarded or interrupted.
+- `src/report/` is the report. `report::report` reads every trial of the given experiments through `Lifecycle`, replays what interrupted attempts spent with `run::replay_usage`, and replaces the output directory, writing `manifest.json` last. `tables.rs` holds one row struct per table and `Tables::add`, the pure fold of one trial's records into rows. `csv.rs` holds the `row!` macro, whose fields name a row's columns, and the encoder. `price.rs` prices each usage sample from the dated price table in exact picodollars.
 - `src/testing.rs` holds the fixture writers the unit tests share. It compiles only for tests.
 
-The contract also specifies parts that are not in the crate yet: the measure phase over trials, and the report. Give each its own module and update this map when it lands.
+The contract also specifies a part that is not in the crate yet: the measure phase over trials. Give it its own module and update this map when it lands.
 
 ## How `gungnir plan` loads an experiment
 
@@ -65,6 +66,13 @@ The contract also specifies parts that are not in the crate yet: the measure pha
 3. It judges every requested reference into `references/` and refuses unless all pass.
 4. `pending_trials` reads each trial's `Lifecycle`, refuses stale committed runs by name, and reparses runs an older parser folded. A run whose transcript turns out to be rate limited is withdrawn and its trial is pending again.
 5. `schedule` starts the pending trials in one lane per backend behind its `Gate`, and `Rig::attempt` makes each attempt.
+
+## How `gungnir report` writes a report
+
+1. `cli` loads every experiment and starts a `Session` for the report's own provenance. `report::report` refuses an experiment given twice.
+2. `read` derives each trial's `Lifecycle`, reads the discard record of each discarded attempt, and replays the transcript of each interrupted one.
+3. `Tables::add` folds each trial into rows, pricing every usage sample with the experiment's catalog at the report's price date.
+4. `publish` writes the tables into `<out>.partial`, writes `manifest.json` last, and swaps the directory in for `<out>`.
 
 ## Invariants to keep
 

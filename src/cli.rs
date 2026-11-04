@@ -9,6 +9,7 @@ use crate::{
     lifecycle::{self, Current, Fate, Lifecycle},
     measure::{self, Machine, MeasureInputs, MeasureRecord, Program, Settings, Spread, Summary},
     provenance::Session,
+    report,
     run::{self, Ceiling, Guard, Host, Tally},
     sandbox::{Backend, Bubblewrap},
     scenario::Scenario,
@@ -17,7 +18,7 @@ use crate::{
     toolchains::Toolchains,
     workload::{self, Ensured},
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use clap::{Args, Parser, Subcommand};
 use eyre::{Result, WrapErr, bail, ensure, eyre};
 use futures_util::{StreamExt, stream};
@@ -104,6 +105,20 @@ enum Command {
         /// The experiment file, such as experiments/smoke.toml.
         experiment: PathBuf,
     },
+    /// Fold the committed records of experiments into CSV tables for analysis, replacing the
+    /// output directory as a whole and writing its manifest.json last.
+    Report {
+        /// The experiment files, such as experiments/pilot.toml.
+        #[arg(required = true)]
+        experiments: Vec<PathBuf>,
+        /// The directory to replace with the report.
+        #[arg(long, value_name = "DIR", default_value = "runs/report")]
+        out: PathBuf,
+        /// Price tokens at the list prices in effect on this date, as YYYY-MM-DD, rather than
+        /// today's in UTC.
+        #[arg(long, value_name = "DATE")]
+        prices: Option<NaiveDate>,
+    },
 }
 
 impl Cli {
@@ -139,7 +154,45 @@ impl Cli {
                 print!("{}", StatusTable(&status(&experiment, &toolchains)?));
                 Ok(())
             }
+            Command::Report {
+                experiments,
+                out,
+                prices,
+            } => write_report(&experiments, &out, prices),
         }
+    }
+}
+
+/// Writes the report of `paths` into `out` and prints each table's row count.
+fn write_report(paths: &[PathBuf], out: &Path, prices: Option<NaiveDate>) -> Result<()> {
+    let experiments = paths
+        .iter()
+        .map(|path| Experiment::load(path))
+        .collect::<Result<Vec<_>>>()?;
+    let toolchains = Toolchains::from_env()?;
+    let first = paths
+        .first()
+        .ok_or_else(|| eyre!("no experiment to report"))?;
+    let session = Session::start(&repository_of(first)?)?;
+    let prices = prices.unwrap_or_else(|| Utc::now().date_naive());
+    let manifest = report::report(&experiments, &toolchains, prices, session, out)?;
+    print!("{}", ReportTable(manifest.tables()));
+    println!("wrote {} at the list prices of {prices}", out.display());
+    Ok(())
+}
+
+/// Each table of a report with its row count.
+struct ReportTable<'a>(&'a BTreeMap<&'static str, usize>);
+
+impl fmt::Display for ReportTable<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut rows = vec![["table".to_owned(), "rows".to_owned()]];
+        rows.extend(
+            self.0
+                .iter()
+                .map(|(table, count)| [(*table).to_owned(), count.to_string()]),
+        );
+        write_rows(f, &rows)
     }
 }
 
