@@ -41,6 +41,14 @@ impl Trial {
         .flatten()
     }
 
+    /// The grade, when it is current. The lifecycle compares a grade's inputs only once the run
+    /// is current, so beside a stale run it is not known to be.
+    fn current_grade(&self) -> Option<&GradeRecord> {
+        self.grade
+            .as_ref()
+            .filter(|_| !matches!(self.stale, Some(Phase::Run | Phase::Grade)))
+    }
+
     /// The measurement, when it is current. The lifecycle compares a measurement's inputs only
     /// once the run and grade are current, so beside a stale one it is not known to be.
     fn current_measure(&self) -> Option<&MeasureRecord> {
@@ -288,7 +296,7 @@ impl Tables {
                 first_used_fraction: quota.first,
                 last_used_fraction: quota.last,
             }));
-        if let Some(grade) = &trial.grade {
+        if let Some(grade) = trial.current_grade() {
             self.add_grade(&key, grade);
         }
         if let Some(measure) = trial.current_measure() {

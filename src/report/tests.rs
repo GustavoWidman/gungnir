@@ -481,3 +481,32 @@ fn an_experiment_given_twice_is_an_error() {
     let err = report(&experiments, &repo.toolchains, day(), session, out.path()).unwrap_err();
     assert!(err.to_string().contains("fixture"), "{err}");
 }
+
+#[tokio::test]
+async fn only_a_current_grade_is_tabled() {
+    let repo = Repo::new();
+    let experiment = repo.experiment();
+    let [opus, luna] = ["opus", "luna"].map(|model| fixture::trial(&experiment, model));
+    for trial in [&opus, &luna] {
+        fixture::commit_run(&repo, trial, &[("main.py", "print(input())\n")]);
+        fixture::commit_grade(&repo, trial).await;
+    }
+    let luna_workspace = experiment.results().trial(&luna).final_workspace();
+    write(&luna_workspace, "main.py", "print(input())  # edited\n");
+    let out = TempDir::new().unwrap();
+
+    write_report(&repo, out.path()).unwrap();
+
+    let trials = table(out.path(), "trials.csv");
+    assert_eq!(
+        cells(&trials, &["model", "stage", "stale_phase", "verdict"]),
+        [
+            ["opus", "graded", "", "pass"],
+            ["luna", "graded", "grade", "pass"]
+        ]
+    );
+    let opus_id = opus.system.id().to_string();
+    let cases = table(out.path(), "cases.csv");
+    assert!(!cases.is_empty());
+    assert!(cases.iter().all(|row| row["system"] == opus_id));
+}
