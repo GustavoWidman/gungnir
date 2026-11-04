@@ -1,0 +1,40 @@
+39
+2 OPEN q1 frank-1
+4 OPEN m2 acct-2
+5 OPEN u3 payroll-3
+7 TRANSFER r4 frank-1 frank-1 1
+8 DEPOSIT w5 payroll-3 3
+9 DEPOSIT e6 payroll-3 10
+9 RELEASE j7 none7147
+10 STATEMENT frank-1 1 5
+11 DEPOSIT g8 ghost23 40
+13 BALANCE acct-2
+14 TRANSFER h9 payroll-3 frank-1 16
+16 DEPOSIT y10 payroll-3 33
+18 BALANCE payroll-3
+19 DEPOSIT q11 payroll-3 27
+20 DEPOSIT w12 acct-2 8
+21 WITHDRAW x13 frank-1 1
+22 WITHDRAW x13 frank-1 1
+23 CAPTURE m14 y10 1
+23 DEPOSIT d15 acct-2 31
+24 TRANSFER c16 frank-1 frank-1 1
+25 OPEN h17 acct-4
+27 HOLD p18 payroll-3 73
+28 OPEN s19 acct-2
+30 DEPOSIT h20 acct-4 17
+30 TRANSFER j21 acct-4 acct-4 17
+32 DEPOSIT n22 ghost69 36
+32 DEPOSIT a23 acct-4 49
+34 DEPOSIT e24 acct-4 34
+34 BALANCEAT frank-1 21
+34 BALANCE acct-4
+34 TRANSFER t25 payroll-3 acct-4 1
+35 TRANSFER f26 acct-2 payroll-3 23
+35 DEPOSIT r27 acct-4 50
+37 BALANCEAT acct-4 27
+37 CAPTURE z28 p18 16
+38 DEPOSIT y29 acct-4 29
+39 BALANCE payroll-3
+40 TRANSFER c16 frank-1 frank-1 1
+42 WITHDRAW m30 payroll-3 86

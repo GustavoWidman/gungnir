@@ -1,0 +1,14 @@
+13
+1 OPEN alice alice
+2 OPEN bob bob
+3 DEPOSIT carol alice 100
+4 OPEN dave carol
+5 TRANSFER bob alice carol 40
+6 REVERSE x1 alice
+7 REVERSE x2 carol
+8 REVERSE x3 bob
+9 RELEASE x4 alice
+10 BALANCE alice
+10 BALANCE carol
+10 BALANCE bob
+10 BALANCE dave

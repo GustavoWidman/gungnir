@@ -1,0 +1,12 @@
+11
+1 OPEN r1 alice
+1 OPEN r2 bob
+2 DEPOSIT d1 alice 1000
+3 HOLD h1 alice 700
+4 WITHDRAW w1 alice 400
+5 LIMIT l1 alice 100
+6 WITHDRAW w2 alice 400
+7 TRANSFER t1 alice bob 1
+8 CAPTURE c1 h1 500
+9 BALANCE alice
+9 STATEMENT alice 2 8

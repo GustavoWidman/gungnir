@@ -1,0 +1,11 @@
+10
+1 OPEN o1 a
+2 DEPOSIT d1 a 10
+3 TRANSFER t1 a a 5
+4 TRANSFER t2 ghost ghost 5
+5 CLOSE c1 b
+6 OPEN o2 b
+7 CLOSE c2 b
+8 TRANSFER t3 b b 5
+9 TRANSFER t4 a a 500
+10 BALANCE a

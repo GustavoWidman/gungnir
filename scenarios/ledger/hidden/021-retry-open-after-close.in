@@ -1,0 +1,9 @@
+8
+1 OPEN o1 a
+2 CLOSE c1 a
+3 OPEN o1 a
+4 OPEN o2 a
+5 DEPOSIT d1 a 5
+6 CLOSE c1 a
+7 CLOSE c2 a
+8 BALANCE a

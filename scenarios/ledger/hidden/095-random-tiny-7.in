@@ -1,0 +1,25 @@
+24
+2 OPEN j1 carol_1
+3 OPEN t2 alice_2
+5 CAPTURE x3 j1 15
+6 LIMIT k4 carol_1 3
+8 DEPOSIT j5 carol_1 18
+9 LIMIT n6 carol_1 20
+10 WITHDRAW u7 carol_1 42
+11 DEPOSIT u8 carol_1 44
+13 STATEMENT ghost39 6 8
+15 DEPOSIT a9 alice_2 48
+16 WITHDRAW d10 alice_2 9
+16 TRANSFER x11 carol_1 carol_1 82
+17 LIMIT n12 carol_1 0
+18 BALANCE carol_1
+19 DEPOSIT g13 alice_2 1
+19 TRANSFER d14 carol_1 alice_2 47
+20 DEPOSIT h15 ghost12 45
+20 DEPOSIT v16 carol_1 46
+20 BALANCEAT alice_2 17
+21 WITHDRAW m17 alice_2 55
+22 LIMIT f18 alice_2 30
+23 TRANSFER j19 alice_2 carol_1 4
+25 RELEASE u20 k4
+25 REVERSE u21 j5

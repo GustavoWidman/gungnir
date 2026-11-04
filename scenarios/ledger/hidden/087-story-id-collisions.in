@@ -1,0 +1,19 @@
+18
+1 OPEN acct acct
+2 OPEN o2 acct
+3 DEPOSIT o2 acct 5
+4 DEPOSIT dep acct 5
+5 HOLD dep acct 5
+6 HOLD hold acct 3
+7 RELEASE dep hold
+8 RELEASE rel hold
+9 RELEASE rel hold
+10 REVERSE rev rel
+11 REVERSE rev2 dep
+12 REVERSE rev2 dep
+13 REVERSE rev3 o2
+14 REVERSE self self
+15 REVERSE self self
+16 RELEASE own own
+17 CAPTURE mine mine 1
+18 BALANCE acct

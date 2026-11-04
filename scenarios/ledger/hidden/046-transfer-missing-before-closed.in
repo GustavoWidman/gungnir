@@ -1,0 +1,10 @@
+9
+1 OPEN o1 a
+2 OPEN o2 c
+3 CLOSE c1 c
+4 TRANSFER t1 c ghost 5
+5 TRANSFER t2 ghost c 5
+6 TRANSFER t3 a ghost 5
+7 TRANSFER t4 ghost a 5
+8 TRANSFER t5 a c 5
+9 TRANSFER t6 c a 5

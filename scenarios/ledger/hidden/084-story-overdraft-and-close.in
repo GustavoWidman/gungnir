@@ -1,0 +1,18 @@
+17
+1 OPEN o1 main
+1 OPEN o2 side
+2 LIMIT l1 main 500
+3 TRANSFER t1 main side 500
+4 TRANSFER t2 main side 1
+5 CLOSE c1 main
+6 LIMIT l2 main 0
+7 TRANSFER t3 side main 500
+8 LIMIT l2 main 0
+9 LIMIT l3 main 0
+10 CLOSE c2 main
+11 CLOSE c3 side
+12 REVERSE r1 t3
+13 REVERSE r2 t1
+14 BALANCE main
+14 BALANCE side
+14 STATEMENT main 0 14

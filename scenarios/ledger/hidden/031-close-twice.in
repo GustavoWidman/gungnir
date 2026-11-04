@@ -1,0 +1,5 @@
+4
+1 OPEN o1 a
+2 CLOSE c1 a
+3 CLOSE c2 a
+4 CLOSE c3 ghost

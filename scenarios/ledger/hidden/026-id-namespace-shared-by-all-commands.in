@@ -1,0 +1,10 @@
+9
+1 OPEN x a
+2 DEPOSIT x a 5
+3 LIMIT x a 5
+4 HOLD h a 5
+5 RELEASE h h
+6 CAPTURE h h 5
+7 REVERSE h h
+8 CLOSE h a
+9 BALANCE a

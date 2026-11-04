@@ -1,0 +1,8 @@
+7
+1 OPEN o1 real
+2 BALANCE ghost
+3 BALANCEAT ghost 2
+4 STATEMENT ghost 0 5
+5 BALANCE real
+6 BALANCEAT real 6
+7 STATEMENT real 0 7
