@@ -33,6 +33,13 @@
           pkgs = import nixpkgs {
             inherit system;
             config.allowUnfreePredicate = pkg: lib.getName pkg == "claude-code";
+            overlays = [
+              (_: _: {
+                # The newest nightly in the fenix lock, with rustc, cargo and rust-std, for the
+                # benchmarked rust language.
+                rust-nightly = fenix.packages.${system}.minimal.toolchain;
+              })
+            ];
           };
 
           rust = fenix.packages.${system}.fromToolchainFile {

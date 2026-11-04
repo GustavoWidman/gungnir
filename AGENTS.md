@@ -11,7 +11,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 ## Repository map
 
 - `Cargo.toml` and `Cargo.lock` hold the package metadata and the locked dependencies.
-- `flake.nix` and `flake.lock` define the dev shell, the crane package wrapped with `GUNGNIR_TOOLCHAINS`, the toolchains package, and the clippy, rustfmt and package checks.
+- `flake.nix` and `flake.lock` define the dev shell, the crane package wrapped with `GUNGNIR_TOOLCHAINS`, the toolchains package, and the clippy, rustfmt and package checks. An overlay adds `rust-nightly`, the newest nightly in the fenix lock with rustc, cargo and rust-std, which the rust language builds with; `nix flake update fenix` moves it.
 - `nix/toolchains.nix` builds the sandbox environments (`base/`, `language/<id>/`, `harness/<name>/`, each with `bin/` and a `closure` file) from `gungnir.toml` and `languages/*/language.toml`. A `language.toml` names nixpkgs attributes, plus the packages nixpkgs lacks, which `toolchains.nix` lists under `local`.
 - `nix/typescript-bun.nix` builds `typescript-bun`, a `tsc` that reads Bun's type declarations from the store, so the TypeScript sandbox type-checks offline.
 - `rust-toolchain.toml` pins the nightly toolchain and its components.
