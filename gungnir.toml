@@ -1,4 +1,4 @@
-# The catalog: sandbox base, harness packages, backends and models.
+# The catalog: sandbox base, measurement tools, harness packages, backends and models.
 # Adding a model is one [[models]] entry. Adding a backend for an existing harness is one
 # [backends.<id>] table. Prices are USD per million tokens, checked on the vendor pages on
 # 2026-11-03 (paper/notes/facts-models-tooling.md). A rate the vendor page does not list is
@@ -6,6 +6,10 @@
 
 [sandbox]
 packages = ["bashInteractive", "coreutils", "diffutils", "findutils", "gawk", "gnugrep", "gnused", "which", "socat", "cacert"]
+
+# Bound beside a language only in the sandboxes that time programs.
+[measure]
+packages = ["hyperfine"]
 
 [harnesses.claude-code]
 package = "claude-code"

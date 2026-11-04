@@ -107,11 +107,12 @@ impl Toolchain {
     }
 }
 
-/// Every environment built for this checkout: the sandbox base, one per language, one per
-/// harness.
+/// Every environment built for this checkout: the sandbox base, the measurement tools, one per
+/// language, one per harness.
 #[derive(Clone, Debug)]
 pub struct Toolchains {
     base: Toolchain,
+    measure: Toolchain,
     languages: BTreeMap<String, Toolchain>,
     harnesses: BTreeMap<String, Toolchain>,
 }
@@ -127,6 +128,7 @@ impl Toolchains {
     pub fn load(dir: &Path) -> Result<Self> {
         Ok(Self {
             base: Toolchain::load(&dir.join("base"))?,
+            measure: Toolchain::load(&dir.join("measure"))?,
             languages: load_all(&dir.join("language"))?,
             harnesses: load_all(&dir.join("harness"))?,
         })
@@ -134,6 +136,11 @@ impl Toolchains {
 
     pub fn base(&self) -> &Toolchain {
         &self.base
+    }
+
+    /// The tools that time programs, bound only into measurement sandboxes.
+    pub fn measure(&self) -> &Toolchain {
+        &self.measure
     }
 
     pub fn language(&self, id: &str) -> Result<&Toolchain> {
@@ -193,6 +200,11 @@ mod tests {
             &["/nix/store/2222-gungnir-base", libc],
         )?;
         write_env(
+            &dir.path().join("measure"),
+            "8888-gungnir-measure",
+            &["/nix/store/8888-gungnir-measure", libc],
+        )?;
+        write_env(
             &dir.path().join("language/zig"),
             "3333-gungnir-language-zig",
             &["/nix/store/3333-gungnir-language-zig", libc],
@@ -213,6 +225,10 @@ mod tests {
         assert_eq!(
             toolchains.base().bin(),
             Path::new("/nix/store/2222-gungnir-base/bin")
+        );
+        assert_eq!(
+            toolchains.measure().bin(),
+            Path::new("/nix/store/8888-gungnir-measure/bin")
         );
         let zig = toolchains.language("zig")?;
         assert_eq!(

@@ -316,7 +316,8 @@ fn is_env_var(name: &str) -> bool {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawCatalog {
-    sandbox: RawSandbox,
+    sandbox: RawPackages,
+    measure: RawPackages,
     harnesses: BTreeMap<HarnessName, RawHarness>,
     backends: BTreeMap<BackendId, RawBackend>,
     models: Vec<RawModel>,
@@ -324,7 +325,7 @@ struct RawCatalog {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct RawSandbox {
+struct RawPackages {
     packages: Vec<String>,
 }
 
@@ -378,6 +379,10 @@ impl RawCatalog {
         ensure!(
             !self.sandbox.packages.is_empty(),
             "[sandbox] packages is empty"
+        );
+        ensure!(
+            !self.measure.packages.is_empty(),
+            "[measure] packages is empty"
         );
         for (name, harness) in &self.harnesses {
             ensure!(

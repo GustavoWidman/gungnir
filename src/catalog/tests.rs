@@ -6,6 +6,9 @@ const CATALOG: &str = r#"
 [sandbox]
 packages = ["coreutils"]
 
+[measure]
+packages = ["hyperfine"]
+
 [harnesses.claude-code]
 package = "claude-code"
 
@@ -178,6 +181,17 @@ fn systems_need_an_effort_the_harness_can_carry() {
             .system(&id("m"), &id("proxy"), Effort::Low, id("1.0.0"))
             .is_ok()
     );
+}
+
+#[test]
+fn package_lists_must_be_non_empty() {
+    for (table, package) in [("sandbox", "coreutils"), ("measure", "hyperfine")] {
+        rejects(
+            &format!("[{table}]\npackages = [\"{package}\"]"),
+            &format!("[{table}]\npackages = []"),
+            &[&format!("[{table}] packages is empty")],
+        );
+    }
 }
 
 #[test]

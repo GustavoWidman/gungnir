@@ -67,15 +67,16 @@ pub(crate) fn finished(exit: Exit, stdout: &[u8]) -> Finished {
     }
 }
 
-/// Writes a `$GUNGNIR_TOOLCHAINS` layout under `dir` with the base and one environment per
-/// language, and loads it.
+/// Writes a `$GUNGNIR_TOOLCHAINS` layout under `dir` with the base, the measurement tools and
+/// one environment per language, and loads it.
 pub(crate) fn toolchains(dir: &Path, languages: &[&str]) -> Toolchains {
     let base = ("base".to_owned(), "aaaa-gungnir-base".to_owned());
+    let measure = ("measure".to_owned(), "cccc-gungnir-measure".to_owned());
     let languages = languages.iter().map(|language| {
         let env = format!("bbbb-gungnir-language-{language}");
         (format!("language/{language}"), env)
     });
-    for (layout, env) in std::iter::once(base).chain(languages) {
+    for (layout, env) in [base, measure].into_iter().chain(languages) {
         write(
             dir,
             &format!("{layout}/closure"),

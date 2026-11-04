@@ -9,6 +9,9 @@ pub const CATALOG_TOML: &str = r#"
 [sandbox]
 packages = ["coreutils"]
 
+[measure]
+packages = ["hyperfine"]
+
 [harnesses.claude-code]
 package = "claude-code"
 

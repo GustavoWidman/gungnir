@@ -1,6 +1,7 @@
 # Sandbox environments derived from gungnir.toml and languages/<id>/language.toml.
 #
 #   $out/base/{bin,closure}             [sandbox].packages
+#   $out/measure/{bin,closure}          [measure].packages
 #   $out/language/<id>/{bin,closure}    every languages/<id>/language.toml
 #   $out/harness/<name>/{bin,closure}   [harnesses.<name>].package
 #
@@ -31,6 +32,7 @@ let
 
   environments = [
     (environment "base" catalog.sandbox.packages)
+    (environment "measure" catalog.measure.packages)
   ]
   ++ map (
     id: environment "language/${id}" (lib.importTOML (root + "/languages/${id}/language.toml")).packages
