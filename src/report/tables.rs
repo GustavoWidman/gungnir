@@ -8,27 +8,20 @@ use crate::{
     catalog::System,
     grade::{Abnormal, Crash, GradeRecord, Outcome as CaseOutcome, Verdict},
     harness::TokenUsage,
-    id::{AttemptNo, WorkloadId},
-    lifecycle::Fate,
+    id::WorkloadId,
     measure::{self, MeasureRecord, Side, Spread},
     provenance::SessionId,
-    run::{AgentExit, Cut, DiscardedAttempt, ProcessExit, RunRecord, Sample},
+    run::{AgentExit, Cut, ProcessExit, RunRecord},
     trial::{Phase, TrialKey},
 };
 use chrono::{DateTime, Utc};
 use eyre::Result;
-use std::{collections::BTreeMap, time::Duration};
+use std::collections::BTreeMap;
 
-/// One trial as the report reads it: what is committed for it, and the attempts that
-/// committed nothing.
+/// One trial with a committed run, as the report reads it: its records in phase order. A
+/// measurement is read only beside a grade.
 pub struct Trial {
     pub key: TrialKey,
-    pub committed: Option<Committed>,
-    pub overhead: Vec<Overhead>,
-}
-
-/// A trial's committed records, in phase order. A measurement is read only beside a grade.
-pub struct Committed {
     pub run: RunRecord,
     pub grade: Option<GradeRecord>,
     pub measure: Option<MeasureRecord>,
@@ -36,37 +29,16 @@ pub struct Committed {
     pub stale: Option<Phase>,
 }
 
-/// An attempt that committed nothing, whose tokens are overhead.
-pub enum Overhead {
-    /// A rate limit ended it.
-    Discarded {
-        number: AttemptNo,
-        record: DiscardedAttempt,
-    },
-    /// It was interrupted or is still running: what its transcript shows so far.
-    Interrupted {
-        number: AttemptNo,
-        usage: Vec<Sample>,
-    },
-}
-
 impl Trial {
     /// Every session that wrote one of the trial's records.
     pub fn sessions(&self) -> impl Iterator<Item = &SessionId> {
-        let committed = self.committed.iter().flat_map(|committed| {
-            [
-                Some(committed.run.session()),
-                committed.grade.as_ref().map(GradeRecord::session),
-                committed.measure.as_ref().map(MeasureRecord::session),
-            ]
-            .into_iter()
-            .flatten()
-        });
-        let discarded = self.overhead.iter().filter_map(|attempt| match attempt {
-            Overhead::Discarded { record, .. } => Some(record.session()),
-            Overhead::Interrupted { .. } => None,
-        });
-        committed.chain(discarded)
+        [
+            Some(self.run.session()),
+            self.grade.as_ref().map(GradeRecord::session),
+            self.measure.as_ref().map(MeasureRecord::session),
+        ]
+        .into_iter()
+        .flatten()
     }
 }
 
@@ -128,10 +100,6 @@ row! {
         /// `ran`, `graded` or `measured`.
         pub stage: &'static str,
         pub stale_phase: Option<&'static str>,
-        /// The committed attempt.
-        pub attempt: u32,
-        /// Every attempt made, the committed one included.
-        pub attempts: usize,
         pub run_session: String,
         pub started: DateTime<Utc>,
         /// `completed`, `refused`, `errored`, `crashed` or `killed`.
@@ -175,29 +143,9 @@ row! {
 }
 
 row! {
-    /// One launch of an agent, whatever became of it.
-    pub struct AttemptRow {
-        pub key: Key,
-        pub spec: SystemSpec,
-        pub attempt: u32,
-        /// `committed`, `discarded` or `interrupted`.
-        pub fate: &'static str,
-        /// Empty for an interrupted attempt, which has no record.
-        pub session: Option<String>,
-        pub started: Option<DateTime<Utc>>,
-        pub wall_s: Option<f64>,
-        pub samples: usize,
-        pub tokens: TokenColumns,
-        pub cost: CostColumns,
-    }
-}
-
-row! {
-    /// One usage sample of an attempt.
+    /// One usage sample of a trial's run.
     pub struct UsageRow {
         pub key: Key,
-        pub attempt: u32,
-        pub fate: &'static str,
         /// From 1, in the order the CLI first reported each request.
         pub sample: usize,
         pub request: Option<String>,
@@ -285,7 +233,6 @@ row! {
 pub struct Tables {
     trials: Vec<TrialRow>,
     quota: Vec<QuotaRow>,
-    attempts: Vec<AttemptRow>,
     usage: Vec<UsageRow>,
     cases: Vec<CaseRow>,
     functions: Vec<FunctionRow>,
@@ -298,67 +245,15 @@ impl Tables {
     pub fn add(&mut self, experiment: &str, prices: &PriceList<'_>, trial: &Trial) -> Result<()> {
         let key = Key::of(experiment, &trial.key);
         let system = &trial.key.system;
-        let mut attempts: Vec<Spent<'_>> = trial
-            .committed
-            .iter()
-            .map(|committed| Spent::committed(&committed.run))
-            .chain(trial.overhead.iter().map(Spent::overhead))
-            .collect();
-        attempts.sort_by_key(|attempt| attempt.number);
-        let mut committed_spend = None;
-        for attempt in &attempts {
-            let spend = self.add_attempt(&key, system, prices, attempt)?;
-            if attempt.fate == Fate::Committed {
-                committed_spend = Some(spend);
-            }
-        }
-        let (Some(committed), Some((tokens, cost))) = (&trial.committed, committed_spend) else {
-            return Ok(());
-        };
-        self.trials.push(TrialRow::of(
-            &key,
-            system,
-            committed,
-            attempts.len(),
-            tokens,
-            cost,
-        ));
-        let outcome = committed.run.outcome();
-        self.quota
-            .extend(outcome.quota.iter().map(|(window, quota)| QuotaRow {
-                key: key.clone(),
-                window: window.clone(),
-                first_used_fraction: quota.first,
-                last_used_fraction: quota.last,
-            }));
-        if let Some(grade) = &committed.grade {
-            self.add_grade(&key, grade);
-        }
-        if let Some(measure) = &committed.measure {
-            self.add_workloads(&key, measure.workloads());
-        }
-        Ok(())
-    }
-
-    /// Adds the rows of `attempt` and its usage samples, and returns what it spent.
-    fn add_attempt(
-        &mut self,
-        key: &Key,
-        system: &System,
-        prices: &PriceList<'_>,
-        attempt: &Spent<'_>,
-    ) -> Result<(TokenColumns, CostColumns)> {
-        let costs = attempt
+        let outcome = trial.run.outcome();
+        let costs = outcome
             .usage
             .iter()
             .map(|sample| prices.price(system, sample))
             .collect::<Result<Vec<Cost>>>()?;
-        let fate = fate_name(attempt.fate);
-        for (index, (sample, cost)) in attempt.usage.iter().zip(&costs).enumerate() {
+        for (index, (sample, cost)) in outcome.usage.iter().zip(&costs).enumerate() {
             self.usage.push(UsageRow {
                 key: key.clone(),
-                attempt: attempt.number.get(),
-                fate,
                 sample: index + 1,
                 request: sample.request.clone(),
                 model: sample.model.clone(),
@@ -366,26 +261,28 @@ impl Tables {
                 cost: (*cost).into(),
             });
         }
-        let tokens: TokenColumns = attempt
-            .usage
-            .iter()
-            .map(|sample| TokenUsage::from(sample.tokens))
-            .sum::<TokenUsage>()
-            .into();
-        let cost: CostColumns = costs.into_iter().sum::<Cost>().into();
-        self.attempts.push(AttemptRow {
-            key: key.clone(),
-            spec: SystemSpec::of(system),
-            attempt: attempt.number.get(),
-            fate,
-            session: attempt.record.map(|(session, ..)| session.to_string()),
-            started: attempt.record.map(|(_, started, _)| started),
-            wall_s: attempt.record.map(|(.., wall)| wall.as_secs_f64()),
-            samples: attempt.usage.len(),
-            tokens: tokens.clone(),
-            cost: cost.clone(),
-        });
-        Ok((tokens, cost))
+        let cost = costs.into_iter().sum::<Cost>().into();
+        self.trials.push(TrialRow::of(
+            &key,
+            system,
+            trial,
+            outcome.total().into(),
+            cost,
+        ));
+        self.quota
+            .extend(outcome.quota.iter().map(|(window, quota)| QuotaRow {
+                key: key.clone(),
+                window: window.clone(),
+                first_used_fraction: quota.first,
+                last_used_fraction: quota.last,
+            }));
+        if let Some(grade) = &trial.grade {
+            self.add_grade(&key, grade);
+        }
+        if let Some(measure) = &trial.measure {
+            self.add_workloads(&key, measure.workloads());
+        }
+        Ok(())
     }
 
     fn add_grade(&mut self, key: &Key, grade: &GradeRecord) {
@@ -456,65 +353,19 @@ impl Tables {
     }
 
     /// Each table's file name, row count and CSV text, in a fixed order.
-    pub fn files(&self) -> [(&'static str, usize, String); 8] {
+    pub fn files(&self) -> [(&'static str, usize, String); 7] {
         fn file<R: Columns>(name: &'static str, rows: &[R]) -> (&'static str, usize, String) {
             (name, rows.len(), encode(rows))
         }
         [
             file("trials.csv", &self.trials),
             file("quota.csv", &self.quota),
-            file("attempts.csv", &self.attempts),
             file("usage.csv", &self.usage),
             file("cases.csv", &self.cases),
             file("functions.csv", &self.functions),
             file("workloads.csv", &self.workloads),
             file("timings.csv", &self.timings),
         ]
-    }
-}
-
-/// One attempt as the attempts and usage tables see it.
-struct Spent<'a> {
-    number: AttemptNo,
-    fate: Fate,
-    /// The session that recorded the attempt, when it started and how long it ran.
-    record: Option<(&'a SessionId, DateTime<Utc>, Duration)>,
-    usage: &'a [Sample],
-}
-
-impl<'a> Spent<'a> {
-    fn committed(run: &'a RunRecord) -> Self {
-        Self {
-            number: run.attempt(),
-            fate: Fate::Committed,
-            record: Some((run.session(), run.started(), run.process().wall)),
-            usage: &run.outcome().usage,
-        }
-    }
-
-    fn overhead(attempt: &'a Overhead) -> Self {
-        match attempt {
-            Overhead::Discarded { number, record } => Self {
-                number: *number,
-                fate: Fate::Discarded,
-                record: Some((record.session(), record.started(), record.process().wall)),
-                usage: record.usage(),
-            },
-            Overhead::Interrupted { number, usage } => Self {
-                number: *number,
-                fate: Fate::Interrupted,
-                record: None,
-                usage,
-            },
-        }
-    }
-}
-
-fn fate_name(fate: Fate) -> &'static str {
-    match fate {
-        Fate::Committed => "committed",
-        Fate::Discarded => "discarded",
-        Fate::Interrupted => "interrupted",
     }
 }
 
@@ -570,17 +421,17 @@ impl TrialRow {
     fn of(
         key: &Key,
         system: &System,
-        committed: &Committed,
-        attempts: usize,
+        trial: &Trial,
         tokens: TokenColumns,
         cost: CostColumns,
     ) -> Self {
-        let Committed {
+        let Trial {
             run,
             grade,
             measure,
             stale,
-        } = committed;
+            ..
+        } = trial;
         let outcome = run.outcome();
         let process = run.process();
         let (exit, error) = match &outcome.exit {
@@ -615,8 +466,6 @@ impl TrialRow {
                 (Some(_), Some(_)) => "measured",
             },
             stale_phase: stale.map(Phase::as_str),
-            attempt: run.attempt().get(),
-            attempts,
             run_session: run.session().to_string(),
             started: run.started(),
             exit,

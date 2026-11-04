@@ -9,7 +9,7 @@ mod reparse;
 mod schedule;
 mod workspace;
 
-pub use attempt::{Attempted, Rig, replay_usage};
+pub use attempt::{Attempted, Rig};
 pub use records::{
     AgentExit, Cut, DiscardedAttempt, Outcome, Process, ProcessExit, Quota, RunInputs, RunRecord,
     Sample, Tokens,

@@ -47,7 +47,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/workload.rs` regenerates a scenario's workloads in a sandbox and verifies them against `workloads.sha256`.
 - `src/run/` is the run phase. `Task` is one trial as an agent sees it, with a `Brief` and never a `Scenario`. `records.rs` holds `RunInputs`, `RunRecord`, `DiscardedAttempt` and the stored form of the agent's outcome. `workspace.rs` scaffolds the agent's starting workspace and keeps it, without build output or secrets, for the run directory. `attempt.rs` makes one attempt: an isolated home, an egress proxy, the sandbox, the transcript streamed, redacted and folded live, and then the run committed or the attempt discarded. `schedule.rs` runs pending trials in one lane per backend behind the pure `Gate` in `gate.rs`, and `reparse.rs` re-derives committed outcomes for a newer parser. `run::run` is the phase: pins, session, references, staleness, reparsing, then the lanes. Tests play agents through the `Agent` backend in `fixture.rs`.
 - `src/lifecycle.rs` derives a trial's `Stage` and its first stale phase from the committed records, comparing each record's inputs with `Current`, and the `Fate` of each attempt: committed, discarded or interrupted.
-- `src/report/` is the report. `report::report` reads every trial of the given experiments through `Lifecycle`, replays what interrupted attempts spent with `run::replay_usage`, and replaces the output directory, writing `manifest.json` last. `tables.rs` holds one row struct per table and `Tables::add`, the pure fold of one trial's records into rows. `csv.rs` holds the `row!` macro, whose fields name a row's columns, and the encoder. `price.rs` prices each usage sample from the dated price table in exact picodollars.
+- `src/report/` is the report of model samples. `report::report` reads every trial of the given experiments through `Lifecycle` and replaces the output directory, writing `manifest.json` last. Attempts that committed nothing never reach it. `tables.rs` holds one row struct per table and `Tables::add`, the pure fold of one trial's records into rows. `csv.rs` holds the `row!` macro, whose fields name a row's columns, and the encoder. `price.rs` prices each usage sample from the dated price table in exact picodollars.
 - `src/testing.rs` holds the fixture writers the unit tests share. It compiles only for tests.
 
 The contract also specifies a part that is not in the crate yet: the measure phase over trials. Give it its own module and update this map when it lands.
@@ -70,7 +70,7 @@ The contract also specifies a part that is not in the crate yet: the measure pha
 ## How `gungnir report` writes a report
 
 1. `cli` loads every experiment and starts a `Session` for the report's own provenance. `report::report` refuses an experiment given twice.
-2. `read` derives each trial's `Lifecycle`, reads the discard record of each discarded attempt, and replays the transcript of each interrupted one.
+2. `read` derives each trial's `Lifecycle` and keeps the trials with a committed run.
 3. `Tables::add` folds each trial into rows, pricing every usage sample with the experiment's catalog at the report's price date.
 4. `publish` writes the tables into `<out>.partial`, writes `manifest.json` last, and swaps the directory in for `<out>`.
 

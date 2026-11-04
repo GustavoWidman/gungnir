@@ -10,11 +10,9 @@ pub use price::{Cost, PriceList, Usd};
 
 use crate::{
     experiment::Experiment,
-    harness::Harness,
-    lifecycle::{Current, Fate, Lifecycle, Stage},
+    lifecycle::{Current, Lifecycle, Stage},
     provenance::{Session, SessionId},
-    run::{DiscardedAttempt, replay_usage},
-    store::{read_json, read_record, write_atomic, write_json},
+    store::{read_record, write_atomic, write_json},
     toolchains::Toolchains,
     trial::Phase,
 };
@@ -27,7 +25,7 @@ use std::{
     io::ErrorKind,
     path::{Path, PathBuf},
 };
-use tables::{Committed, Overhead, Tables, Trial};
+use tables::{Tables, Trial};
 
 /// Written last, so a directory holding it is a whole report.
 const MANIFEST: &str = "manifest.json";
@@ -107,53 +105,32 @@ pub fn report(
     Ok(manifest)
 }
 
-/// Every trial of `experiment` as its committed records and attempts stand now.
+/// Every trial of `experiment` with a committed run, as its records stand now.
 fn read(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<Trial>> {
     let mut trials = Vec::new();
     for key in experiment.trials() {
         let dir = experiment.results().trial(&key);
         let current = Current::of(experiment, &key, toolchains)?;
         let lifecycle = Lifecycle::read(&dir, &current)?;
-        let harness = Harness::named(key.system.harness())
-            .ok_or_else(|| eyre!("no driver for harness {}", key.system.harness()))?;
-        let mut overhead = Vec::new();
-        for (number, fate) in lifecycle.attempts(&dir) {
-            let attempt = dir.attempt(number);
-            match fate {
-                Fate::Committed => {}
-                Fate::Discarded => {
-                    let path = attempt.discarded();
-                    let record: DiscardedAttempt =
-                        read_json(&path)?.ok_or_else(|| eyre!("{} disappeared", path.display()))?;
-                    overhead.push(Overhead::Discarded { number, record });
-                }
-                Fate::Interrupted => overhead.push(Overhead::Interrupted {
-                    number,
-                    usage: replay_usage(harness, &attempt)?,
-                }),
-            }
-        }
         let stale = lifecycle.stale;
-        let committed = match lifecycle.stage {
-            Stage::Pending => None,
-            Stage::Ran { run } => Some(Committed {
+        let trial = match lifecycle.stage {
+            Stage::Pending => continue,
+            Stage::Ran { run } => Trial {
+                key,
                 run: *run,
                 grade: None,
                 measure: None,
                 stale,
-            }),
-            Stage::Graded { run, grade } => Some(Committed {
+            },
+            Stage::Graded { run, grade } => Trial {
+                key,
                 run: *run,
                 grade: Some(*grade),
                 measure: read_record(&dir.phase(Phase::Measure))?,
                 stale,
-            }),
+            },
         };
-        trials.push(Trial {
-            key,
-            committed,
-            overhead,
-        });
+        trials.push(trial);
     }
     Ok(trials)
 }

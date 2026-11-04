@@ -117,7 +117,7 @@ fn write_report(repo: &Repo, out: &Path) -> Result<Manifest> {
 }
 
 #[tokio::test]
-async fn every_attempt_is_tabled_and_the_committed_one_describes_its_trial() {
+async fn the_committed_run_describes_its_trial_and_attempts_that_committed_nothing_are_left_out() {
     let repo = Repo::new();
     let experiment = repo.experiment();
     let opus = fixture::trial(&experiment, "opus");
@@ -140,8 +140,6 @@ async fn every_attempt_is_tabled_and_the_committed_one_describes_its_trial() {
         "model",
         "effort_rank",
         "stage",
-        "attempt",
-        "attempts",
         "exit",
         "wall_s",
         "input_tokens",
@@ -160,8 +158,6 @@ async fn every_attempt_is_tabled_and_the_committed_one_describes_its_trial() {
         "opus",
         "2",
         "graded",
-        "2",
-        "2",
         "completed",
         "60",
         "1000",
@@ -175,72 +171,11 @@ async fn every_attempt_is_tabled_and_the_committed_one_describes_its_trial() {
     ];
     assert_eq!(cells(&trials, &columns), [expected]);
 
-    let attempts = table(&out, "attempts.csv");
-    let columns = [
-        "model",
-        "attempt",
-        "fate",
-        "session",
-        "wall_s",
-        "input_tokens",
-        "cache_read_tokens",
-        "output_tokens",
-        "reasoning_tokens",
-        "cost_usd",
-    ];
-    // Codex counts cached input as input; luna costs 2268 * $0.1 + 19968 * $0.01 + 38 * $0.5
-    // per million tokens.
-    assert_eq!(
-        cells(&attempts, &columns),
-        [
-            [
-                "opus",
-                "1",
-                "discarded",
-                DISCARDING_SESSION,
-                "30",
-                "100",
-                "0",
-                "50",
-                "",
-                "0.0014"
-            ],
-            [
-                "opus",
-                "2",
-                "committed",
-                "20261103T120000Z-42",
-                "60",
-                "1000",
-                "2000",
-                "500",
-                "",
-                "0.0144"
-            ],
-            [
-                "luna",
-                "1",
-                "interrupted",
-                "",
-                "",
-                "2268",
-                "19968",
-                "38",
-                "0",
-                "0.00044548"
-            ],
-        ]
-    );
-
     let usage = table(&out, "usage.csv");
-    let columns = ["attempt", "fate", "sample", "request", "model", "cost_usd"];
+    let columns = ["model", "sample", "request", "cost_usd"];
     assert_eq!(
         cells(&usage, &columns),
-        [
-            ["1", "discarded", "1", "msg_0", "claude-opus", "0.0014"],
-            ["2", "committed", "1", "msg_1", "claude-opus", "0.0144"],
-            ["1", "interrupted", "1", "", "", "0.00044548"],
-        ]
+        [["claude-opus", "1", "msg_1", "0.0144"]]
     );
     let quota = table(&out, "quota.csv");
     assert_eq!(
@@ -273,11 +208,33 @@ async fn every_attempt_is_tabled_and_the_committed_one_describes_its_trial() {
     assert_eq!(written["prices"], "2026-11-03");
     assert_eq!(
         written["experiments"][0]["sessions"],
-        json!([DISCARDING_SESSION, "20261103T120000Z-42"])
+        json!(["20261103T120000Z-42"])
     );
-    assert_eq!(written["tables"]["usage.csv"], 3);
+    assert_eq!(written["tables"]["usage.csv"], 1);
     assert_eq!(manifest.tables()["trials.csv"], 1);
-    assert_eq!(fs::read_dir(&out).unwrap().count(), 9);
+    let mut files: Vec<String> = fs::read_dir(&out)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .collect();
+    files.sort();
+    assert_eq!(
+        files,
+        [
+            "cases.csv",
+            "functions.csv",
+            MANIFEST,
+            "quota.csv",
+            "timings.csv",
+            "trials.csv",
+            "usage.csv",
+            "workloads.csv"
+        ]
+    );
+    for file in &files {
+        let text = fs::read_to_string(out.join(file)).unwrap();
+        assert!(!text.contains(DISCARDING_SESSION), "{file}");
+        assert!(!text.contains("attempt"), "{file}");
+    }
 }
 
 #[test]
