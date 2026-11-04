@@ -1,6 +1,7 @@
 packages = ["llvmPackages_23.clang"]
 build = [["find", "src", "-name", "*.c", "-exec", "clang", "-std=gnu23", "-O3", "-DNDEBUG", "-Wall", "-Wextra", "-lm", "-o", "solution", "{}", "+"]]
 run = ["./solution"]
+version = ["sh", "-c", 'clang --version | sed -nE "s/^clang version ([0-9]+)[.].*/Clang \1/p"']
 sources = ["src/**/*.c", "src/**/*.h"]
 ignore = ["solution"]
 lizard = "c"

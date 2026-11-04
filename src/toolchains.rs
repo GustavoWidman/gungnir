@@ -12,6 +12,8 @@ use std::{
 use eyre::{Context, ContextCompat, Result, bail, ensure};
 
 use crate::{
+    id::LanguageId,
+    language::{Language, Version},
     sandbox::{Backend, HOME, Input, Io, Kill, Limits, Network, Output, Spec},
     secret::EnvValue,
     stop::Stop,
@@ -123,14 +125,17 @@ impl Toolchain {
     }
 }
 
-/// Every environment built for this checkout: the sandbox base, the measurement tools, one per
-/// language, one per harness.
+/// Every environment built for a checkout: the sandbox base, the measurement tools, one per
+/// language, one per harness. A language without an environment is an error only when used,
+/// so an experiment runs on the set it was made with even after the checkout gains languages.
+/// Holds the version each probed language's toolchain reports.
 #[derive(Clone, Debug)]
 pub struct Toolchains {
     base: Toolchain,
     measure: Toolchain,
     languages: BTreeMap<String, Toolchain>,
     harnesses: BTreeMap<String, Toolchain>,
+    versions: BTreeMap<LanguageId, Version>,
 }
 
 impl Toolchains {
@@ -147,6 +152,7 @@ impl Toolchains {
             measure: Toolchain::load(&dir.join("measure"))?,
             languages: load_all(&dir.join("language"))?,
             harnesses: load_all(&dir.join("harness"))?,
+            versions: BTreeMap::new(),
         })
     }
 
@@ -165,6 +171,48 @@ impl Toolchains {
 
     pub fn harness(&self, name: &str) -> Result<&Toolchain> {
         lookup(&self.harnesses, "harness", name)
+    }
+
+    /// Asks the toolchain of each of `languages` not asked yet for its version, running the
+    /// language's version command in its environment and with its variables, as its programs
+    /// see them.
+    pub async fn probe_versions<'a>(
+        &mut self,
+        languages: impl IntoIterator<Item = &'a Language>,
+        backend: &dyn Backend,
+        stop: &Stop,
+    ) -> Result<()> {
+        for language in languages {
+            let id = language.id();
+            if self.versions.contains_key(id) {
+                continue;
+            }
+            let env = language
+                .env()
+                .iter()
+                .map(|(name, value)| (name.clone(), EnvValue::Plain(value.clone())))
+                .collect();
+            let version = self
+                .probe(
+                    self.language(id.as_str())?,
+                    env,
+                    language.version().args(),
+                    backend,
+                    stop,
+                )
+                .await
+                .and_then(|printed| Version::parse(&printed))
+                .wrap_err_with(|| format!("probing language {id} with `{}`", language.version()))?;
+            self.versions.insert(id.clone(), version);
+        }
+        Ok(())
+    }
+
+    /// The version the toolchain of `language` reported to [`Self::probe_versions`].
+    pub fn version(&self, language: &LanguageId) -> Result<&Version> {
+        self.versions
+            .get(language)
+            .wrap_err_with(|| format!("the version of language {language} was never probed"))
     }
 
     /// Runs `argv` with `env` in an offline sandbox holding only `toolchain` over the base, and
@@ -204,6 +252,15 @@ impl Toolchains {
     }
 }
 
+#[cfg(test)]
+impl Toolchains {
+    /// Records `version` for `language` as though [`Self::probe_versions`] had found it.
+    pub(crate) fn assume_version(&mut self, language: &str, version: &str) {
+        let id = language.parse().unwrap();
+        self.versions.insert(id, Version::parse(version).unwrap());
+    }
+}
+
 fn load_all(dir: &Path) -> Result<BTreeMap<String, Toolchain>> {
     let entries = match fs::read_dir(dir) {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(BTreeMap::new()),
@@ -235,6 +292,11 @@ mod tests {
     use std::os::unix::fs::symlink;
 
     use super::*;
+    use crate::{
+        grade::fake::{Scripted, finished},
+        sandbox::Exit,
+        testing::{self, id},
+    };
 
     fn write_env(dir: &Path, env: &str, closure: &[&str]) -> Result<()> {
         fs::create_dir_all(dir)?;
@@ -329,6 +391,96 @@ mod tests {
         )?;
         let error = Toolchains::load(dir.path()).unwrap_err();
         assert!(format!("{error:#}").contains("6666-source"), "{error:#}");
+        Ok(())
+    }
+
+    /// The fixture languages `zig`, which [`layout`] has an environment for, and `go`, which it
+    /// has none for.
+    fn languages() -> Result<(tempfile::TempDir, BTreeMap<LanguageId, Language>)> {
+        let repo = tempfile::tempdir()?;
+        testing::language(repo.path(), "zig");
+        testing::language(repo.path(), "go");
+        let languages = Language::load_all(&repo.path().join("languages"))?;
+        Ok((repo, languages))
+    }
+
+    #[tokio::test]
+    async fn probes_each_language_named_once_in_its_own_offline_environment() -> Result<()> {
+        let dir = layout()?;
+        let (_repo, languages) = languages()?;
+        let zig = &languages[&id::<LanguageId>("zig")];
+        let backend = Scripted::new(|_, _, _| Ok(finished(Exit::Code(0), b"0.17\n")));
+        let mut toolchains = Toolchains::load(dir.path())?;
+        toolchains
+            .probe_versions([zig, zig], &backend, &Stop::default())
+            .await?;
+
+        assert_eq!(toolchains.version(zig.id())?.as_str(), "0.17");
+        let [(spec, argv)] = backend.calls().try_into().unwrap();
+        assert_eq!(argv, ["python3", "--version"]);
+        assert!(matches!(spec.network, Network::Offline));
+        assert!(spec.mounts.is_empty());
+        let zig_env = Path::new("/nix/store/3333-gungnir-language-zig");
+        assert_eq!(
+            spec.path,
+            [
+                zig_env.join("bin"),
+                PathBuf::from("/nix/store/2222-gungnir-base/bin")
+            ]
+        );
+        assert!(spec.closure.contains(zig_env));
+        let env: Vec<(&str, &EnvValue)> = spec.env.iter().map(|(k, v)| (k.as_str(), v)).collect();
+        assert_eq!(
+            env,
+            [("PYTHONDONTWRITEBYTECODE", &EnvValue::Plain("1".to_owned()))]
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn a_language_without_an_environment_fails_only_when_used() -> Result<()> {
+        let dir = layout()?;
+        let (_repo, languages) = languages()?;
+        let go = &languages[&id::<LanguageId>("go")];
+        let backend = Scripted::new(|_, _, _| Ok(finished(Exit::Code(0), b"1.27\n")));
+        let mut toolchains = Toolchains::load(dir.path())?;
+
+        let never = toolchains.version(go.id()).unwrap_err();
+        assert!(format!("{never:#}").contains("never probed"), "{never:#}");
+        let error = toolchains
+            .probe_versions([go], &backend, &Stop::default())
+            .await
+            .unwrap_err();
+        assert!(
+            format!("{error:#}").contains("no language toolchain named \"go\""),
+            "{error:#}"
+        );
+        assert!(backend.calls().is_empty());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn a_version_command_that_fails_or_prints_no_version_names_the_language() -> Result<()> {
+        let dir = layout()?;
+        let (_repo, languages) = languages()?;
+        let zig = &languages[&id::<LanguageId>("zig")];
+        for (exit, printed) in [
+            (Exit::Code(1), b"0.17\n".as_slice()),
+            (Exit::Code(0), b"\n"),
+        ] {
+            let backend = Scripted::new(move |_, _, _| Ok(finished(exit, printed)));
+            let mut toolchains = Toolchains::load(dir.path())?;
+            let error = toolchains
+                .probe_versions([zig], &backend, &Stop::default())
+                .await
+                .unwrap_err();
+            let message = format!("{error:#}");
+            assert!(
+                message.contains("probing language zig with `python3 --version`"),
+                "{message}"
+            );
+            assert!(toolchains.version(zig.id()).is_err());
+        }
         Ok(())
     }
 

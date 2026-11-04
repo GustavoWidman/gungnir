@@ -87,7 +87,7 @@ impl Rig<'_> {
             .wrap_err_with(|| format!("creating a workspace in {}", scratch.display()))?;
         let digest = workspace::scaffold(task.language, task.brief, work.path())?;
         let inputs = RunInputs::new(task, self.toolchains, self.budget, digest)?;
-        let prompt = task.language.prompt(task.brief);
+        let prompt = task.prompt(self.toolchains)?;
 
         let key = self.vault.key(system.backend())?;
         let launch = harness.launch(&LaunchRequest {
@@ -608,7 +608,7 @@ mod tests {
 
         let task_trial = fixture::trial(&bench.experiment, "opus");
         let task = Task::of(&bench.experiment, &task_trial).unwrap();
-        let prompt = task.language.prompt(task.brief);
+        let prompt = task.prompt(&bench.repo.toolchains).unwrap();
         assert_eq!(read(&run.join(PROMPT)), prompt);
         assert_eq!(
             files(&trial.final_workspace()),

@@ -68,15 +68,15 @@ pub(crate) fn finished(exit: Exit, stdout: &[u8]) -> Finished {
 }
 
 /// Writes a `$GUNGNIR_TOOLCHAINS` layout under `dir` with the base, the measurement tools and
-/// one environment per language, and loads it.
+/// one environment per language, and loads it as if each language had reported version 1.0.
 pub(crate) fn toolchains(dir: &Path, languages: &[&str]) -> Toolchains {
     let base = ("base".to_owned(), "aaaa-gungnir-base".to_owned());
     let measure = ("measure".to_owned(), "cccc-gungnir-measure".to_owned());
-    let languages = languages.iter().map(|language| {
+    let environments = languages.iter().map(|language| {
         let env = format!("bbbb-gungnir-language-{language}");
         (format!("language/{language}"), env)
     });
-    for (layout, env) in [base, measure].into_iter().chain(languages) {
+    for (layout, env) in [base, measure].into_iter().chain(environments) {
         write(
             dir,
             &format!("{layout}/closure"),
@@ -88,5 +88,9 @@ pub(crate) fn toolchains(dir: &Path, languages: &[&str]) -> Toolchains {
         )
         .unwrap();
     }
-    Toolchains::load(dir).unwrap()
+    let mut toolchains = Toolchains::load(dir).unwrap();
+    for language in languages {
+        toolchains.assume_version(language, "1.0");
+    }
+    toolchains
 }

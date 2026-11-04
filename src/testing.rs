@@ -115,6 +115,7 @@ pub const LANGUAGE_TOML: &str = r#"
 packages = ["python3"]
 build = [["python3", "-m", "compileall", "-q", "."], ["true"]]
 run = ["python3", "main.py"]
+version = ["python3", "--version"]
 sources = ["**/*.py"]
 ignore = ["**/__pycache__/**"]
 lizard = "python"
@@ -130,7 +131,7 @@ pub fn language(root: &Path, id: &str) {
     write(
         root,
         &format!("{dir}/preamble.md"),
-        "Build with `{build}`. Run with `{run}`.\n",
+        "Use version {version}. Build with `{build}`. Run with `{run}`.\n",
     );
     write(root, &format!("{dir}/template/main.py"), "");
 }

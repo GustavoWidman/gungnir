@@ -43,8 +43,12 @@ async fn attempt(model: &str, credential: &str, contents: &str) -> Result<Attemp
         .into_iter()
         .find(|trial| trial.system.model().as_str() == model)
         .ok_or_else(|| eyre!("smoke runs no {model}"))?;
-    let toolchains = Toolchains::from_env()?;
+    let mut toolchains = Toolchains::from_env()?;
     let backend = Bubblewrap::new(toolchains.base().clone())?;
+    let stop = Stop::default();
+    toolchains
+        .probe_versions(experiment.languages(), &backend, &stop)
+        .await?;
     let home = TempDir::new()?;
     let file = home.path().join(".config/gungnir").join(credential);
     fs::create_dir_all(file.parent().unwrap())?;
@@ -60,7 +64,6 @@ async fn attempt(model: &str, credential: &str, contents: &str) -> Result<Attemp
     let results_dir = TempDir::new()?;
     let results = ResultsDir::new(results_dir.path().to_owned());
     let session = Session::start(&repo)?;
-    let stop = Stop::default();
     let rig = Rig {
         results: &results,
         toolchains: &toolchains,

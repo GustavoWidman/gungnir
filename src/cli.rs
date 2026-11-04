@@ -161,7 +161,8 @@ impl Cli {
             Command::Grade { experiment, jobs } => grade_trials(&experiment, jobs),
             Command::Status { experiment } => {
                 let experiment = Experiment::load(&experiment)?;
-                let toolchains = Toolchains::from_env()?;
+                let runtime = runtime()?;
+                let (toolchains, _) = probed(experiment.languages(), &runtime)?;
                 print!("{}", StatusTable(&status(&experiment, &toolchains)?));
                 Ok(())
             }
@@ -180,7 +181,8 @@ fn write_report(paths: &[PathBuf], out: &Path, prices: Option<NaiveDate>) -> Res
         .iter()
         .map(|path| Experiment::load(path))
         .collect::<Result<Vec<_>>>()?;
-    let toolchains = Toolchains::from_env()?;
+    let runtime = runtime()?;
+    let (toolchains, _) = probed(experiments.iter().flat_map(Experiment::languages), &runtime)?;
     let first = paths
         .first()
         .ok_or_else(|| eyre!("no experiment to report"))?;
@@ -272,8 +274,8 @@ fn run_trials(path: &Path, guard: &Guard, dry_run: bool) -> Result<()> {
         );
     }
     let repo = repository_of(path)?;
-    let toolchains = Toolchains::from_env()?;
-    let backend = Bubblewrap::new(toolchains.base().clone())?;
+    let runtime = runtime()?;
+    let (toolchains, backend) = probed(experiment.languages(), &runtime)?;
     let home = env_path("HOME")?;
     let runtime_dir = env_path("XDG_RUNTIME_DIR")?;
     let host = Host {
@@ -282,7 +284,6 @@ fn run_trials(path: &Path, guard: &Guard, dry_run: bool) -> Result<()> {
         home: &home,
         runtime: &runtime_dir,
     };
-    let runtime = tokio::runtime::Runtime::new().wrap_err("starting the async runtime")?;
     if dry_run {
         let preview = runtime.block_on(async {
             let stop = Stop::on_ctrl_c()?;
@@ -362,9 +363,8 @@ fn grade_trials(path: &Path, jobs: NonZeroUsize) -> Result<()> {
     log_progress();
     let experiment = Experiment::load(path)?;
     let repo = repository_of(path)?;
-    let toolchains = Toolchains::from_env()?;
-    let backend = Bubblewrap::new(toolchains.base().clone())?;
-    let runtime = tokio::runtime::Runtime::new().wrap_err("starting the async runtime")?;
+    let runtime = runtime()?;
+    let (toolchains, backend) = probed(experiment.languages(), &runtime)?;
     let graded = runtime.block_on(async {
         let stop = Stop::on_ctrl_c()?;
         grade::grade_runs(&experiment, &repo, &toolchains, &backend, jobs, &stop).await
@@ -408,6 +408,22 @@ fn repository_of(path: &Path) -> Result<PathBuf> {
         .ok_or_else(|| eyre!("no directory above {} has a gungnir.toml", path.display()))
 }
 
+fn runtime() -> Result<tokio::runtime::Runtime> {
+    tokio::runtime::Runtime::new().wrap_err("starting the async runtime")
+}
+
+/// `$GUNGNIR_TOOLCHAINS` with the version of each of `languages` probed, since every prompt
+/// states it, and the sandbox backend over its base.
+fn probed<'a>(
+    languages: impl IntoIterator<Item = &'a Language>,
+    runtime: &tokio::runtime::Runtime,
+) -> Result<(Toolchains, Bubblewrap)> {
+    let mut toolchains = Toolchains::from_env()?;
+    let backend = Bubblewrap::new(toolchains.base().clone())?;
+    runtime.block_on(toolchains.probe_versions(languages, &backend, &Stop::default()))?;
+    Ok((toolchains, backend))
+}
+
 fn env_path(name: &str) -> Result<PathBuf> {
     std::env::var_os(name)
         .map(PathBuf::from)
@@ -429,15 +445,19 @@ fn run_check(scenarios: &[ScenarioId], languages: &[LanguageId], jobs: NonZeroUs
     let all_languages = Language::load_all(&root.join("languages"))?;
     let all_scenarios = Scenario::load_all(&root.join("scenarios"), &all_languages)?;
     let selected = references(&all_scenarios, &all_languages, scenarios, languages)?;
-    let toolchains = Toolchains::from_env()?;
-    let backend = Bubblewrap::new(toolchains.base().clone())?;
-
-    let runtime = tokio::runtime::Runtime::new().wrap_err("starting the async runtime")?;
+    let runtime = runtime()?;
+    let (toolchains, backend) = probed(selected.iter().map(|(_, language)| *language), &runtime)?;
     let checked = runtime.block_on(async {
         let stop = Stop::on_ctrl_c()?;
         check(&selected, &toolchains, &backend, &stop, jobs).await
     })?;
-    print!("{}", CheckTable(&checked));
+    print!(
+        "{}",
+        CheckTable {
+            checked: &checked,
+            toolchains: &toolchains,
+        }
+    );
 
     let mut failed = 0;
     for checked in &checked {
@@ -586,23 +606,38 @@ async fn check<'a>(
     Ok(checked)
 }
 
-/// One row per reference: its build time, how many hidden cases passed, its verdict, and its
-/// slowest case.
-struct CheckTable<'a>(&'a [Checked<'a>]);
+/// One row per reference: its language's version, its build time, how many hidden cases
+/// passed, its verdict, and its slowest case.
+struct CheckTable<'a> {
+    checked: &'a [Checked<'a>],
+    toolchains: &'a Toolchains,
+}
 
 impl fmt::Display for CheckTable<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let seconds = |wall: Duration| format!("{:.2}s", wall.as_secs_f64());
         let header = [
-            "scenario", "language", "build", "cases", "verdict", "slowest",
+            "scenario", "language", "version", "build", "cases", "verdict", "slowest",
         ];
         let mut rows = vec![header.map(String::from)];
-        for checked in self.0 {
+        for checked in self.checked {
             let scenario = checked.scenario.id().to_string();
             let language = checked.language.id().to_string();
+            let version = self
+                .toolchains
+                .version(checked.language.id())
+                .map_or_else(|_| "-".to_owned(), ToString::to_string);
             let Ok(judgement) = &checked.result else {
                 let none = || "-".to_owned();
-                rows.push([scenario, language, none(), none(), "error".into(), none()]);
+                rows.push([
+                    scenario,
+                    language,
+                    version,
+                    none(),
+                    none(),
+                    "error".into(),
+                    none(),
+                ]);
                 continue;
             };
             let cases = judgement.cases();
@@ -617,6 +652,7 @@ impl fmt::Display for CheckTable<'_> {
             rows.push([
                 scenario,
                 language,
+                version,
                 seconds(judgement.build().wall),
                 format!("{passed}/{}", checked.scenario.hidden().len()),
                 judgement.verdict().to_string(),
@@ -1135,11 +1171,15 @@ mod tests {
             .await
             .unwrap();
 
+        let table = CheckTable {
+            checked: &checked,
+            toolchains: &fixture.toolchains,
+        };
         assert_eq!(
-            CheckTable(&checked).to_string(),
-            "scenario  language  build  cases  verdict       slowest\n\
-             echo      python    0.01s  2/2    pass          many 0.01s\n\
-             echo      rust      0.01s  0/2    wrong-answer  many 0.01s\n"
+            table.to_string(),
+            "scenario  language  version  build  cases  verdict       slowest\n\
+             echo      python    1.0      0.01s  2/2    pass          many 0.01s\n\
+             echo      rust      1.0      0.01s  0/2    wrong-answer  many 0.01s\n"
         );
         assert!(checked[0].evidence.is_none());
         let evidence = checked[1].evidence.clone().unwrap();

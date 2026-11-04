@@ -1,4 +1,4 @@
-Write the solution in Python 3.14. The current directory holds a project that already builds and does nothing yet.
+Write the solution in Python {version}. The current directory holds a project that already builds and does nothing yet.
 
 - Only the Python standard library is available. There are no third-party packages, no network access, and no other programming language.
 - Build command: `{build}`

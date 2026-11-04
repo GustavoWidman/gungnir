@@ -17,7 +17,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `rust-toolchain.toml` pins the nightly toolchain and its components.
 - `.envrc` loads the flake for direnv users.
 - `gungnir.toml` is the catalog. It lists the sandbox base packages, the harness packages, the backends with their credentials and egress hosts, and the models with their efforts and dated prices.
-- `languages/<id>/` is a toolchain profile. The loader requires `language.toml`, `preamble.md` and a `template/` directory.
+- `languages/<id>/` is a toolchain profile. The loader requires `language.toml`, `preamble.md` and a `template/` directory. The `version` command in `language.toml` prints the version that `{version}` in the preamble states.
 - `scenarios/<id>/` is a task. The loader requires `scenario.toml`, `spec.md`, `examples/`, `hidden/`, `workloads.sha256` and `reference/<language>/`. `gen/gen.py` writes the cases and, on demand, the gitignored `workloads/`.
 - `experiments/<name>.toml` is a matrix to run. `pilot.toml` is the pilot study and `smoke.toml` runs each pilot model once.
 - `docs/architecture.md` is the design contract.
@@ -28,10 +28,10 @@ This file is guidance for contributors and coding agents. It describes the repos
 
 - `src/main.rs` parses the command line and calls `Cli::run`.
 - `src/lib.rs` declares the modules in sorted order.
-- `src/cli.rs` defines the clap commands. `plan` loads an experiment and prints its trial matrix. `check` grades every reference solution and regenerates missing workloads. `run` runs an experiment's pending trials with progress logged to stderr through `tracing`, and fails while any trial is still pending; `run --dry-run` prints what it would withdraw and schedule and changes nothing. `grade` grades the committed runs that lack a current grade. `status` counts each system's trials by stage (pending, ran, passed, failed) and the stale ones. `report` folds the committed records of one or more experiments into CSV tables in `--out`, `runs/report/` by default.
+- `src/cli.rs` defines the clap commands. `plan` loads an experiment and prints its trial matrix. `check` grades every reference solution, printing its language's version, and regenerates missing workloads. Every command that renders prompts, and `check`, first probes the version of each language it uses. `run` runs an experiment's pending trials with progress logged to stderr through `tracing`, and fails while any trial is still pending; `run --dry-run` prints what it would withdraw and schedule and changes nothing. `grade` grades the committed runs that lack a current grade. `status` counts each system's trials by stage (pending, ran, passed, failed) and the stale ones. `report` folds the committed records of one or more experiments into CSV tables in `--out`, `runs/report/` by default.
 - `src/id.rs` holds the identifiers every module shares. The `slug!` macro makes the validated newtypes `LanguageId`, `ScenarioId`, `ModelId`, `BackendId`, `HarnessName`, `HarnessVersion`, `CaseId` and `WorkloadId`. `Rep`, `AttemptNo` and the rank-ordered `Effort` enum live there too.
 - `src/catalog.rs` loads `gungnir.toml` into `Catalog`, `Backend`, `Credential`, `Model` and dated price tiers. `Catalog::system` is the only constructor of `System`, and `System::id` derives the `SystemId`.
-- `src/language.rs` loads `languages/` into `Language` profiles. `Language::prompt` renders the agent's prompt from a `Brief`.
+- `src/language.rs` loads `languages/` into `Language` profiles. `Language::prompt` renders the agent's prompt from a `Brief` and the `Version` the language's toolchain reported, and the loader refuses a preamble that never says `{version}`.
 - `src/scenario.rs` loads `scenarios/` into `Scenario` values, with digests of the brief, the hidden suite, the workloads and each reference.
 - `src/experiment.rs` loads an experiment against the repository that holds it, validates it, and expands it into `TrialKey` values with `Experiment::trials`.
 - `src/trial.rs` defines `Phase`, `TrialKey`, `ResultsDir`, `TrialDir` and `AttemptDir`. Paths under `results/<experiment>/` are named there and nowhere else. `ResultsDir::retract` withdraws a committed directory through the phase's scratch, so a crash never leaves one half deleted.
@@ -40,7 +40,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/secret.rs` holds `Secret<T>`, whose `Debug` prints nothing, `EnvValue` for sandbox environments, and redaction of secret values from bytes and files.
 - `src/vault.rs` reads each backend's credential into a `Key` (the material a driver launches with, the endpoint, and the exact strings to redact) and stages launch files into an isolated `Home` under `$XDG_RUNTIME_DIR/gungnir/`, writing a refreshed Codex login back to its master under a lock.
 - `src/stop.rs` is the two-stage interruption: the first Ctrl-C drains, the second kills in-flight sandboxes.
-- `src/toolchains.rs` loads `GUNGNIR_TOOLCHAINS` into `Closure` sets and `bin` directories, refusing any closure that contains a flake source path. `Toolchains::probe` asks a tool what it is in an offline sandbox holding only its environment over the base.
+- `src/toolchains.rs` loads `GUNGNIR_TOOLCHAINS` into `Closure` sets and `bin` directories, refusing any closure that contains a flake source path. `Toolchains::probe` asks a tool what it is in an offline sandbox holding only its environment over the base. `Toolchains::probe_versions` runs each named language's `version` command that way, once per invocation, and `Toolchains::version` serves the result. A language without an environment is an error only when an experiment uses it.
 - `src/sandbox/` defines `Spec`, `Network`, `Finished`, `Fault` and the object-safe `Backend` trait, with the bubblewrap backend. It is the only place untrusted code is spawned.
 - `src/egress/` is the host-side CONNECT proxy that tunnels only allowlisted hosts on port 443 and logs every connection.
 - `src/harness/` holds the `Driver` registry (`DRIVERS`), the `Harness` handle, the Claude Code and Codex drivers, the harness-neutral `Event` and `TokenUsage`, and the pure `Fold` into an `Ending`. Captured transcripts for its tests live in `tests/fixtures/harness/`.
@@ -75,6 +75,12 @@ The contract also specifies a part that is not in the crate yet: the measure pha
 3. `Tables::add` folds each trial into rows, pricing every usage sample with the experiment's catalog at the report's price date.
 4. `publish` writes the tables into `<out>.partial`, writes `manifest.json` last, and swaps the directory in for `<out>`.
 
+## Toolchain sets
+
+An experiment's results are tied to the toolchain set it ran with. A committed run records the store paths of its base, language and harness environments, and its prompt states the version its language's toolchain reported, so against another set its runs read as stale. A toolchain upgrade starts a new experiment, and an experiment that already has runs keeps its own set, kept alive by a GC root.
+
+The pilot, `claude-ext` and `openai-ext` ran with `/nix/store/76fa1jkl6f76s2w73mhhlhfcm6dlgw4c-gungnir-toolchains`, which holds only the python, rust and zig languages. Run every command on them with that set, for example `GUNGNIR_TOOLCHAINS=/nix/store/76fa1jkl6f76s2w73mhhlhfcm6dlgw4c-gungnir-toolchains gungnir status experiments/pilot.toml` inside the dev shell, which sets the variable to the current set otherwise.
+
 ## Invariants to keep
 
 - Parse external data at the boundary. Each loader deserializes into a private `Raw*` type with `deny_unknown_fields` and converts it into the domain type, so code after the loader trusts its input.
@@ -84,6 +90,7 @@ The contract also specifies a part that is not in the crate yet: the measure pha
 - Commit a phase directory only through `PartialDir`. It writes `record.json` last and renames `<phase>.partial/` into place, so a phase directory is complete or absent.
 - Build results paths only through `ResultsDir` and `TrialDir`.
 - Never store a trial's state. Derive it from the committed records.
+- State a language's version only through `{version}`. The prompt then names the version the toolchain reports, and the same toolchain renders the same prompt.
 
 ## Rust style
 

@@ -1,6 +1,7 @@
 packages = ["llvmPackages_23.clang"]
 build = [["find", "src", "-name", "*.cpp", "-exec", "clang++", "-std=gnu++23", "-O3", "-DNDEBUG", "-Wall", "-Wextra", "-o", "solution", "{}", "+"]]
 run = ["./solution"]
+version = ["sh", "-c", 'set -eu; clang=$(clang++ --version | sed -nE "s/^clang version ([0-9]+)[.].*/\1/p"); libstdcxx=$(echo "#include <bits/c++config.h>" | clang++ -x c++ -std=gnu++23 -E -dM - | sed -nE "s/^#define _GLIBCXX_RELEASE ([0-9]+)/\1/p"); test -n "$clang"; test -n "$libstdcxx"; echo "Clang $clang and libstdc++ $libstdcxx"']
 sources = ["src/**/*.cpp", "src/**/*.hpp", "src/**/*.h"]
 ignore = ["solution"]
 lizard = "cpp"

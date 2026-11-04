@@ -20,6 +20,7 @@ pub struct Language {
     id: LanguageId,
     build: Vec<Argv>,
     run: Argv,
+    version: Argv,
     sources: GlobSet,
     ignore: GlobSet,
     lizard: Option<String>,
@@ -74,6 +75,11 @@ impl Language {
         &self.run
     }
 
+    /// The command that prints the toolchain's version as the preamble's `{version}` states it.
+    pub fn version(&self) -> &Argv {
+        &self.version
+    }
+
     /// Workspace-relative paths that hold source code.
     pub fn sources(&self) -> &GlobSet {
         &self.sources
@@ -99,9 +105,9 @@ impl Language {
         &self.template
     }
 
-    /// The agent's prompt: the preamble with `{build}` and `{run}` filled in, a blank line,
-    /// and the scenario's spec.
-    pub fn prompt(&self, brief: &Brief) -> String {
+    /// The agent's prompt: the preamble with `{build}`, `{run}` and the toolchain's `version`
+    /// filled in, a blank line, and the scenario's spec.
+    pub fn prompt(&self, brief: &Brief, version: &Version) -> String {
         let build = self
             .build
             .iter()
@@ -115,6 +121,7 @@ impl Language {
                 Piece::Text(text) => text,
                 Piece::Build => &build,
                 Piece::Run => &run,
+                Piece::Version => version.as_str(),
             });
         }
         prompt.truncate(prompt.trim_end().len());
@@ -149,17 +156,46 @@ impl fmt::Display for Argv {
     }
 }
 
-/// A run of preamble text, or a placeholder filled from the profile when rendering.
-#[derive(Debug)]
+/// What a language's toolchain printed for its version command: one line, which the prompt
+/// states wherever the preamble says `{version}`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Version(String);
+
+impl Version {
+    /// Parses what the version command printed, around which whitespace does not count.
+    pub fn parse(printed: &str) -> Result<Self> {
+        let line = printed.trim();
+        ensure!(
+            !line.is_empty() && !line.contains(char::is_control),
+            "printed {printed:?}, which is not one line naming a version"
+        );
+        Ok(Self(line.to_owned()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for Version {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+/// A run of preamble text, or a placeholder filled when rendering.
+#[derive(Debug, PartialEq)]
 enum Piece {
     Text(String),
     Build,
     Run,
+    Version,
 }
 
 /// Splits a preamble into text and placeholders. A placeholder is `{name}` with `name` made
-/// of lowercase letters and underscores, and only `{build}` and `{run}` exist. Any other
-/// brace, such as `{}` or `{ x }` in a code sample, is plain text.
+/// of lowercase letters and underscores, and only `{build}`, `{run}` and `{version}` exist.
+/// Any other brace, such as `{}` or `{ x }` in a code sample, is plain text. The preamble must
+/// say `{version}`, so the version it states always comes from the toolchain.
 fn parse_preamble(mut text: &str) -> Result<Vec<Piece>> {
     let mut pieces = Vec::new();
     let mut literal = String::new();
@@ -175,9 +211,11 @@ fn parse_preamble(mut text: &str) -> Result<Vec<Piece>> {
                 let piece = match name {
                     "build" => Piece::Build,
                     "run" => Piece::Run,
-                    other => {
-                        bail!("unknown placeholder {{{other}}}; only {{build}} and {{run}} exist")
-                    }
+                    "version" => Piece::Version,
+                    other => bail!(
+                        "unknown placeholder {{{other}}}; only {{build}}, {{run}} and {{version}} \
+                         exist"
+                    ),
                 };
                 pieces.push(Piece::Text(mem::take(&mut literal)));
                 pieces.push(piece);
@@ -191,6 +229,11 @@ fn parse_preamble(mut text: &str) -> Result<Vec<Piece>> {
     }
     literal.push_str(text);
     pieces.push(Piece::Text(literal));
+    ensure!(
+        pieces.contains(&Piece::Version),
+        "the preamble never says {{version}}; state the language's version through it, so the \
+         prompt names the version the toolchain reports"
+    );
     Ok(pieces)
 }
 
@@ -213,6 +256,7 @@ struct RawLanguage {
     packages: Vec<String>,
     build: Vec<Vec<String>>,
     run: Vec<String>,
+    version: Vec<String>,
     sources: Vec<String>,
     #[serde(default)]
     ignore: Vec<String>,
@@ -239,6 +283,7 @@ impl RawLanguage {
             id,
             build,
             run: Argv::parse("run", self.run)?,
+            version: Argv::parse("version", self.version)?,
             sources: globs("sources", &self.sources)?,
             ignore: globs("ignore", &self.ignore)?,
             lizard: self.lizard,
@@ -317,19 +362,22 @@ mod tests {
         write(
             root.path(),
             "languages/python/preamble.md",
-            "Build: {build}\nRun: {run}\nKeep {} and { x } and {build\n\n",
+            "Python {version}\nBuild: {build}\nRun: {run}\nKeep {} and { x } and {build\n\n",
         );
         testing::scenario(root.path(), "echo", &["python"]);
         let languages = load(root.path()).unwrap();
         let scenarios = Scenario::load_all(&root.path().join("scenarios"), &languages).unwrap();
+        let python = &languages[&id::<LanguageId>("python")];
+        let version = Version::parse("3.15\n").unwrap();
 
-        let prompt = languages[&id::<LanguageId>("python")].prompt(scenarios[&id("echo")].brief());
+        let prompt = python.prompt(scenarios[&id("echo")].brief(), &version);
         assert_eq!(
             prompt,
-            "Build: python3 -m compileall -q . && true\nRun: python3 main.py\n\
+            "Python 3.15\nBuild: python3 -m compileall -q . && true\nRun: python3 main.py\n\
              Keep {} and { x } and {build\n\n\
              Echo each line of stdin.\n"
         );
+        assert_eq!(python.version().args(), ["python3", "--version"]);
     }
 
     #[test]
@@ -338,6 +386,39 @@ mod tests {
             |root| write(root, "languages/python/preamble.md", "Install {packages}."),
             &["preamble.md", "{packages}"],
         );
+    }
+
+    #[test]
+    fn a_preamble_states_its_version_only_through_the_placeholder() {
+        rejects(
+            |root| {
+                write(
+                    root,
+                    "languages/python/preamble.md",
+                    "Python 3.14 with `{run}`.",
+                )
+            },
+            &["preamble.md", "never says {version}"],
+        );
+        rejects(
+            |root| {
+                let toml =
+                    testing::LANGUAGE_TOML.replace("version = [\"python3\", \"--version\"]\n", "");
+                write(root, "languages/python/language.toml", toml);
+            },
+            &["language.toml", "version"],
+        );
+    }
+
+    #[test]
+    fn a_version_is_one_line_without_its_surrounding_whitespace() {
+        assert_eq!(
+            Version::parse(" 1.101-nightly\n").unwrap().as_str(),
+            "1.101-nightly"
+        );
+        for printed in ["", "\n", "3.14\n3.15\n"] {
+            assert!(Version::parse(printed).is_err(), "{printed:?} accepted");
+        }
     }
 
     #[test]

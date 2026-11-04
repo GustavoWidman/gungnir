@@ -58,7 +58,7 @@ impl RunInputs {
             system: system.id().to_string(),
             api_model: system.api_model().to_owned(),
             endpoint: task.backend.endpoint().map(|url| url.as_str().to_owned()),
-            prompt: Digest::of_bytes(task.language.prompt(task.brief).as_bytes()),
+            prompt: Digest::of_bytes(task.prompt(toolchains)?.as_bytes()),
             workspace,
             toolchains: StoredToolchains {
                 base: toolchains.base().root().to_owned(),

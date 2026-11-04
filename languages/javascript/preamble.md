@@ -1,4 +1,4 @@
-Write the solution in JavaScript, run by Bun 1.4. The current directory holds a project that already builds and does nothing yet.
+Write the solution in JavaScript, run by Bun {version}. The current directory holds a project that already builds and does nothing yet.
 
 - Only the JavaScript built-ins and Bun's runtime APIs, its Node.js modules included, are available. There are no third-party packages, no network access, and no other programming language.
 - Build command: `{build}`

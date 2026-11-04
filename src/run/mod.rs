@@ -77,6 +77,13 @@ impl<'a> Task<'a> {
             backend,
         })
     }
+
+    /// What the agent is told: the language's preamble, stating the version its toolchain in
+    /// `toolchains` reports, then the brief's spec.
+    pub fn prompt(&self, toolchains: &Toolchains) -> Result<String> {
+        let version = toolchains.version(self.language.id())?;
+        Ok(self.language.prompt(self.brief, version))
+    }
 }
 
 /// What the run phase uses of the machine it runs on.

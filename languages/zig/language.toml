@@ -1,6 +1,7 @@
 packages = ["zig"]
 build = [["zig", "build-exe", "src/main.zig", "-O", "ReleaseFast", "-femit-bin=solution"]]
 run = ["./solution"]
+version = ["sh", "-c", 'zig version | sed -nE "s/^([0-9]+[.][0-9]+)[.].*/\1/p"']
 sources = ["src/**/*.zig"]
 ignore = ["solution", "solution.o", ".zig-cache/**"]
 lizard = "zig"

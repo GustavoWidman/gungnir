@@ -1,6 +1,7 @@
 packages = ["python314", "uv"]
 build = [["uv", "sync", "--offline", "--quiet"]]
 run = [".venv/bin/python", "main.py"]
+version = ["python3", "-c", "import sys; print(*sys.version_info[:2], sep='.')"]
 sources = ["**/*.py"]
 ignore = [".venv/**", "**/__pycache__/**"]
 lizard = "python"

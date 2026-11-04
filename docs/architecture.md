@@ -8,7 +8,7 @@ gungnir runs a benchmark of AI coding agents. It drives each vendor's own CLI he
 - **Backend.** One account behind one endpoint, used through one harness. `anthropic` is the Claude subscription through Claude Code, `openai` is the ChatGPT subscription through Codex, `zai` is the GLM coding plan through Claude Code. Concurrency, rate limits, credentials and the egress allowlist all belong to a backend, never to a harness.
 - **System.** Harness (with its pinned version), backend, model and reasoning effort. Every claim in the paper is about a system.
 - **Scenario.** A language-neutral task: a spec, visible examples, hidden cases, performance workloads, and one reference solution per supported language.
-- **Language.** A toolchain profile: packages, project template, build steps, run command, source globs and the lizard language name.
+- **Language.** A toolchain profile: packages, project template, build steps, run command, the command that prints its version, source globs and the lizard language name.
 - **Trial.** One system, scenario, language and repetition. Its identity is derived from those four, so every phase can find and resume it.
 - **Attempt.** One launch of the agent for a trial. A trial commits exactly one attempt, and only a sample: an agent session that ended on its own, which the CLI reported complete or the model declined. Every other attempt is discarded with its reason. Discarded and interrupted attempts stay on disk only as the run phase's bookkeeping, which keeps retries and attempt numbering crash-safe, and are never data.
 
@@ -17,8 +17,8 @@ gungnir runs a benchmark of AI coding agents. It drives each vendor's own CLI he
 ```text
 gungnir.toml                  catalog: sandbox base packages, harness packages, backends, models, prices
 languages/<id>/
-  language.toml               packages, build, run, sources, ignore, lizard, env
-  preamble.md                 per-language prompt preamble; {build} and {run} placeholders
+  language.toml               packages, build, run, version, sources, ignore, lizard, env
+  preamble.md                 per-language prompt preamble; {build}, {run} and {version} placeholders
   template/                   files scaffolded into every workspace
 scenarios/<id>/
   scenario.toml               title, compare mode, case limits
@@ -52,6 +52,7 @@ Each catalog is one list in one place.
 ```text
 $GUNGNIR_TOOLCHAINS/
   base/bin, base/closure                 sandbox base packages from gungnir.toml [sandbox]
+  measure/bin, measure/closure           measurement tools from gungnir.toml [measure]
   language/<id>/bin, language/<id>/closure
   harness/<name>/bin, harness/<name>/closure
 ```
@@ -59,6 +60,12 @@ $GUNGNIR_TOOLCHAINS/
 Each `closure` file is the `closureInfo` store-path list of that environment. A sandbox bind-mounts exactly the union of the closures it needs, read-only, and never the whole `/nix/store`. This matters because the flake's own source copy in the store contains `scenarios/*/hidden/`. A test asserts that no mounted closure contains a flake source path. gungnir never runs `nix` at runtime. Adding a language means re-entering the dev shell.
 
 A language's packages are nixpkgs attributes, or packages nixpkgs lacks that `toolchains.nix` defines under `local`. Anything a toolchain reads at build time must reach the sandbox through that closure, never through the workspace. TypeScript is the example: `typescript-bun` is `tsc` wrapped to pass `--typeRoots` into a store path holding Bun's type declarations, pinned to the Bun version nixpkgs ships, so a TypeScript workspace holds no `node_modules` and its type check runs offline.
+
+Each preamble states its language's version through `{version}`, and the loader refuses a preamble without it. The text comes from the toolchain. Every command that renders a prompt (`run`, `grade`, `status`, `report`) and `check` run the language's `version` command once per invocation, in an offline sandbox holding the language's environment over the base with the language's variables, and take the one line it prints. A prompt is a function of the preamble, the brief and the toolchain, so it never names a version other than the one the agent's compiler reports, and one toolchain always renders the same bytes. A command that fails or prints anything but one line is an error naming the language.
+
+A toolchain directory needs only the environments of the languages an experiment uses. gungnir looks a language up, and probes its version, only when an experiment uses it, so a set built before the checkout gained a language still serves the experiments that ran on it.
+
+An experiment's results are tied to the toolchain set it ran with. A committed run records the store paths of its environments, and its prompt digest covers the version its toolchain reported, so against another set the run is stale. A toolchain upgrade starts a new experiment, and an experiment with runs keeps its set alive with a GC root. The pilot, `claude-ext` and `openai-ext` ran with `/nix/store/76fa1jkl6f76s2w73mhhlhfcm6dlgw4c-gungnir-toolchains`, so every command on them sets `GUNGNIR_TOOLCHAINS` to that path.
 
 ## Data shapes
 
@@ -205,7 +212,7 @@ Isolated homes live under `$XDG_RUNTIME_DIR/gungnir/<results digest>/`, never un
 
 All phases are safe to rerun and safe to interrupt. The first Ctrl-C drains: nothing new starts and in-flight work finishes. The second kills in-flight sandboxes, and their trials stay where they were.
 
-- **check.** Builds and grades every reference solution through the same `grade::judge` path that grades agents. A scenario whose reference fails cannot be run.
+- **check.** Builds and grades every reference solution through the same `grade::judge` path that grades agents, and prints the version each language's toolchain reports beside its references. A scenario whose reference fails cannot be run.
 - **run.** Expands the experiment into trials, verifies the harness versions against the experiment's pins (each CLI prints `--version` in an offline sandbox holding only its own environment), records them in the session, judges every requested reference through `grade::judge` into `references/` and refuses unless all pass (a current committed reference grade is reused), refuses and names every trial whose committed run is stale, reviews every committed run (re-deriving outcomes for older parser versions and withdrawing every run that is no sample), and schedules pending trials in lanes. Each attempt's workspace lives in `.scratch/run/` while the agent works. A lane per backend has its own concurrency limit and a `Gate` (`Open`, `Paused { until }`, `Probing`) whose transition is a pure function. A rate limit requeues the trial at the front and pauses only that lane: until the reset time the vendor named, plus a minute, or else for a backoff of 5 minutes that each rate-limited probe doubles up to 60. When a pause ends, one probe attempt runs alone, and the lane reopens when it ends without a rate limit. An attempt whose ending is a sample commits the trial's run. Any other attempt is discarded, `attempts/<n>/discarded.json` records its `Reason`, and its trial goes back into its lane until an attempt is a sample: a rate-limited trial at the front, since the account ended it, and any other behind the lane's other trials, so that they run between its attempts. An attempt that failed in gungnir itself goes behind the lane the same way, without a record. A stopped attempt leaves its trial pending, since the invocation is ending.
 - **Dry run.** `run --dry-run` probes the pins and refuses stale runs as `run` does, reviews every committed run without applying a review, and prints the runs it would withdraw with their reasons and the trials each backend would schedule. It changes nothing, so it takes no lock and can run beside a live `run`. It writes no session and judges no reference, since judging one commits its grade, so a reference that does not pass is not caught.
 - **Guard.** `run` can bound how much of each account one invocation spends: `--quota-ceiling BACKEND[:WINDOW]=FRACTION[@TIME]` stops a backend once the named quota window (any window when none is named) its latest attempt reported is at least that fraction used, counting only attempts that started at or after `TIME` when one is given (for a ceiling meant for the window after a reset), `--stop-at BACKEND=TIME` stops it at a time, and `--max-errors N` (default 3) stops it after that many attempts in a row errored, crashed or failed, so an expired login or an outage cannot turn every remaining trial into an error. A stopped backend starts nothing more; its running attempts finish and its other trials stay pending for the next invocation. `--max-attempts N` (default 5) leaves one trial pending once N of its attempts in the invocation were discarded or failed, rate limits aside, so a trial its agent can never finish does not run forever.

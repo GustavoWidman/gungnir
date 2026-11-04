@@ -1,4 +1,4 @@
-Write the solution in C23 with Clang 23. The current directory holds a project that already builds and does nothing yet.
+Write the solution in C23 with {version}. The current directory holds a project that already builds and does nothing yet.
 
 - Only the C standard library is available. There are no third-party libraries, no network access, and no other programming language.
 - Build command: `{build}`

@@ -1,4 +1,4 @@
-Write the solution in Rust 1.99, edition 2024. The current directory holds a project that already builds and does nothing yet.
+Write the solution in Rust {version}, edition 2024. The current directory holds a project that already builds and does nothing yet.
 
 - Only the Rust standard library is available. There are no third-party crates, no network access, and no other programming language.
 - Build command: `{build}`

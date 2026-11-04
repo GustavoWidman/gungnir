@@ -1,6 +1,7 @@
 packages = ["rustc", "cargo", "gcc"]
 build = [["cargo", "build", "--release", "--offline", "--quiet"]]
 run = ["./target/release/solution"]
+version = ["sh", "-c", 'rustc --version | sed -nE "s/^rustc ([0-9]+[.][0-9]+)[.][0-9]+([^ ]*) .*/\1\2/p"']
 sources = ["src/**/*.rs"]
 ignore = ["target/**"]
 lizard = "rust"
