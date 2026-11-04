@@ -56,6 +56,7 @@
                 (craneLib.fileset.commonCargoSources ./.)
                 ./gungnir.toml
                 ./languages
+                ./tests/fixtures
               ];
             };
             strictDeps = true;
