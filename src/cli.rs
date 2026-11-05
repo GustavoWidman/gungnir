@@ -84,6 +84,12 @@ enum Command {
         /// Such as anthropic:seven_day=0.75 or openai=0.35@2026-11-04T04:05:00-03:00.
         #[arg(long = "quota-ceiling", value_name = "BACKEND[:WINDOW]=FRACTION[@TIME]", value_parser = ceiling)]
         ceilings: Vec<(BackendId, Ceiling)>,
+        /// Start nothing new on a backend with a quota source in gungnir.toml while it reads a
+        /// window at least this fraction used, until a reading shows it below, as
+        /// BACKEND=FRACTION, such as zai=0.9. Running attempts finish. Every such backend holds
+        /// at 0.8 unless named.
+        #[arg(long = "quota-hold", value_name = "BACKEND=FRACTION", value_parser = hold)]
+        holds: Vec<(BackendId, f64)>,
         /// Stop starting attempts on a backend at a time, as BACKEND=RFC3339, such as
         /// anthropic=2026-11-04T04:00:00-03:00. Repeat for several.
         #[arg(long = "stop-at", value_name = "BACKEND=TIME", value_parser = deadline)]
@@ -169,6 +175,7 @@ impl Cli {
             Command::Run {
                 experiment,
                 ceilings,
+                holds,
                 deadlines,
                 max_errors,
                 max_attempts,
@@ -179,6 +186,7 @@ impl Cli {
                     deadlines: deadlines.into_iter().collect(),
                     max_errors: Some(max_errors),
                     max_attempts: Some(max_attempts),
+                    holds: holds.into_iter().collect(),
                 };
                 run_trials(&experiment, &guard, dry_run)
             }
@@ -295,7 +303,12 @@ fn run_trials(path: &Path, guard: &Guard, dry_run: bool) -> Result<()> {
     log_progress();
     let experiment = Experiment::load(path)?;
     let backends: Vec<&BackendId> = experiment.concurrency().keys().collect();
-    for backend in guard.ceilings.keys().chain(guard.deadlines.keys()) {
+    for backend in guard
+        .ceilings
+        .keys()
+        .chain(guard.deadlines.keys())
+        .chain(guard.holds.keys())
+    {
         ensure!(
             backends.contains(&backend),
             "backend {backend} is not in {}; it uses {}",
@@ -305,6 +318,16 @@ fn run_trials(path: &Path, guard: &Guard, dry_run: bool) -> Result<()> {
                 .map(|b| b.as_str())
                 .collect::<Vec<_>>()
                 .join(", ")
+        );
+    }
+    for backend in guard.holds.keys() {
+        let metered = experiment
+            .catalog()
+            .backend(backend)
+            .is_some_and(|backend| backend.quota().is_some());
+        ensure!(
+            metered,
+            "--quota-hold names backend {backend}, which has no quota source in gungnir.toml"
         );
     }
     let repo = repository_of(path)?;
@@ -379,6 +402,21 @@ fn ceiling(arg: &str) -> Result<(BackendId, Ceiling)> {
             from,
         },
     ))
+}
+
+/// Parses `BACKEND=FRACTION` with the fraction in (0, 1].
+fn hold(arg: &str) -> Result<(BackendId, f64)> {
+    let (backend, fraction) = arg
+        .split_once('=')
+        .ok_or_else(|| eyre!("expected BACKEND=FRACTION, got {arg:?}"))?;
+    let fraction: f64 = fraction
+        .parse()
+        .wrap_err_with(|| format!("{fraction:?} is not a number"))?;
+    ensure!(
+        fraction > 0.0 && fraction <= 1.0,
+        "a quota hold is a fraction in (0, 1], got {fraction}"
+    );
+    Ok((backend.parse()?, fraction))
 }
 
 /// Parses `BACKEND=TIME` with an RFC 3339 time.
@@ -1283,8 +1321,25 @@ mod tests {
         sandbox::{Exit, Input},
         testing::{self, id, write},
     };
+    use clap::CommandFactory;
     use std::fs;
     use tempfile::TempDir;
+
+    #[test]
+    fn a_quota_hold_is_a_fraction_and_the_help_names_the_default() {
+        assert_eq!(hold("zai=0.9").unwrap(), (id("zai"), 0.9));
+        for bad in ["zai", "zai=0", "zai=1.5", "zai=most"] {
+            assert!(hold(bad).is_err(), "{bad}");
+        }
+        let mut cli = Cli::command();
+        let help = cli
+            .find_subcommand_mut("run")
+            .unwrap()
+            .render_long_help()
+            .to_string();
+        let default = format!("holds at {} unless named", run::HOLD);
+        assert!(help.contains(&default), "{help}");
+    }
 
     #[test]
     fn bench_prints_each_workload_then_the_machine() {

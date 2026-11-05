@@ -1,12 +1,15 @@
 //! The lanes: one per backend, each starting its pending trials in order, up to the backend's
-//! concurrency, behind a gate that only that backend's rate limits close. A trial whose attempt
-//! is no sample goes back into its lane until one is.
+//! concurrency, behind a gate that only that backend's rate limits close and, for a backend
+//! with a quota source, a meter that holds the lane while its quota is spent. A trial whose
+//! attempt is no sample goes back into its lane until one is.
 use super::{
     AgentExit, Attempted, Quota, Reason, RunRecord,
     gate::{Event, Gate},
+    meter::{self, Admit, Meter},
 };
 use crate::{
     id::BackendId,
+    quota::Window,
     stop::{Stage, Stop},
     trial::TrialKey,
 };
@@ -14,7 +17,7 @@ use chrono::{DateTime, Utc};
 use eyre::{Result, eyre};
 use futures_util::{StreamExt, stream::FuturesUnordered};
 use std::{
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
     num::{NonZeroU32, NonZeroUsize},
     time::Duration,
 };
@@ -48,6 +51,9 @@ pub struct Guard {
     /// Leave a trial pending once this many of its attempts were discarded or failed, rate
     /// limits aside, so that a trial its agent can never finish does not run forever.
     pub max_attempts: Option<NonZeroU32>,
+    /// Start nothing on a backend whose quota source reads a window at least this fraction
+    /// used, until the window resets. [`meter::HOLD`] for a backend not named.
+    pub holds: BTreeMap<BackendId, f64>,
 }
 
 /// A quota ceiling on one window, or on every window when `window` is `None`, counted only from
@@ -61,6 +67,11 @@ pub struct Ceiling {
 }
 
 impl Guard {
+    /// The fraction of a quota window at which a metered `backend` holds.
+    fn hold(&self, backend: &BackendId) -> f64 {
+        self.holds.get(backend).copied().unwrap_or(meter::HOLD)
+    }
+
     /// Why `backend` must start nothing more, given the quota windows its latest attempt
     /// reported with when that attempt started, the errors in a row it has had, and the time.
     fn stops(
@@ -107,6 +118,21 @@ struct Lane {
     errors: u32,
     /// Why the lane starts nothing more, once its guard tripped.
     stopped: Option<String>,
+    /// What the lane knows of its quota, when its backend has a quota source.
+    meter: Option<Meter>,
+}
+
+impl Lane {
+    /// When the lane may next start an attempt or read its meter, if anything but an attempt
+    /// or a read ending can let it.
+    fn wakes(&self, now: Instant) -> Option<Instant> {
+        let room = self.gate.room(now, self.running, self.limit) > 0;
+        match self.meter.as_ref().map(|meter| meter.admit(now, room)) {
+            Some(Admit::Hold { until }) => until,
+            Some(Admit::Read) => Some(now),
+            Some(Admit::Go) | None => self.gate.wakes(),
+        }
+    }
 }
 
 /// Where a trial whose attempt left it pending goes back into its lane.
@@ -121,13 +147,16 @@ enum Retry {
 /// Runs `attempt` for each of `trials`, in order within each backend's lane, until every trial
 /// is committed, `stop` drains, or the guard stops each lane that still has trials. A trial
 /// whose attempt was not committed goes back into its lane as [`retry`] says, until it has
-/// reached the guard's cap on attempts.
+/// reached the guard's cap on attempts. The lane of each backend in `metered` takes its quota
+/// readings from `read`.
 pub(super) async fn schedule(
     trials: Vec<TrialKey>,
     limits: &BTreeMap<BackendId, NonZeroUsize>,
     guard: &Guard,
     stop: &Stop,
     attempt: impl AsyncFn(&TrialKey) -> Result<Attempted>,
+    metered: &BTreeSet<BackendId>,
+    read: impl AsyncFn(&BackendId) -> Result<Vec<Window>>,
 ) -> Result<Tally> {
     let scheduled = trials.len();
     let mut lanes: BTreeMap<&BackendId, Lane> = limits
@@ -140,6 +169,9 @@ pub(super) async fn schedule(
                 running: 0,
                 errors: 0,
                 stopped: None,
+                meter: metered
+                    .contains(backend)
+                    .then(|| Meter::new(guard.hold(backend))),
             };
             (backend, lane)
         })
@@ -153,23 +185,37 @@ pub(super) async fn schedule(
             .push_back(trial);
     }
     let attempt = &attempt;
+    let read = &read;
     let mut running = FuturesUnordered::new();
+    let mut reads = FuturesUnordered::new();
     let mut tally = Tally::default();
     let mut retried: HashMap<TrialKey, u32> = HashMap::new();
     loop {
         let now = Instant::now();
         if stop.stage() == Stage::Running {
-            for (backend, lane) in &mut lanes {
+            for (&backend, lane) in &mut lanes {
                 if lane.stopped.is_none()
                     && let Some(reason) = guard.stops(backend, None, lane.errors, Utc::now())
                 {
                     warn!("{backend}: starting nothing more, because {reason}");
                     lane.stopped = Some(reason);
                 }
-                if lane.stopped.is_some() {
+                if lane.stopped.is_some() || lane.queue.is_empty() {
                     continue;
                 }
-                for _ in 0..lane.gate.room(now, lane.running, lane.limit) {
+                let room = lane.gate.room(now, lane.running, lane.limit);
+                if let Some(meter) = &mut lane.meter {
+                    match meter.admit(now, room > 0) {
+                        Admit::Go => {}
+                        Admit::Read => {
+                            meter.begin();
+                            reads.push(async move { (backend, read(backend).await) });
+                            continue;
+                        }
+                        Admit::Hold { .. } => continue,
+                    }
+                }
+                for _ in 0..room {
                     let Some(trial) = lane.queue.pop_front() else {
                         break;
                     };
@@ -203,7 +249,7 @@ pub(super) async fn schedule(
             .map(|left| Instant::now() + left)
             .min();
         let wake = waiting()
-            .filter_map(|(_, lane)| lane.gate.wakes())
+            .filter_map(|(_, lane)| lane.wakes(Instant::now()))
             .chain(deadline)
             .min();
         tokio::select! {
@@ -241,6 +287,9 @@ pub(super) async fn schedule(
                 let event = settle(&mut tally, &trial, result);
                 lane.gate = lane.gate.next(event, Instant::now());
                 log_gate(backend, before, lane.gate);
+                if let (Event::Limited { resets_in: None }, Some(meter)) = (event, &mut lane.meter) {
+                    meter.limited();
+                }
                 match again {
                     Some(Retry::First) => lane.queue.push_front(trial),
                     Some(Retry::Last) => {
@@ -257,6 +306,24 @@ pub(super) async fn schedule(
                     }
                     None => {}
                 }
+            }
+            Some((backend, readings)) = reads.next(), if !reads.is_empty() => {
+                let lane = lanes
+                    .get_mut(backend)
+                    .ok_or_else(|| eyre!("no lane for backend {backend}"))?;
+                let Some(meter) = &mut lane.meter else {
+                    return Err(eyre!("backend {backend} read a quota it has no source for"));
+                };
+                let before = meter.clone();
+                let windows = readings.unwrap_or_else(|err| {
+                    warn!(
+                        "{backend}: reading the quota failed, so the lane goes on unmetered \
+                         until the next reading: {err:#}"
+                    );
+                    Vec::new()
+                });
+                meter.record(Instant::now(), Utc::now(), windows);
+                log_reading(backend, &before, meter);
             }
             () = sleep_until(wake), if wake.is_some() => {}
             () = stop.reached(Stage::Draining), if stop.stage() == Stage::Running => {}
@@ -343,6 +410,38 @@ fn log_gate(backend: &BackendId, before: Gate, after: Gate) {
     }
 }
 
+/// Logs each window of `after`, the meter just read, whose use differs from `before`, and the
+/// hold when the reading starts one.
+fn log_reading(backend: &BackendId, before: &Meter, after: &Meter) {
+    let percent = |window: &Window| (window.used * 100.0).round();
+    for window in after.windows() {
+        let unchanged = before
+            .windows()
+            .any(|old| old.name == window.name && percent(old) == percent(window));
+        if !unchanged {
+            info!(
+                "{backend}: {} quota {:.0}% used",
+                window.name,
+                percent(window)
+            );
+        }
+    }
+    if let Some(spent) = after.spent()
+        && before.spent().is_none()
+    {
+        let reset = spent
+            .resets_at
+            .map_or_else(|| "a time it does not say".to_owned(), |at| at.to_string());
+        warn!(
+            "{backend}: holding, starting nothing new until a reading shows its {} quota, {:.0}% \
+             used, below the {:.0}% hold; it resets at {reset}",
+            spent.name,
+            percent(spent),
+            after.hold() * 100.0
+        );
+    }
+}
+
 /// How the agent ended, its turns and tokens, and its wall time.
 fn summary(record: &RunRecord) -> String {
     let outcome = record.outcome();
@@ -400,6 +499,8 @@ mod tests {
         guard: Guard,
         t0: Instant,
         log: Mutex<Vec<Start>>,
+        /// When each quota reading was taken.
+        reads: Mutex<Vec<Duration>>,
     }
 
     /// An attempt that started, when, and how many of its lane's attempts it joined.
@@ -427,6 +528,7 @@ mod tests {
                 guard: Guard::default(),
                 t0: Instant::now(),
                 log: Mutex::default(),
+                reads: Mutex::default(),
             }
         }
 
@@ -435,7 +537,23 @@ mod tests {
             stop: &Stop,
             ending: impl Fn(&TrialKey, usize) -> (Duration, Result<Attempted>),
         ) -> Tally {
+            self.metered(stop, ending, None::<fn(Duration) -> Result<Vec<Window>>>)
+                .await
+        }
+
+        /// Schedules as [`Bench::schedule`] does, with `anthropic` metered by `meter` when
+        /// there is one, which reads its quota at each time since the start.
+        async fn metered(
+            &self,
+            stop: &Stop,
+            ending: impl Fn(&TrialKey, usize) -> (Duration, Result<Attempted>),
+            meter: Option<impl Fn(Duration) -> Result<Vec<Window>>>,
+        ) -> Tally {
             let running: Mutex<BTreeMap<BackendId, usize>> = Mutex::default();
+            let metered = match meter {
+                Some(_) => BTreeSet::from([backend("anthropic")]),
+                None => BTreeSet::new(),
+            };
             schedule(
                 self.experiment.trials(),
                 self.experiment.concurrency(),
@@ -463,6 +581,13 @@ mod tests {
                     tokio::time::sleep(takes).await;
                     *running.lock().unwrap().get_mut(&backend).unwrap() -= 1;
                     attempted
+                },
+                &metered,
+                async |backend: &BackendId| {
+                    assert_eq!(backend.as_str(), "anthropic");
+                    let at = Instant::now() - self.t0;
+                    self.reads.lock().unwrap().push(at);
+                    meter.as_ref().expect("a meter")(at)
                 },
             )
             .await
@@ -494,6 +619,20 @@ mod tests {
 
     fn trials(starts: &[Start]) -> Vec<TrialKey> {
         starts.iter().map(|start| start.trial.clone()).collect()
+    }
+
+    fn minutes(starts: &[Start]) -> Vec<u64> {
+        starts.iter().map(|start| start.at.as_secs() / 60).collect()
+    }
+
+    /// A 5-hour window `used` at `at` since the start, which resets `resets` since the start.
+    fn five_hours(used: f64, at: Duration, resets: Duration) -> Vec<Window> {
+        let left = chrono::TimeDelta::from_std(resets.saturating_sub(at)).unwrap();
+        vec![Window {
+            name: "5h".to_owned(),
+            used,
+            resets_at: Some(Utc::now() + left),
+        }]
     }
 
     fn discarded(reason: Reason) -> Result<Attempted> {
@@ -813,5 +952,101 @@ mod tests {
             })
             .await;
         assert_eq!((tally.committed, tally.pending), (16, 0));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_metered_lane_starts_nothing_while_its_quota_is_at_the_hold() {
+        let bench = Bench::new();
+        let reset = 30 * MINUTE;
+        let meter = |at: Duration| {
+            let used = if at < reset { 0.8 } else { 0.1 };
+            Ok(five_hours(
+                used,
+                at,
+                reset + 300 * MINUTE * u32::from(at >= reset),
+            ))
+        };
+        let tally = bench
+            .metered(
+                &Stop::default(),
+                |_, _| (10 * MINUTE, bench.committed()),
+                Some(meter),
+            )
+            .await;
+        assert_eq!(tally.committed, 16);
+        assert_eq!(
+            minutes(&bench.starts("anthropic")),
+            [30, 30, 40, 40, 50, 50, 60, 60]
+        );
+        assert_eq!(
+            minutes(&bench.starts("openai")),
+            [0, 10, 20, 30, 40, 50, 60, 70],
+            "only the metered lane holds"
+        );
+        let reads = bench.reads.lock().unwrap().clone();
+        assert!(
+            reads
+                .windows(2)
+                .all(|pair| pair[1] - pair[0] >= meter::REFRESH),
+            "{reads:?}"
+        );
+        assert_eq!(reads.first(), Some(&Duration::ZERO));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_rate_limit_without_a_reset_waits_for_the_spent_window_the_meter_reads() {
+        let bench = Bench::new();
+        let first = bench.trials("anthropic")[0].clone();
+        let reset = 40 * MINUTE;
+        let meter = |at: Duration| {
+            let used = match at {
+                at if at < 5 * MINUTE => 0.5,
+                at if at < reset => 1.0,
+                _ => 0.0,
+            };
+            Ok(five_hours(used, at, reset))
+        };
+        let tally = bench
+            .metered(
+                &Stop::default(),
+                |trial, earlier| {
+                    if trial == &first && earlier == 0 {
+                        let reason = Reason::RateLimited { resets_at: None };
+                        (5 * MINUTE, discarded(reason))
+                    } else {
+                        (10 * MINUTE, bench.committed())
+                    }
+                },
+                Some(meter),
+            )
+            .await;
+        assert_eq!((tally.committed, tally.discarded), (16, 1));
+        let anthropic = bench.starts("anthropic");
+        assert_eq!(minutes(&anthropic), [0, 0, 40, 50, 50, 60, 60, 70, 70]);
+        assert_eq!(anthropic[2].trial, first, "the limited trial probes first");
+        assert_eq!(anthropic[2].alongside, 0, "the probe runs alone");
+        let reads = bench.reads.lock().unwrap().clone();
+        assert!(
+            reads.contains(&(5 * MINUTE)),
+            "the rate limit is read at once: {reads:?}"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_lane_whose_quota_cannot_be_read_goes_on_as_if_unmetered() {
+        let bench = Bench::new();
+        let meter = |_: Duration| Err(eyre!("HTTP 503"));
+        let tally = bench
+            .metered(
+                &Stop::default(),
+                |_, _| (10 * MINUTE, bench.committed()),
+                Some(meter),
+            )
+            .await;
+        assert_eq!(tally.committed, 16);
+        assert_eq!(
+            minutes(&bench.starts("anthropic")),
+            [0, 0, 10, 10, 20, 20, 30, 30]
+        );
     }
 }

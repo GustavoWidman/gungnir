@@ -4,12 +4,14 @@ mod attempt;
 #[cfg(test)]
 pub(crate) mod fixture;
 mod gate;
+mod meter;
 mod records;
 mod review;
 mod schedule;
 mod workspace;
 
 pub use attempt::{Attempted, Rig};
+pub use meter::HOLD;
 pub use records::{
     AgentExit, Cut, Outcome, Process, ProcessExit, Quota, Reason, RunInputs, RunRecord, Sample,
     Tokens,
@@ -25,6 +27,7 @@ use crate::{
     language::Language,
     lifecycle::{Current, Lifecycle},
     provenance::{Session, SessionId},
+    quota::Reader,
     sandbox::{self, HOME, WORK},
     scenario::{Brief, Scenario},
     stop::Stop,
@@ -157,9 +160,26 @@ pub async fn run(
         stop,
     };
     let limits = experiment.concurrency();
-    schedule(pending, limits, guard, stop, async |trial: &TrialKey| {
-        rig.attempt(&Task::of(experiment, trial)?).await
-    })
+    let sources: BTreeMap<&BackendId, _> = limits
+        .keys()
+        .filter_map(|id| Some((id, experiment.catalog().backend(id)?.quota()?)))
+        .collect();
+    let metered = sources.keys().map(|&id| id.clone()).collect();
+    let reader = Reader::new()?;
+    schedule(
+        pending,
+        limits,
+        guard,
+        stop,
+        async |trial: &TrialKey| rig.attempt(&Task::of(experiment, trial)?).await,
+        &metered,
+        async |backend: &BackendId| {
+            let source = sources
+                .get(backend)
+                .ok_or_else(|| eyre!("backend {backend} has no quota source"))?;
+            reader.read(source, &vault.key(backend)?).await
+        },
+    )
     .await
 }
 
