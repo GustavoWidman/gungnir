@@ -29,7 +29,7 @@ scenarios/<id>/
   workloads/NAME.in           inputs for timing, written on demand by gen/ and never committed
   gen/                        the seeded generator for hidden cases and workloads
   reference/<language>/       a complete reference solution per supported language
-experiments/<name>.toml       the matrix to run, its harness pins and its optional [machine] pin
+experiments/<name>.toml       the matrix to run, its harness pins and its optional [machine] pin; a [[systems]] entry may set its own repetitions
 nix/toolchains.nix            sandbox environments derived from gungnir.toml and languages/
 nix/typescript-bun.nix        tsc with Bun's type declarations, a package nixpkgs lacks
 src/                          the gungnir crate

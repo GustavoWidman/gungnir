@@ -79,7 +79,7 @@ impl Selection {
             );
             matchers.push(matcher);
         }
-        let last = experiment.repetitions();
+        let last = experiment.most_repetitions();
         for rep in reps {
             ensure!(
                 Rep::up_to(last).any(|known| known == *rep),

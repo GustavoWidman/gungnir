@@ -1213,8 +1213,19 @@ impl fmt::Display for Plan<'_> {
         let systems = experiment.systems();
         let rows: Vec<[String; 4]> = systems
             .chunk_by(|a, b| {
-                (a.harness(), a.harness_version(), a.backend(), a.model())
-                    == (b.harness(), b.harness_version(), b.backend(), b.model())
+                (
+                    a.harness(),
+                    a.harness_version(),
+                    a.backend(),
+                    a.model(),
+                    experiment.repetitions_of(a),
+                ) == (
+                    b.harness(),
+                    b.harness_version(),
+                    b.backend(),
+                    b.model(),
+                    experiment.repetitions_of(b),
+                )
             })
             .map(|group| {
                 let first = &group[0];
@@ -1222,11 +1233,17 @@ impl fmt::Display for Plan<'_> {
                     .iter()
                     .map(|system| system.effort().as_str())
                     .collect();
+                let own = experiment.repetitions_of(first);
+                let efforts = if own == experiment.repetitions() {
+                    efforts.join(" ")
+                } else {
+                    format!("{}  ({own} repetitions)", efforts.join(" "))
+                };
                 [
                     format!("{} {}", first.harness(), first.harness_version()),
                     first.backend().to_string(),
                     first.model().to_string(),
-                    efforts.join(" "),
+                    efforts,
                 ]
             })
             .collect();
@@ -1444,6 +1461,26 @@ mod tests {
             let message = select(scenarios, languages).unwrap_err().to_string();
             assert!(message.contains(needle), "{message}");
         }
+    }
+
+    #[test]
+    fn plan_marks_a_model_with_its_own_repetitions() {
+        let root = TempDir::new().unwrap();
+        testing::repo(root.path());
+        write(
+            root.path(),
+            "experiments/trial.toml",
+            testing::EXPERIMENT_TOML
+                .replace("efforts = \"all\"", "efforts = \"all\"\nrepetitions = 3"),
+        );
+        let experiment = Experiment::load(&root.path().join("experiments/trial.toml")).unwrap();
+        let plan = Plan(&experiment).to_string();
+        assert!(plan.contains("luna  none low  (3 repetitions)\n"), "{plan}");
+        assert!(plan.contains("opus  low high\n"), "{plan}");
+        assert!(
+            plan.ends_with("repetitions  2\ntrials       20\n"),
+            "{plan}"
+        );
     }
 
     #[test]

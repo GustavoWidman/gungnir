@@ -33,7 +33,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/catalog.rs` loads `gungnir.toml` into `Catalog`, `Backend`, `Credential`, `Model` and dated price tiers. `Catalog::system` is the only constructor of `System`, and `System::id` derives the `SystemId`.
 - `src/language.rs` loads `languages/` into `Language` profiles. `Language::prompt` renders the agent's prompt from a `Brief` and the `Version` the language's toolchain reported, and the loader refuses a preamble that never says `{version}`.
 - `src/scenario.rs` loads `scenarios/` into `Scenario` values, with digests of the brief, the hidden suite, the workloads and each reference.
-- `src/experiment.rs` loads an experiment against the repository that holds it, with its harness pins and optional `[machine]` pin, validates it, and expands it into `TrialKey` values with `Experiment::trials`.
+- `src/experiment.rs` loads an experiment against the repository that holds it, with its harness pins and optional `[machine]` pin, validates it, and expands it into `TrialKey` values with `Experiment::trials`. A `[[systems]]` entry may set its own `repetitions`, which `Experiment::repetitions_of` serves.
 - `src/trial.rs` defines `Phase`, `TrialKey`, `ResultsDir`, `TrialDir` and `AttemptDir`. Paths under `results/<experiment>/` are named there and nowhere else. `ResultsDir::retract` withdraws a committed directory through the phase's scratch, so a crash never leaves one half deleted.
 - `src/store.rs` and `src/store/` hold the file mechanics: `Digest`, atomic writes, `read_json`, the `PartialDir` commit protocol and the `Lock` used for phase locks.
 - `src/provenance.rs` records one `Session` per invocation in `sessions/<id>.json`, with the harness versions it probed and the store paths of the toolchains it used.
@@ -57,7 +57,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 1. `Experiment::load` finds the repository root, which is the nearest directory above the experiment file that has a `gungnir.toml`.
 2. `Catalog::load`, `Language::load_all` and `Scenario::load_all` load the catalog and every language and scenario. One invalid entry fails the whole load.
 3. The experiment picks its scenarios and languages, turns each `[[systems]]` entry into one `System` per effort, and checks the pins, the concurrency keys and the references.
-4. `cli::Plan` prints one row per model with its efforts, then the scenarios, languages, repetitions and trial count.
+4. `cli::Plan` prints one row per model with its efforts and any repetitions its `[[systems]]` entry sets for itself, then the scenarios, languages, the experiment's repetitions and the trial count.
 
 ## How `gungnir run` runs an experiment
 

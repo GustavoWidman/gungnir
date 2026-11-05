@@ -109,6 +109,41 @@ fn trials_are_repetition_major_and_deterministic() {
 }
 
 #[test]
+fn a_systems_entry_may_set_its_own_repetitions() {
+    let root = fixture();
+    edit(
+        root.path(),
+        "efforts = \"all\"",
+        "efforts = \"all\"\nrepetitions = 3",
+    );
+    let experiment = load(root.path()).unwrap();
+    let of = |model: &str| {
+        let system = experiment
+            .systems()
+            .iter()
+            .find(|system| system.model().to_string() == model)
+            .unwrap();
+        experiment.repetitions_of(system).get()
+    };
+    assert_eq!((of("opus"), of("luna")), (2, 3));
+    assert_eq!(experiment.most_repetitions().get(), 3);
+
+    let trials = experiment.trials();
+    assert_eq!(trials.len(), 2 * 2 * 2 + 2 * 2 * 3);
+    let last: Vec<(String, String)> = trials[16..]
+        .iter()
+        .map(|trial| (trial.rep.to_string(), trial.system.model().to_string()))
+        .collect();
+    assert_eq!(last, vec![("r3".to_owned(), "luna".to_owned()); 4]);
+
+    rejects(
+        "efforts = \"all\"",
+        "efforts = \"all\"\nrepetitions = 0",
+        &["repetitions"],
+    );
+}
+
+#[test]
 fn a_model_served_by_several_backends_needs_one_chosen() {
     let glm = "[[systems]]\nmodel = \"glm\"\nefforts = [\"low\"]\n";
     rejects(

@@ -1,7 +1,7 @@
 //! An experiment: the matrix of systems, scenarios, languages and repetitions to run, with
 //! the pins, budget and concurrency that govern running it.
 use crate::{
-    catalog::{Catalog, System},
+    catalog::{Catalog, System, SystemId},
     id::{BackendId, Effort, HarnessName, HarnessVersion, LanguageId, ModelId, Rep, ScenarioId},
     language::Language,
     measure::Identity,
@@ -31,6 +31,8 @@ pub struct Experiment {
     results: ResultsDir,
     repetitions: NonZeroU32,
     systems: Vec<System>,
+    /// The systems whose `[[systems]]` entry sets its own repetitions.
+    own_repetitions: BTreeMap<SystemId, NonZeroU32>,
     scenarios: Vec<Scenario>,
     languages: Vec<Language>,
     pins: BTreeMap<HarnessName, HarnessVersion>,
@@ -68,8 +70,26 @@ impl Experiment {
         &self.results
     }
 
+    /// The repetitions a system gets unless its `[[systems]]` entry sets its own.
     pub fn repetitions(&self) -> NonZeroU32 {
         self.repetitions
+    }
+
+    /// The repetitions `system` gets.
+    pub fn repetitions_of(&self, system: &System) -> NonZeroU32 {
+        self.own_repetitions
+            .get(&system.id())
+            .copied()
+            .unwrap_or(self.repetitions)
+    }
+
+    /// The most repetitions any system gets.
+    pub fn most_repetitions(&self) -> NonZeroU32 {
+        self.systems
+            .iter()
+            .map(|system| self.repetitions_of(system))
+            .max()
+            .unwrap_or(self.repetitions)
     }
 
     /// The systems in the order listed, each entry's efforts by rank.
@@ -113,8 +133,11 @@ impl Experiment {
     /// systems, then scenarios, then languages, as listed.
     pub fn trials(&self) -> Vec<TrialKey> {
         let mut trials = Vec::new();
-        for rep in Rep::up_to(self.repetitions) {
+        for rep in Rep::up_to(self.most_repetitions()) {
             for system in &self.systems {
+                if rep.get() > self.repetitions_of(system).get() {
+                    continue;
+                }
                 for scenario in &self.scenarios {
                     for language in &self.languages {
                         trials.push(TrialKey {
@@ -192,13 +215,15 @@ struct RawBudget {
     idle: String,
 }
 
-/// A `[[systems]]` entry: one model at one or more efforts.
+/// A `[[systems]]` entry: one model at one or more efforts, with the experiment's repetitions
+/// unless it sets its own.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawSystems {
     model: ModelId,
     backend: Option<BackendId>,
     efforts: RawEfforts,
+    repetitions: Option<NonZeroU32>,
 }
 
 /// `"all"` or a list of effort names, parsed after loading so a typo gets a clear message.
@@ -240,8 +265,10 @@ impl RawExperiment {
             bail!("[pins] names harness {harness}, which gungnir.toml does not declare");
         }
         let mut systems: Vec<System> = Vec::new();
+        let mut own_repetitions = BTreeMap::new();
         for entry in self.systems {
             let model = entry.model.clone();
+            let repetitions = entry.repetitions;
             for system in entry
                 .resolve(&catalog, &self.pins)
                 .wrap_err_with(|| format!("[[systems]] model = \"{model}\""))?
@@ -251,6 +278,9 @@ impl RawExperiment {
                     "system {} is listed twice",
                     system.id()
                 );
+                if let Some(repetitions) = repetitions {
+                    own_repetitions.insert(system.id(), repetitions);
+                }
                 systems.push(system);
             }
         }
@@ -271,6 +301,7 @@ impl RawExperiment {
             results: ResultsDir::new(normalize(&dir.join(&self.results))),
             repetitions: self.repetitions,
             systems,
+            own_repetitions,
             scenarios,
             languages,
             pins: self.pins,
