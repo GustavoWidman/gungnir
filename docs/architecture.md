@@ -252,7 +252,7 @@ All phases are safe to rerun and safe to interrupt. The first Ctrl-C drains: not
 
 The design keys lanes by backend, stores inputs in records, re-parses stored transcripts, and mounts only toolchain closures. It uses a driver registry, live line decoding, the partial-directory commit protocol, the `Brief` type and session provenance. Rejected shapes:
 
-- An enum of harnesses with a `match` in every method. Adding a harness touched many arms.
+- An enum of harnesses with a `match` in every method. Adding a harness touches many arms.
 - Mounting all of `/nix/store`. It exposes the flake source copy that holds hidden tests.
 - Running `nix build` at the start of every command. Toolchains are built once with the dev shell instead.
 - SQLite, an append-only event journal, a Cargo workspace, and a long-lived pipeline daemon.
