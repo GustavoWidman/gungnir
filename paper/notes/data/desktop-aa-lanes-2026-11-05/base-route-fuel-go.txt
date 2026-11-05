@@ -1,0 +1,6 @@
+workload  reference  range               candidate  range               ratio  95% interval    instructions  peak memory
+city      268.8ms    [267.0ms, 269.7ms]  268.6ms    [268.0ms, 269.3ms]  0.999  [0.996, 1.001]  1.000         10.1MiB (reference 10.1MiB)
+highway   246.5ms    [245.9ms, 247.5ms]  246.6ms    [245.9ms, 247.1ms]  1.000  [0.999, 1.001]  1.000         3.9MiB (reference 3.9MiB)
+pinned to isolated CPU 14 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance, turbo off
+load average 1.16 0.48 0.18 at the start, 1.60 0.62 0.23 at the end
+record and hyperfine exports in /tmp/gungnir-bench-DQOysv/measure

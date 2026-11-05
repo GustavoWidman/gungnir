@@ -1,0 +1,7 @@
+workload  reference  range               candidate  range               ratio  95% interval    instructions  peak memory
+labels    129.5ms    [128.2ms, 130.5ms]  129.5ms    [128.3ms, 130.5ms]  0.998  [0.992, 1.005]  1.000         48.0MiB (reference 47.4MiB)
+logs      168.1ms    [166.1ms, 170.6ms]  167.5ms    [166.3ms, 169.1ms]  0.996  [0.991, 1.001]  0.999         75.9MiB (reference 76.7MiB)
+nested    130.6ms    [130.0ms, 132.2ms]  130.2ms    [129.8ms, 135.1ms]  0.999  [0.991, 1.007]  1.000         52.6MiB (reference 53.1MiB)
+pinned to isolated CPU 8 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance, turbo on
+load average 1.62 1.26 0.63 at the start, 2.35 1.45 0.70 at the end
+record and hyperfine exports in /tmp/gungnir-bench-DvpEFD/measure

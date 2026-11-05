@@ -1,0 +1,7 @@
+workload           reference  range               candidate  range               ratio  95% interval    instructions  peak memory
+big-divisions      258.9ms    [258.7ms, 267.0ms]  258.9ms    [258.8ms, 259.0ms]  0.996  [0.984, 1.008]  1.000         3.6MiB (reference 3.7MiB)
+big-products       1.008s     [1.008s, 1.030s]    1.008s     [1.008s, 1.009s]    0.995  [0.985, 1.005]  1.000         6.8MiB (reference 6.8MiB)
+small-expressions  125.9ms    [125.2ms, 126.4ms]  126.3ms    [125.9ms, 130.2ms]  1.007  [0.993, 1.020]  1.000         14.0MiB (reference 14.3MiB)
+pinned to isolated CPU 12 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance, turbo on
+load average 2.04 1.52 0.82 at the start, 1.63 1.47 0.83 at the end
+record and hyperfine exports in /tmp/gungnir-bench-IBsakb/measure

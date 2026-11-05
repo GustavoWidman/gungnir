@@ -1,0 +1,6 @@
+workload  reference  range               candidate  range               ratio  95% interval    instructions  peak memory
+nested    259.5ms    [252.8ms, 262.1ms]  255.4ms    [253.2ms, 262.5ms]  0.994  [0.974, 1.014]  1.000         78.4MiB (reference 78.4MiB)
+records   171.7ms    [164.2ms, 173.9ms]  172.1ms    [170.4ms, 173.1ms]  1.008  [0.988, 1.029]  1.000         105.6MiB (reference 105.6MiB)
+pinned to isolated CPU 10 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance, turbo off
+load average 0.91 0.42 0.16 at the start, 1.56 0.60 0.22 at the end
+record and hyperfine exports in /tmp/gungnir-bench-CYATcP/measure

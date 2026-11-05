@@ -1,0 +1,6 @@
+workload                reference  range             candidate  range              ratio  95% interval    instructions  peak memory
+pentominoes-3x20        89.3ms     [86.0ms, 93.5ms]  90.3ms     [87.0ms, 102.8ms]  1.012  [0.982, 1.042]  0.997         34.2MiB (reference 34.2MiB)
+tetrominoes-twice-4x10  46.0ms     [43.6ms, 48.5ms]  45.7ms     [43.7ms, 50.2ms]   0.997  [0.988, 1.007]  0.999         32.3MiB (reference 32.3MiB)
+pinned to isolated CPU 14 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance, turbo on
+load average 1.62 1.26 0.63 at the start, 1.97 1.34 0.66 at the end
+record and hyperfine exports in /tmp/gungnir-bench-QEkNxb/measure

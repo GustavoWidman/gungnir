@@ -1,0 +1,6 @@
+workload      reference  range               candidate  range               ratio  95% interval    instructions  peak memory
+deep-history  113.8ms    [110.1ms, 116.3ms]  113.3ms    [111.8ms, 115.8ms]  0.998  [0.976, 1.021]  1.000         65.6MiB (reference 65.6MiB)
+mixed         154.3ms    [146.8ms, 158.8ms]  152.8ms    [146.8ms, 157.0ms]  0.991  [0.962, 1.020]  1.000         90.9MiB (reference 90.8MiB)
+pinned to isolated CPU 10 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance, turbo on
+load average 1.90 1.46 0.79 at the start, 2.23 1.53 0.82 at the end
+record and hyperfine exports in /tmp/gungnir-bench-gFyQHD/measure

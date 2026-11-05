@@ -1,0 +1,7 @@
+workload  reference  range             candidate  range             ratio  95% interval    instructions  peak memory
+collatz   21.1ms     [20.8ms, 21.3ms]  21.1ms     [20.8ms, 21.3ms]  0.999  [0.990, 1.009]  1.000         1.7MiB (reference 1.7MiB)
+fib       18.4ms     [18.1ms, 20.0ms]  18.5ms     [18.1ms, 20.0ms]  1.021  [0.980, 1.063]  1.000         1.6MiB (reference 1.7MiB)
+sieve     24.8ms     [24.4ms, 25.2ms]  24.8ms     [24.5ms, 26.7ms]  1.001  [0.995, 1.007]  1.000         6.4MiB (reference 6.4MiB)
+pinned to isolated CPU 8 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance, turbo on
+load average 1.16 1.08 0.53 at the start, 1.38 1.13 0.54 at the end
+record and hyperfine exports in /tmp/gungnir-bench-Oj6r2w/measure

@@ -1,0 +1,6 @@
+workload       reference  range               candidate  range               ratio  95% interval    instructions  peak memory
+many-distinct  644.5ms    [616.4ms, 805.5ms]  654.1ms    [613.8ms, 733.7ms]  0.999  [0.856, 1.167]  1.000         204.3MiB (reference 204.5MiB)
+zipf           840.8ms    [837.7ms, 865.2ms]  839.4ms    [837.0ms, 846.7ms]  0.996  [0.981, 1.010]  1.000         399.8MiB (reference 399.8MiB)
+pinned to isolated CPU 12 of 32 (13th Gen Intel(R) Core(TM) i9-13900K), governor performance, turbo on
+load average 1.16 1.30 0.72 at the start, 1.37 1.35 0.75 at the end
+record and hyperfine exports in /tmp/gungnir-bench-iUSVRP/measure
