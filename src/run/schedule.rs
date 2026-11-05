@@ -192,17 +192,18 @@ pub(super) async fn schedule(
         if running.is_empty() && idle {
             break;
         }
-        let deadline = lanes
-            .iter()
-            .filter(|(_, lane)| !lane.queue.is_empty() && lane.stopped.is_none())
+        let waiting = || {
+            lanes.iter().filter(|(_, lane)| {
+                stop.stage() == Stage::Running && !lane.queue.is_empty() && lane.stopped.is_none()
+            })
+        };
+        let deadline = waiting()
             .filter_map(|(backend, _)| guard.deadlines.get(*backend))
             .filter_map(|at| (*at - Utc::now()).to_std().ok())
             .map(|left| Instant::now() + left)
             .min();
-        let wake = lanes
-            .values()
-            .filter(|lane| !lane.queue.is_empty() && lane.stopped.is_none())
-            .filter_map(|lane| lane.gate.wakes())
+        let wake = waiting()
+            .filter_map(|(_, lane)| lane.gate.wakes())
             .chain(deadline)
             .min();
         tokio::select! {
