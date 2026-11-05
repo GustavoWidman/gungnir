@@ -13,7 +13,7 @@ host = "11b301add99fa61a4eb9f0a36eae41f1"
 blocks = 6
 runs = 3
 warmup = 0
-clock_mhz = 5500
+clock_mhz = 3000
 
 [pins]
 codex = "0.166.0"
