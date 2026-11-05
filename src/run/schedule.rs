@@ -3,7 +3,7 @@
 //! with a quota source, a meter that holds the lane while its quota is spent. A trial whose
 //! attempt is no sample goes back into its lane until one is.
 use super::{
-    AgentExit, Attempted, Quota, Reason, RunRecord,
+    AgentExit, Attempted, Reason, RunRecord,
     gate::{Event, Gate},
     meter::{self, Admit, Meter},
 };
@@ -66,27 +66,33 @@ pub struct Ceiling {
     pub from: Option<DateTime<Utc>>,
 }
 
+/// The quota windows one attempt or one reading reported, each with the fraction used, and
+/// when that attempt started or that reading was taken.
+struct Used<'a> {
+    windows: Vec<(&'a str, f64)>,
+    at: DateTime<Utc>,
+}
+
 impl Guard {
     /// The fraction of a quota window at which a metered `backend` holds.
     fn hold(&self, backend: &BackendId) -> f64 {
         self.holds.get(backend).copied().unwrap_or(meter::HOLD)
     }
 
-    /// Why `backend` must start nothing more, given the quota windows its latest attempt
-    /// reported with when that attempt started, the errors in a row it has had, and the time.
+    /// Why `backend` must start nothing more, given the quota its latest attempt or reading
+    /// reported, the errors in a row it has had, and the time.
     fn stops(
         &self,
         backend: &BackendId,
-        quota: Option<(&BTreeMap<String, Quota>, DateTime<Utc>)>,
+        quota: Option<&Used>,
         errors: u32,
         now: DateTime<Utc>,
     ) -> Option<String> {
-        if let (Some(ceiling), Some((windows, started))) = (self.ceilings.get(backend), quota)
-            && ceiling.from.is_none_or(|from| started >= from)
+        if let (Some(ceiling), Some(Used { windows, at })) = (self.ceilings.get(backend), quota)
+            && ceiling.from.is_none_or(|from| *at >= from)
             && let Some((window, used)) = windows
                 .iter()
-                .filter(|(window, _)| ceiling.window.as_ref().is_none_or(|only| only == *window))
-                .map(|(window, quota)| (window, quota.last))
+                .filter(|(window, _)| ceiling.window.as_deref().is_none_or(|only| only == *window))
                 .find(|(_, used)| *used >= ceiling.fraction)
         {
             return Some(format!(
@@ -261,20 +267,26 @@ pub(super) async fn schedule(
                 lane.running -= 1;
                 lane.errors = errors_after(lane.errors, &result);
                 let quota = match &result {
-                    Ok(Attempted::Committed(record)) => {
-                        Some((&record.outcome().quota, record.started()))
-                    }
+                    Ok(Attempted::Committed(record)) => Some(Used {
+                        windows: record
+                            .outcome()
+                            .quota
+                            .iter()
+                            .map(|(window, quota)| (window.as_str(), quota.last))
+                            .collect(),
+                        at: record.started(),
+                    }),
                     _ => None,
                 };
-                if let Some((windows, _)) = quota {
+                if let Some(Used { windows, .. }) = &quota {
                     for (window, used) in windows {
-                        info!("{backend}: {window} quota {:.0}% used", used.last * 100.0);
+                        info!("{backend}: {window} quota {:.0}% used", used * 100.0);
                     }
                 }
                 if lane.stopped.is_none()
                     && let Some(reason) = guard.stops(
                         backend,
-                        quota,
+                        quota.as_ref(),
                         lane.errors,
                         Utc::now(),
                     )
@@ -322,8 +334,20 @@ pub(super) async fn schedule(
                     );
                     Vec::new()
                 });
-                meter.record(Instant::now(), Utc::now(), windows);
+                let read = Utc::now();
+                let used = Used {
+                    windows: windows.iter().map(|w| (w.name.as_str(), w.used)).collect(),
+                    at: read,
+                };
+                let stops = guard.stops(backend, Some(&used), lane.errors, read);
+                meter.record(Instant::now(), read, windows);
                 log_reading(backend, &before, meter);
+                if lane.stopped.is_none()
+                    && let Some(reason) = stops
+                {
+                    warn!("{backend}: starting nothing more, because {reason}");
+                    lane.stopped = Some(reason);
+                }
             }
             () = sleep_until(wake), if wake.is_some() => {}
             () = stop.reached(Stage::Draining), if stop.stage() == Stage::Running => {}
@@ -1048,5 +1072,33 @@ mod tests {
             minutes(&bench.starts("anthropic")),
             [0, 0, 10, 10, 20, 20, 30, 30]
         );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_quota_reading_at_its_ceiling_stops_the_backend() {
+        for (from, expected) in [
+            (None, 0),
+            (Some(Utc::now() + chrono::Duration::hours(1)), 8),
+        ] {
+            let mut bench = Bench::new();
+            bench.guard.ceilings.insert(
+                backend("anthropic"),
+                Ceiling {
+                    window: Some("5h".to_owned()),
+                    fraction: 0.5,
+                    from,
+                },
+            );
+            let meter = |at: Duration| Ok(five_hours(0.6, at, 300 * MINUTE));
+            let tally = bench
+                .metered(
+                    &Stop::default(),
+                    |_, _| (10 * MINUTE, bench.committed()),
+                    Some(meter),
+                )
+                .await;
+            assert_eq!(bench.starts("anthropic").len(), expected, "{from:?}");
+            assert_eq!(tally.committed, 8 + expected, "{from:?}");
+        }
     }
 }

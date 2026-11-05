@@ -79,9 +79,11 @@ enum Command {
         /// The experiment file, such as experiments/smoke.toml.
         experiment: PathBuf,
         /// Stop starting attempts on a backend once a quota window reports this fraction used,
-        /// as BACKEND[:WINDOW]=FRACTION[@TIME]: WINDOW names one window (any window when
-        /// omitted), and TIME, in RFC 3339, counts only attempts that started at or after it.
-        /// Such as anthropic:seven_day=0.75 or openai=0.35@2026-11-04T04:05:00-03:00.
+        /// in an attempt's transcript or a reading of the backend's quota source, as
+        /// BACKEND[:WINDOW]=FRACTION[@TIME]: WINDOW names one window (any window when omitted),
+        /// and TIME, in RFC 3339, counts only attempts that started, and readings taken, at or
+        /// after it. Such as anthropic:seven_day=0.75, zai:5h=0.5 or
+        /// openai=0.35@2026-11-04T04:05:00-03:00.
         #[arg(long = "quota-ceiling", value_name = "BACKEND[:WINDOW]=FRACTION[@TIME]", value_parser = ceiling)]
         ceilings: Vec<(BackendId, Ceiling)>,
         /// Start nothing new on a backend with a quota source in gungnir.toml while it reads a
