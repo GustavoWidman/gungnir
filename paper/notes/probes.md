@@ -19,8 +19,6 @@ The Anthropic-compatible endpoint is `https://api.z.ai/api/anthropic` (`POST /v1
 
 Both endpoints honor the effort setting (roughly 10x more output at max on this prompt, n = 1 per cell). The Anthropic endpoint returns thinking blocks but does not split thinking tokens out of `output_tokens`. The OpenAI coding endpoint reports `completion_tokens_details.reasoning_tokens`.
 
-
-
 ## Claude Code forwards effort to GLM (2026-11-03)
 
 Claude Code 2.1.316 ran headless against Z.ai through a local logging proxy (`ANTHROPIC_BASE_URL`), model `glm-5.3-flash`, prompt "Count the primes below 300 and list the last five. Do not use tools.", one run per level.
