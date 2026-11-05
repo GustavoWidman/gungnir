@@ -85,9 +85,15 @@ This file is guidance for contributors and coding agents. It describes the repos
 
 An experiment's results are tied to the toolchain set it ran with. A committed run records the store paths of its base, language and harness environments, and its prompt states the version its language's toolchain reported, so against another set its runs read as stale. A toolchain upgrade starts a new experiment, and an experiment that already has runs keeps its own set, kept alive by a GC root.
 
-The pilot, `claude-ext` and `openai-ext` ran with `/nix/store/76fa1jkl6f76s2w73mhhlhfcm6dlgw4c-gungnir-toolchains`, which holds only the python, rust and zig languages. Run every command on them with that set, for example `GUNGNIR_TOOLCHAINS=/nix/store/76fa1jkl6f76s2w73mhhlhfcm6dlgw4c-gungnir-toolchains gungnir status experiments/pilot.toml` inside the dev shell, which sets the variable to the current set otherwise.
+Each experiment in the repository and the set to run its commands with:
 
-A measurement also records the `measure/` environment it timed with, and that set predates GNU time in `measure/` and has no `profile/`: `measure` and `profile` cannot run on it, and the pilot's measurements read as stale against it. Measure, profile and report those experiments with a set that keeps its base, language and harness environments and adds the current measurement and profiling tools, such as `/nix/store/nqyqmxzf4d76l96j5s3zyi8fvwj011xf-gungnir-toolchains`, the set the pilot's measurements were made with.
+| Experiments | `GUNGNIR_TOOLCHAINS` |
+|---|---|
+| `pilot`, `claude-ext`, `openai-ext`: `run`, `grade` | `/nix/store/76fa1jkl6f76s2w73mhhlhfcm6dlgw4c-gungnir-toolchains`, with only the python, rust and zig languages |
+| `pilot`, `claude-ext`, `openai-ext`: `measure`, `profile`, `status`, `report` | `/nix/store/nqyqmxzf4d76l96j5s3zyi8fvwj011xf-gungnir-toolchains`, the same base, language and harness environments with GNU time in `measure/` and a `profile/` |
+| `study-openai`, `study-glm`, `study-claude`: every command | `/nix/store/fszs07fs8l58n1cp03fzq0p75v0f8jy4-gungnir-toolchains`, all eight languages |
+
+Set it inside the dev shell, which otherwise sets the variable to the current set, for example `GUNGNIR_TOOLCHAINS=/nix/store/fszs07fs8l58n1cp03fzq0p75v0f8jy4-gungnir-toolchains gungnir status experiments/study-glm.toml`. A measurement records the `measure/` environment it timed with, so the pilot's measurements read as stale against the first set, whose `measure/` lacks GNU time.
 
 ## Invariants to keep
 
