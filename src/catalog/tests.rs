@@ -28,6 +28,7 @@ harness = "claude-code"
 endpoint = "https://api.example.com/anthropic"
 credential = { kind = "api-key", var = "KEY", file = "/etc/gungnir/key" }
 egress = ["api.example.com"]
+quota = { kind = "zai-monitor", url = "https://api.example.com/monitor/quota" }
 
 [[models]]
 id = "m"
@@ -80,6 +81,14 @@ fn loads_the_repository_catalog() {
     assert!(
         matches!(zai.credential(), Credential::ApiKey { var, .. } if var == "ANTHROPIC_AUTH_TOKEN")
     );
+    let Some(QuotaSource::ZaiMonitor { url }) = zai.quota() else {
+        panic!("zai has no quota source");
+    };
+    assert_eq!(
+        url.as_str(),
+        "https://api.z.ai/api/monitor/usage/quota/limit"
+    );
+    assert_eq!(catalog.backend(&id("anthropic")).unwrap().quota(), None);
 
     let haiku = catalog.model(&id("claude-haiku-5-5")).unwrap();
     assert_eq!(
@@ -293,6 +302,35 @@ fn endpoints_must_be_https_hosts_the_egress_allows() {
         "endpoint = \"https://api.example.com/anthropic\"\n",
         "",
         &["[backends.proxy]", "api-key", "endpoint"],
+    );
+}
+
+#[test]
+fn a_quota_source_sends_the_api_key_only_to_its_endpoint_host() {
+    rejects(
+        "https://api.example.com/monitor/quota",
+        "https://monitor.example.com/quota",
+        &["[backends.proxy]", "monitor.example.com", "api.example.com"],
+    );
+    rejects(
+        "https://api.example.com/monitor/quota",
+        "http://api.example.com/monitor/quota",
+        &[
+            "[backends.proxy]",
+            "quota url",
+            "http://api.example.com/monitor/quota",
+        ],
+    );
+    rejects(
+        "egress = [\"api.anthropic.com\"]",
+        "egress = [\"api.anthropic.com\"]\nquota = { kind = \"zai-monitor\", url = \"https://api.anthropic.com/quota\" }",
+        &["[backends.anthropic]", "api-key"],
+    );
+    rejects("kind = \"zai-monitor\"", "kind = \"gauge\"", &["gauge"]);
+    rejects(
+        "url = \"https://api.example.com/monitor/quota\"",
+        "uri = \"https://api.example.com/monitor/quota\"",
+        &["uri"],
     );
 }
 

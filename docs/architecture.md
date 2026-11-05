@@ -5,7 +5,7 @@ gungnir runs a benchmark of AI coding agents. It drives each vendor's own CLI he
 ## Vocabulary
 
 - **Harness.** A vendor CLI agent driven headless: Claude Code, Codex, later Gemini CLI.
-- **Backend.** One account behind one endpoint, used through one harness. `anthropic` is the Claude subscription through Claude Code, `openai` is the ChatGPT subscription through Codex, `zai` is the GLM coding plan through Claude Code. Concurrency, rate limits, credentials and the egress allowlist all belong to a backend, never to a harness.
+- **Backend.** One account behind one endpoint, used through one harness. `anthropic` is the Claude subscription through Claude Code, `openai` is the ChatGPT subscription through Codex, `zai` is the GLM coding plan through Claude Code. Concurrency, rate limits, credentials, the egress allowlist and the quota source all belong to a backend, never to a harness.
 - **System.** Harness (with its pinned version), backend, model and reasoning effort. Every claim in the paper is about a system.
 - **Scenario.** A language-neutral task: a spec, visible examples, hidden cases, performance workloads, and one reference solution per supported language.
 - **Language.** A toolchain profile: packages, project template, build steps, run command, the command that prints its version, source globs and the lizard language name.
@@ -206,6 +206,8 @@ The first backend is bubblewrap. Its argv builder is a pure function with unit t
 - `env-token`: a file whose contents become one environment variable. Claude Code uses `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`.
 - `api-key`: the same, plus the backend's endpoint. GLM uses `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL`.
 - `codex-home`: a dedicated `CODEX_HOME` whose `auth.json` is copied into each attempt's isolated home. After the attempt, if the copy carries a newer `last_refresh`, the vault writes it back to the master atomically under `gungnir.lock` beside it, so parallel attempts, even from two gungnir processes, never fight over one file and the newest login wins. A copy that names another account or a `last_refresh` in the future is refused, because the agent can write to its home.
+
+A backend may also name a `quota` source: the vendor's own account of the plan's quota, for a harness that reports none in its transcript. `zai` names Z.ai's monitor, `{ kind = "zai-monitor", url = ... }`. gungnir reads it from the host, never from a sandbox, with the backend's key, so the loader requires an `api-key` credential and a URL on the endpoint's host: the key goes nowhere the agent's own requests do not.
 
 Every credential is read again as each attempt starts, so an attempt always gets the latest login. The vault also names the exact strings to redact: the token for the first two kinds, and each token inside `auth.json` (never the whole file) for the third, including tokens the CLI refreshed during the attempt.
 

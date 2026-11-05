@@ -107,6 +107,7 @@ pub struct Backend {
     endpoint: Option<Endpoint>,
     credential: Credential,
     egress: Vec<String>,
+    quota: Option<QuotaSource>,
 }
 
 impl Backend {
@@ -127,9 +128,15 @@ impl Backend {
     pub fn egress(&self) -> &[String] {
         &self.egress
     }
+
+    /// Where gungnir itself reads how much of the account's quota is used, if the vendor says
+    /// anywhere but in the agent's transcript.
+    pub fn quota(&self) -> Option<&QuotaSource> {
+        self.quota.as_ref()
+    }
 }
 
-/// An `https://` base URL whose host is one of its backend's egress hosts.
+/// An `https://` URL whose host is one of its backend's egress hosts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Endpoint {
     url: String,
@@ -137,12 +144,12 @@ pub struct Endpoint {
 }
 
 impl Endpoint {
-    fn parse(url: String) -> Result<Self> {
+    fn parse(key: &str, url: String) -> Result<Self> {
         let host = url
             .strip_prefix("https://")
             .map(|rest| rest.split_once('/').map_or(rest, |(host, _)| host))
             .filter(|host| is_hostname(host))
-            .ok_or_else(|| eyre!("endpoint = {url:?} is not an https:// URL with a DNS host"))?
+            .ok_or_else(|| eyre!("{key} = {url:?} is not an https:// URL with a DNS host"))?
             .to_owned();
         Ok(Self { url, host })
     }
@@ -165,6 +172,15 @@ pub enum Credential {
     ApiKey { var: String, file: UserPath },
     /// A dedicated `CODEX_HOME` whose `auth.json` seeds each attempt's isolated home.
     CodexHome { dir: UserPath },
+}
+
+/// A vendor's own account of a backend's quota, which gungnir reads from the host with the
+/// backend's credential. Its URL is always on the host of the backend's endpoint, so the key
+/// goes nowhere the agent's requests do not.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum QuotaSource {
+    /// Z.ai's monitor of a coding plan's limits, which takes the API key as it is.
+    ZaiMonitor { url: Endpoint },
 }
 
 /// A path that is absolute or starts with `~/`, kept as written until [`UserPath::expand`].
@@ -364,6 +380,7 @@ struct RawBackend {
     endpoint: Option<String>,
     credential: RawCredential,
     egress: Vec<String>,
+    quota: Option<RawQuotaSource>,
 }
 
 #[derive(Deserialize)]
@@ -372,6 +389,12 @@ enum RawCredential {
     EnvToken { var: String, file: String },
     ApiKey { var: String, file: String },
     CodexHome { dir: String },
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
+enum RawQuotaSource {
+    ZaiMonitor { url: String },
 }
 
 #[derive(Deserialize)]
@@ -475,7 +498,10 @@ impl RawBackend {
         if let Some(host) = self.egress.iter().find(|host| !is_hostname(host)) {
             bail!("egress host {host:?} is not a lowercase DNS name");
         }
-        let endpoint = self.endpoint.map(Endpoint::parse).transpose()?;
+        let endpoint = self
+            .endpoint
+            .map(|url| Endpoint::parse("endpoint", url))
+            .transpose()?;
         if let Some(endpoint) = &endpoint {
             ensure!(
                 self.egress.contains(&endpoint.host),
@@ -491,13 +517,39 @@ impl RawBackend {
                 "credential kind \"api-key\" needs an endpoint"
             );
         }
+        let quota = self
+            .quota
+            .map(|raw| raw.resolve(&credential, endpoint.as_ref()))
+            .transpose()?;
         Ok(Backend {
             harness: self.harness,
             driver,
             endpoint,
             credential,
             egress: self.egress,
+            quota,
         })
+    }
+}
+
+impl RawQuotaSource {
+    fn resolve(self, credential: &Credential, endpoint: Option<&Endpoint>) -> Result<QuotaSource> {
+        let Self::ZaiMonitor { url } = self;
+        let url = Endpoint::parse("quota url", url)?;
+        let endpoint = match (credential, endpoint) {
+            (Credential::ApiKey { .. }, Some(endpoint)) => endpoint,
+            _ => bail!(
+                "quota kind \"zai-monitor\" sends an API key, so it needs an api-key credential"
+            ),
+        };
+        ensure!(
+            url.host == endpoint.host,
+            "quota url = {:?} has host {}, but the backend's key goes only to its endpoint's host {}",
+            url.url,
+            url.host,
+            endpoint.host
+        );
+        Ok(QuotaSource::ZaiMonitor { url })
     }
 }
 

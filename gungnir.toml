@@ -38,6 +38,8 @@ harness = "claude-code"
 endpoint = "https://api.z.ai/api/anthropic"
 credential = { kind = "api-key", var = "ANTHROPIC_AUTH_TOKEN", file = "~/.config/gungnir/glm/api_key" }
 egress = ["api.z.ai"]
+# Claude Code reports no quota for Z.ai, so gungnir reads the plan's own meter between attempts.
+quota = { kind = "zai-monitor", url = "https://api.z.ai/api/monitor/usage/quota/limit" }
 
 [[models]]
 id = "claude-fable-5-1"
