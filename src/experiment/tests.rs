@@ -305,3 +305,35 @@ fn a_machine_pin_names_a_cpu_model_and_a_host_id() {
         &["host"],
     );
 }
+
+#[test]
+fn a_measure_table_states_the_timing_protocol() {
+    let root = fixture();
+    assert_eq!(load(root.path()).unwrap().protocol(), Protocol::DEFAULT);
+    let table = "[measure]\nblocks = 8\nruns = 5\nwarmup = 1\n\n[pins]";
+    edit(root.path(), "[pins]", table);
+    assert_eq!(
+        load(root.path()).unwrap().protocol(),
+        Protocol {
+            blocks: NonZeroU32::new(8).unwrap(),
+            runs: NonZeroU32::new(5).unwrap(),
+            warmup: 1,
+        }
+    );
+
+    rejects(
+        "[pins]",
+        "[measure]\nblocks = 0\nruns = 3\nwarmup = 0\n\n[pins]",
+        &["blocks = 0", "nonzero"],
+    );
+    rejects(
+        "[pins]",
+        "[measure]\nblocks = 6\nruns = 3\n\n[pins]",
+        &["warmup"],
+    );
+    rejects(
+        "[pins]",
+        "[measure]\nblocks = 6\nruns = 3\nwarmup = 0\ncore = 8\n\n[pins]",
+        &["core"],
+    );
+}

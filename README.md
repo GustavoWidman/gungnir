@@ -122,7 +122,7 @@ gungnir report experiments/study-*.toml --out runs/report
 | `check` | Build and grade every reference solution, regenerating missing workloads |
 | `run` | Run pending trials, one lane per backend, behind quota ceilings, deadlines and an error stop |
 | `grade` | Grade committed runs offline against the hidden cases |
-| `measure` | Time passing programs against the reference on one pinned core |
+| `measure` | Time passing programs against the reference under the experiment's protocol, on one pinned core |
 | `bench` | Time any workspace against a reference, or the reference against itself as an A/A test |
 | `profile` | Sample one trial and its reference under perf and write flame graphs |
 | `machine` | Print this machine's identity as a `[machine]` pin |
@@ -169,6 +169,11 @@ repetitions = 5
 model = "gpt-6.1-terra"
 efforts = "all"
 ```
+
+An optional `[measure]` table states the timing protocol with all three of its keys: `blocks`
+ABBA blocks, each timing both programs `runs` times after `warmup` untimed runs. Without it an
+experiment measures under 6 blocks of 3 runs and no warmup. A measurement made under another
+protocol is stale, so `measure` takes it again and `status` and `report` count it as stale.
 
 Trials run repetition by repetition, so a run stopped early leaves the matrix evenly covered.
 Results live under `runs/`, which is not tracked.

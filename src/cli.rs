@@ -119,9 +119,10 @@ enum Command {
         jobs: NonZeroUsize,
     },
     /// Time each passing trial without a current measurement against the reference in its
-    /// language, one comparison at a time on one pinned core. Refuses a busy machine, and holds
-    /// the run and grade locks, unless --allow-busy. The first Ctrl-C lets the comparison in
-    /// progress finish, the second kills it.
+    /// language, under the experiment's [measure] protocol, one comparison at a time on one
+    /// pinned core. Refuses a busy machine, and holds the run and grade locks, unless
+    /// --allow-busy. The first Ctrl-C lets the comparison in progress finish, the second kills
+    /// it.
     Measure(Measure),
     /// Print this machine's identity as the [machine] table that pins an experiment's
     /// measurements to it.
@@ -470,15 +471,6 @@ struct Measure {
     /// several.
     #[arg(long = "system", value_name = "GLOB")]
     systems: Vec<String>,
-    /// ABBA blocks per workload. An even count puts each program first equally often.
-    #[arg(long, value_name = "B", default_value_t = Protocol::DEFAULT.blocks)]
-    blocks: NonZeroU32,
-    /// Timed runs of each program in each block.
-    #[arg(long, value_name = "R", default_value_t = Protocol::DEFAULT.runs)]
-    runs: NonZeroU32,
-    /// Untimed runs of each program before its timed runs in each block.
-    #[arg(long, value_name = "W", default_value_t = Protocol::DEFAULT.warmup)]
-    warmup: u32,
     /// The CPU every run is pinned to. Defaults to the first CPU the kernel isolates from the
     /// scheduler, or else the last one gungnir may run on.
     #[arg(long, value_name = "N")]
@@ -499,11 +491,6 @@ impl Measure {
         let request = measure::Request {
             selection: Selection::new(&experiment, &self.reps, &self.systems)?,
             core: pinned_core(self.core)?,
-            protocol: Protocol {
-                blocks: self.blocks,
-                runs: self.runs,
-                warmup: self.warmup,
-            },
             quiet: if self.allow_busy {
                 Quiet::Waived
             } else {
@@ -1642,5 +1629,29 @@ mod tests {
         );
         let total: Vec<&str> = table.lines().last().unwrap().split_whitespace().collect();
         assert_eq!(total, ["total", "1", "0", "1", "0", "0", "1"]);
+    }
+
+    #[tokio::test]
+    async fn status_counts_a_measurement_stale_once_the_experiment_declares_another_protocol() {
+        use crate::run::fixture;
+        let repo = fixture::Repo::new();
+        let experiment = repo.experiment();
+        let opus = fixture::trial(&experiment, "opus");
+        fixture::commit_run(&repo, &opus, &[("main.py", "print(input())\n")]);
+        fixture::commit_grade(&repo, &opus).await;
+        fixture::commit_measure(&repo, &opus, Protocol::DEFAULT);
+        let measured_and_stale = |repo: &fixture::Repo| {
+            let rows = status(&repo.experiment(), &repo.toolchains).unwrap();
+            let total = rows.iter().fold(Counts::default(), |sum, (_, c)| sum + *c);
+            (total.measured, total.stale)
+        };
+        assert_eq!(measured_and_stale(&repo), (1, 0));
+
+        let longer = Protocol {
+            blocks: Protocol::DEFAULT.blocks.saturating_add(2),
+            ..Protocol::DEFAULT
+        };
+        fixture::declare_protocol(&repo, longer);
+        assert_eq!(measured_and_stale(&repo), (1, 1));
     }
 }

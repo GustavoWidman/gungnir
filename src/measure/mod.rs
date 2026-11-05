@@ -74,13 +74,13 @@ pub struct Protocol {
 }
 
 impl Protocol {
-    /// The protocol `gungnir measure` and `gungnir bench` use unless told otherwise, chosen
-    /// from A/A comparisons of all six pilot references (8 blocks of 5 runs each). A program's
-    /// first run in a block was no slower than the rest (median ratio 0.98), since the output
-    /// check has already run it on the workload, so a warmup adds runs and no accuracy. The
-    /// median of 3 runs survives one outlier and took the block-to-block spread most of the
-    /// way from 1 run to 5 (17.0% to 12.5%, against 11.0%). Six blocks cut the t quantile
-    /// from 3.18 at four to 2.57, and a 95% interval to about two thirds as wide.
+    /// The protocol of an experiment without a `[measure]` table, and of `gungnir bench` unless
+    /// told otherwise, chosen from A/A comparisons of all six pilot references (8 blocks of 5
+    /// runs each). A program's first run in a block was no slower than the rest (median ratio
+    /// 0.98), since the output check has already run it on the workload, so a warmup adds runs
+    /// and no accuracy. The median of 3 runs survives one outlier and took the block-to-block
+    /// spread most of the way from 1 run to 5 (17.0% to 12.5%, against 11.0%). Six blocks cut
+    /// the t quantile from 3.18 at four to 2.57, and a 95% interval to about two thirds as wide.
     pub const DEFAULT: Self = Self {
         blocks: NonZeroU32::new(6).unwrap(),
         runs: NonZeroU32::new(3).unwrap(),

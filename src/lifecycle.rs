@@ -105,9 +105,9 @@ impl Lifecycle {
     }
 }
 
-/// What each phase would use for one trial now. A measurement is current only when made on the
-/// machine the experiment pins, or on this machine when it pins none, and under
-/// [`Protocol::DEFAULT`], unless [`Current::with_protocol`] names another protocol.
+/// What each phase would use for one trial now. A measurement is current only when made under
+/// the experiment's timing protocol, on the machine the experiment pins, or on this machine
+/// when it pins none.
 pub struct Current<'a> {
     run: RunInputs,
     language: &'a Language,
@@ -134,17 +134,12 @@ impl<'a> Current<'a> {
             language: task.language,
             scenario,
             toolchains,
-            protocol: Protocol::DEFAULT,
+            protocol: experiment.protocol(),
             machine: match experiment.machine() {
                 Some(pinned) => pinned,
                 None => Identity::here()?,
             },
         })
-    }
-
-    /// The same, with measurements current only when made under `protocol`.
-    pub fn with_protocol(self, protocol: Protocol) -> Self {
-        Self { protocol, ..self }
     }
 
     /// The inputs of running the trial now.
@@ -182,7 +177,6 @@ mod tests {
     use super::*;
     use crate::{
         run::fixture::{self, Repo},
-        store::PartialDir,
         testing::write,
     };
     use std::fs;
@@ -251,53 +245,14 @@ mod tests {
         assert_eq!((stage(&ran), ran.stale), ("ran", Some(Phase::Run)));
     }
 
-    /// Commits a measurement of `trial` that timed nothing, made from the inputs of measuring
-    /// it now under `protocol`, on this machine.
-    fn commit_measure(repo: &Repo, trial: &TrialKey, protocol: Protocol) {
-        let here = Identity::here().unwrap();
-        commit_measure_on(
-            repo,
-            trial,
-            protocol,
-            here.cpu.as_deref(),
-            here.host.as_deref(),
-        );
-    }
-
-    /// The same, on the machine with the CPU model `cpu` and the host id `host`.
-    fn commit_measure_on(
-        repo: &Repo,
-        trial: &TrialKey,
-        protocol: Protocol,
-        cpu: Option<&str>,
-        host: Option<&str>,
-    ) {
-        let experiment = repo.experiment();
-        let current = Current::of(&experiment, trial, &repo.toolchains)
-            .unwrap()
-            .with_protocol(protocol);
-        let dir = experiment.results().trial(trial);
-        let record = serde_json::json!({
-            "session": fixture::session(),
-            "inputs": current.measure(&dir.final_workspace()).unwrap(),
-            "machine": {
-                "cpu": cpu, "host": host, "cpus": 1, "core": 0, "governor": null, "kernel": "7.3.0",
-                "perf_event_paranoid": 1, "load": {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0]},
-            },
-            "workloads": {},
-        });
-        let partial = PartialDir::begin(&dir.phase(Phase::Measure)).unwrap();
-        partial.commit(&record).unwrap();
-    }
-
     #[tokio::test]
-    async fn a_measurement_counts_under_a_passing_grade_made_with_the_current_protocol() {
+    async fn a_measurement_counts_under_a_passing_grade_made_with_the_experiments_protocol() {
         let repo = Repo::new();
         let experiment = repo.experiment();
         let trial = fixture::trial(&experiment, "opus");
         fixture::commit_run(&repo, &trial, &[("main.py", "print(input())\n")]);
         fixture::commit_grade(&repo, &trial).await;
-        commit_measure(&repo, &trial, Protocol::DEFAULT);
+        fixture::commit_measure(&repo, &trial, Protocol::DEFAULT);
         let measured = read(&repo, "opus");
         assert_eq!((stage(&measured), measured.stale), ("measured", None));
         assert!(measured.run().is_some());
@@ -306,12 +261,12 @@ mod tests {
             warmup: Protocol::DEFAULT.warmup + 1,
             ..Protocol::DEFAULT
         };
-        let current = Current::of(&experiment, &trial, &repo.toolchains)
-            .unwrap()
-            .with_protocol(longer);
+        fixture::declare_protocol(&repo, longer);
+        assert_eq!(read(&repo, "opus").stale, Some(Phase::Measure));
         let dir = experiment.results().trial(&trial);
-        let remeasure = Lifecycle::read(&dir, &current).unwrap();
-        assert_eq!(remeasure.stale, Some(Phase::Measure));
+        fs::remove_dir_all(dir.phase(Phase::Measure)).unwrap();
+        fixture::commit_measure(&repo, &trial, longer);
+        assert_eq!(read(&repo, "opus").stale, None);
 
         write(repo.root.path(), "scenarios/echo/hidden/edge.out", "x\n");
         let regrade = read(&repo, "opus");
@@ -337,7 +292,7 @@ mod tests {
         let (cpu, host) = (here.cpu.as_deref(), here.host.as_deref());
         let measured_on = |cpu: Option<&str>, host: Option<&str>| {
             fs::remove_dir_all(dir.phase(Phase::Measure)).ok();
-            commit_measure_on(&repo, &trial, Protocol::DEFAULT, cpu, host);
+            fixture::commit_measure_on(&repo, &trial, Protocol::DEFAULT, cpu, host);
             let lifecycle = read(&repo, "opus");
             (stage(&lifecycle), lifecycle.stale)
         };
@@ -368,7 +323,7 @@ mod tests {
         let dir = experiment.results().trial(&trial);
         let measured_on = |cpu: Option<&str>, host: Option<&str>| {
             fs::remove_dir_all(dir.phase(Phase::Measure)).ok();
-            commit_measure_on(&repo, &trial, Protocol::DEFAULT, cpu, host);
+            fixture::commit_measure_on(&repo, &trial, Protocol::DEFAULT, cpu, host);
             let lifecycle = read(&repo, "opus");
             (stage(&lifecycle), lifecycle.stale)
         };

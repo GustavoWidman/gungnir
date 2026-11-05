@@ -44,7 +44,6 @@ pub struct Request {
     pub selection: Selection,
     /// The CPU every timed run is pinned to.
     pub core: u32,
-    pub protocol: Protocol,
     pub quiet: Quiet,
 }
 
@@ -113,8 +112,9 @@ pub struct Measured {
 }
 
 /// Measures every selected trial of `experiment`, held in the repository `repo`, whose grade
-/// passed and whose measurement is missing or stale, strictly one at a time, committing each
-/// measurement under its trial. Each reference is built once per invocation.
+/// passed and whose measurement is missing or stale under the experiment's protocol, strictly
+/// one at a time, committing each measurement under its trial. Each reference is built once
+/// per invocation.
 pub async fn measure_trials(
     experiment: &Experiment,
     repo: &Path,
@@ -147,7 +147,7 @@ pub async fn measure_trials(
     for trial in &trials {
         let dir = results.trial(trial);
         sweep_partial(&dir.phase(Phase::Measure))?;
-        let current = Current::of(experiment, trial, toolchains)?.with_protocol(request.protocol);
+        let current = Current::of(experiment, trial, toolchains)?;
         let lifecycle = Lifecycle::read(&dir, &current)?;
         if is_due(&lifecycle) {
             due.push((trial, dir, current));
@@ -180,13 +180,14 @@ pub async fn measure_trials(
             results,
             dir,
             current,
+            protocol: experiment.protocol(),
             toolchains,
             backend,
             session: session.id(),
             stop,
         };
         let done = match references.get(current, toolchains, backend, stop).await {
-            Ok(reference) => trial_run.measure(reference, request).await,
+            Ok(reference) => trial_run.measure(reference, request.core).await,
             Err(err) => Err(err),
         };
         settle(&mut measured, trial, done);
@@ -289,6 +290,7 @@ struct Trial<'a> {
     results: &'a ResultsDir,
     dir: &'a TrialDir,
     current: &'a Current<'a>,
+    protocol: Protocol,
     toolchains: &'a Toolchains,
     backend: &'a dyn Backend,
     session: &'a SessionId,
@@ -296,9 +298,9 @@ struct Trial<'a> {
 }
 
 impl Trial<'_> {
-    /// Builds the committed workspace, times it against `reference`, and commits the
-    /// measurement in place of a stale one.
-    async fn measure(&self, reference: &Program<'_>, request: &Request) -> Result<MeasureRecord> {
+    /// Builds the committed workspace, times it against `reference` with every run pinned to
+    /// `core`, and commits the measurement in place of a stale one.
+    async fn measure(&self, reference: &Program<'_>, core: u32) -> Result<MeasureRecord> {
         let (scenario, language) = (self.current.scenario(), self.current.language());
         let workspace = self.dir.final_workspace();
         let inputs = self.current.measure(&workspace)?;
@@ -315,8 +317,8 @@ impl Trial<'_> {
         self.results.retract(Phase::Measure, &target)?;
         let partial = PartialDir::begin(&target)?;
         let settings = Settings {
-            core: request.core,
-            protocol: request.protocol,
+            core,
+            protocol: self.protocol,
             memory: scenario.limits().memory_bytes(),
         };
         let comparison = compare(
@@ -461,11 +463,10 @@ mod tests {
         }
     }
 
-    fn request(protocol: Protocol) -> Request {
+    fn request() -> Request {
         Request {
             selection: Selection::default(),
             core: 0,
-            protocol,
             quiet: Quiet::Waived,
         }
     }
@@ -476,18 +477,17 @@ mod tests {
         measure_trials(&experiment, root, toolchains, backend, request, &stop).await
     }
 
-    fn lifecycle(repo: &Repo, model: &str, protocol: Protocol) -> Lifecycle {
+    fn lifecycle(repo: &Repo, model: &str) -> Lifecycle {
         let experiment = repo.experiment();
         let trial = fixture::trial(&experiment, model);
-        let current = Current::of(&experiment, &trial, &repo.toolchains)
-            .unwrap()
-            .with_protocol(protocol);
+        let current = Current::of(&experiment, &trial, &repo.toolchains).unwrap();
         Lifecycle::read(&experiment.results().trial(&trial), &current).unwrap()
     }
 
-    /// Commits an echoing run for each of `models` and grades every run without a current
-    /// grade.
+    /// Makes the fixture experiment measure under [`QUICK`], commits an echoing run for each of
+    /// `models`, and grades every run without a current grade.
     async fn graded(repo: &Repo, models: &[&str]) {
+        fixture::declare_protocol(repo, QUICK);
         let experiment = repo.experiment();
         for model in models {
             let trial = fixture::trial(&experiment, model);
@@ -512,7 +512,7 @@ mod tests {
         let repo = Repo::new();
         graded(&repo, &["opus"]).await;
         let timer = Scripted::new(timed);
-        let measured = measure(&repo, &timer, &request(QUICK)).await.unwrap();
+        let measured = measure(&repo, &timer, &request()).await.unwrap();
         assert_eq!(
             measured,
             Measured {
@@ -520,7 +520,7 @@ mod tests {
                 ..Measured::default()
             }
         );
-        let stage = lifecycle(&repo, "opus", QUICK).stage;
+        let stage = lifecycle(&repo, "opus").stage;
         let Stage::Measured {
             measure: record, ..
         } = stage
@@ -537,19 +537,32 @@ mod tests {
             describe(&record),
             "large wall 1.000 [1.000, 1.000], instructions 1.000, peak 2.0MiB (reference 2.0MiB)"
         );
-        assert_eq!(lifecycle(&repo, "luna", QUICK).stage, Stage::Pending);
+        assert_eq!(lifecycle(&repo, "luna").stage, Stage::Pending);
 
-        let again = measure(&repo, &timer, &request(QUICK)).await.unwrap();
+        let again = measure(&repo, &timer, &request()).await.unwrap();
         assert_eq!(again, Measured::default());
 
         let longer = Protocol {
             runs: NonZeroU32::new(2).unwrap(),
             ..QUICK
         };
-        assert_eq!(lifecycle(&repo, "opus", longer).stale, Some(Phase::Measure));
-        let remeasured = measure(&repo, &timer, &request(longer)).await.unwrap();
+        fixture::declare_protocol(&repo, longer);
+        assert_eq!(lifecycle(&repo, "opus").stale, Some(Phase::Measure));
+        let remeasured = measure(&repo, &timer, &request()).await.unwrap();
         assert_eq!(remeasured.committed, 1);
-        assert_eq!(lifecycle(&repo, "opus", longer).stale, None);
+        assert_eq!(lifecycle(&repo, "opus").stale, None);
+        let hyperfine = timer
+            .calls()
+            .into_iter()
+            .filter(|(_, argv)| argv[0] == "hyperfine");
+        let runs: Vec<String> = hyperfine
+            .map(|(_, argv)| argv[argv.iter().position(|arg| arg == "--runs").unwrap() + 1].clone())
+            .collect();
+        assert_eq!(
+            runs.iter().filter(|runs| *runs == "2").count(),
+            4,
+            "{runs:?}"
+        );
     }
 
     #[tokio::test]
@@ -557,11 +570,11 @@ mod tests {
         let repo = Repo::new();
         graded(&repo, &["opus"]).await;
         let timer = Scripted::new(timed);
-        measure(&repo, &timer, &request(QUICK)).await.unwrap();
+        measure(&repo, &timer, &request()).await.unwrap();
 
         write(repo.root.path(), "scenarios/echo/hidden/edge.out", "x\n");
         graded(&repo, &[]).await;
-        let failed = lifecycle(&repo, "opus", QUICK);
+        let failed = lifecycle(&repo, "opus");
         assert!(matches!(failed.stage, Stage::Graded { .. }), "{failed:?}");
         assert_eq!(failed.stale, None);
         let experiment = repo.experiment();
@@ -570,7 +583,7 @@ mod tests {
             .trial(&fixture::trial(&experiment, "opus"));
         let kept = read_record::<MeasureRecord>(&dir.phase(Phase::Measure)).unwrap();
         assert!(kept.is_some());
-        let measured = measure(&repo, &timer, &request(QUICK)).await.unwrap();
+        let measured = measure(&repo, &timer, &request()).await.unwrap();
         assert_eq!(measured, Measured::default());
     }
 
@@ -582,7 +595,7 @@ mod tests {
             "hyperfine" => Err(eyre!("taskset: invalid CPU").into()),
             _ => timed(spec, argv, io),
         });
-        let measured = measure(&repo, &broken, &request(QUICK)).await.unwrap();
+        let measured = measure(&repo, &broken, &request()).await.unwrap();
         assert_eq!(
             measured,
             Measured {
@@ -590,10 +603,10 @@ mod tests {
                 ..Measured::default()
             }
         );
-        let waiting = lifecycle(&repo, "opus", QUICK).stage;
+        let waiting = lifecycle(&repo, "opus").stage;
         assert!(matches!(waiting, Stage::Graded { .. }), "{waiting:?}");
         let timer = Scripted::new(timed);
-        let measured = measure(&repo, &timer, &request(QUICK)).await.unwrap();
+        let measured = measure(&repo, &timer, &request()).await.unwrap();
         assert_eq!(measured.committed, 2);
     }
 
@@ -605,13 +618,13 @@ mod tests {
         let _running = experiment.results().lock(Phase::Run).unwrap();
         let quiet = Request {
             quiet: Quiet::Required,
-            ..request(QUICK)
+            ..request()
         };
         let timer = Scripted::new(timed);
         let message = format!("{:#}", measure(&repo, &timer, &quiet).await.unwrap_err());
         assert!(message.contains("run is running"), "{message}");
         assert!(message.contains("--allow-busy"), "{message}");
-        let measured = measure(&repo, &timer, &request(QUICK)).await.unwrap();
+        let measured = measure(&repo, &timer, &request()).await.unwrap();
         assert_eq!(measured.committed, 1);
     }
 

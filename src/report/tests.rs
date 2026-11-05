@@ -2,8 +2,8 @@ use super::*;
 use crate::{
     id::AttemptNo,
     measure::{
-        self, Block, Comparison, Identity, Load, Machine, MeasureRecord, PeakMemory, Protocol,
-        Timed,
+        self, Block, Comparison, Identity, Load, Machine, MeasureInputs, MeasureRecord, PeakMemory,
+        Protocol, Timed,
     },
     run::fixture::{self, Repo},
     store::{Digest, PartialDir},
@@ -60,11 +60,15 @@ fn commit_second_attempt(repo: &Repo, trial: &TrialKey) {
 fn commit_measure(repo: &Repo, trial: &TrialKey, protocol: Protocol) {
     let experiment = repo.experiment();
     let dir = experiment.results().trial(trial);
-    let inputs = Current::of(&experiment, trial, &repo.toolchains)
-        .unwrap()
-        .with_protocol(protocol)
-        .measure(&dir.final_workspace())
-        .unwrap();
+    let current = Current::of(&experiment, trial, &repo.toolchains).unwrap();
+    let inputs = MeasureInputs::new(
+        current.language(),
+        &repo.toolchains,
+        current.scenario(),
+        &dir.final_workspace(),
+        &protocol,
+    )
+    .unwrap();
     let runs = |walls: &[f64]| -> Vec<measure::Sample> {
         walls
             .iter()
@@ -448,6 +452,17 @@ async fn only_a_current_measurement_is_tabled() {
     let timings = table(out.path(), "timings.csv");
     assert_eq!(timings.len(), 8);
     assert!(timings.iter().all(|row| row["system"] == opus_id));
+
+    fixture::declare_protocol(&repo, longer);
+    write_report(&repo, out.path()).unwrap();
+    let trials = table(out.path(), "trials.csv");
+    assert_eq!(
+        cells(&trials, &["model", "stale_phase"]),
+        [["opus", "measure"], ["luna", ""]]
+    );
+    let luna_id = luna.system.id().to_string();
+    let timings = table(out.path(), "timings.csv");
+    assert!(timings.iter().all(|row| row["system"] == luna_id));
 }
 
 #[test]

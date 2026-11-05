@@ -4,7 +4,7 @@ use crate::{
     catalog::{Catalog, System, SystemId},
     id::{BackendId, Effort, HarnessName, HarnessVersion, LanguageId, ModelId, Rep, ScenarioId},
     language::Language,
-    measure::Identity,
+    measure::{Identity, Protocol},
     scenario::Scenario,
     store::read_toml,
     trial::{ResultsDir, TrialKey},
@@ -37,6 +37,7 @@ pub struct Experiment {
     languages: Vec<Language>,
     pins: BTreeMap<HarnessName, HarnessVersion>,
     machine: Option<Identity>,
+    protocol: Protocol,
     budget: Budget,
     concurrency: BTreeMap<BackendId, NonZeroUsize>,
     catalog: Catalog,
@@ -115,6 +116,13 @@ impl Experiment {
         self.machine.as_ref()
     }
 
+    /// The timing protocol every measurement is made under: `[measure]`, or
+    /// [`Protocol::DEFAULT`] when the experiment declares none. A measurement made under any
+    /// other protocol is stale.
+    pub fn protocol(&self) -> Protocol {
+        self.protocol
+    }
+
     pub fn budget(&self) -> Budget {
         self.budget
     }
@@ -184,6 +192,8 @@ struct RawExperiment {
     pins: BTreeMap<HarnessName, HarnessVersion>,
     #[serde(default)]
     machine: Option<RawMachine>,
+    #[serde(default)]
+    measure: Option<RawMeasure>,
     budget: RawBudget,
     concurrency: BTreeMap<BackendId, NonZeroUsize>,
     systems: Vec<RawSystems>,
@@ -206,6 +216,16 @@ impl RawMachine {
             host: Some(self.host),
         })
     }
+}
+
+/// `[measure]`: the timing protocol, every key of it, so that the file states the whole
+/// protocol its measurements are made under.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawMeasure {
+    blocks: NonZeroU32,
+    runs: NonZeroU32,
+    warmup: u32,
 }
 
 #[derive(Deserialize)]
@@ -306,6 +326,11 @@ impl RawExperiment {
             languages,
             pins: self.pins,
             machine: self.machine.map(RawMachine::resolve).transpose()?,
+            protocol: self.measure.map_or(Protocol::DEFAULT, |measure| Protocol {
+                blocks: measure.blocks,
+                runs: measure.runs,
+                warmup: measure.warmup,
+            }),
             budget: Budget {
                 wall: positive_duration("budget.wall", &self.budget.wall)?,
                 idle: positive_duration("budget.idle", &self.budget.idle)?,

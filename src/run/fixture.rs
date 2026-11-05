@@ -10,6 +10,7 @@ use crate::{
     },
     id::AttemptNo,
     lifecycle::Current,
+    measure::{Identity, MeasureInputs, Protocol},
     provenance::SessionId,
     sandbox::{
         Backend, BoxFuture, Collected, Exit, Fault, Finished, HOME, Input, Io, Output, Spec, WORK,
@@ -272,6 +273,21 @@ impl Repo {
     }
 }
 
+/// Makes the fixture experiment declare `protocol` in its `[measure]` table.
+pub fn declare_protocol(repo: &Repo, protocol: Protocol) {
+    let Protocol {
+        blocks,
+        runs,
+        warmup,
+    } = protocol;
+    let table = format!("[measure]\nblocks = {blocks}\nruns = {runs}\nwarmup = {warmup}\n\n[pins]");
+    write(
+        repo.root.path(),
+        "experiments/fixture.toml",
+        EXPERIMENT_TOML.replacen("[pins]", &table, 1),
+    );
+}
+
 /// The trial of `experiment` whose system runs `model`.
 pub fn trial(experiment: &Experiment, model: &str) -> TrialKey {
     experiment
@@ -339,6 +355,51 @@ pub fn commit_run(repo: &Repo, trial: &TrialKey, files: &[(&str, &str)]) {
     let ignore = experiment.languages()[0].ignore();
     let snapshot = Digest::of_tree(&workspace, ignore).unwrap();
     partial.commit(&record(repo, trial, snapshot)).unwrap();
+}
+
+/// Commits a measurement of `trial` that timed nothing, made from the inputs of measuring
+/// it now under `protocol`, on this machine.
+pub fn commit_measure(repo: &Repo, trial: &TrialKey, protocol: Protocol) {
+    let here = Identity::here().unwrap();
+    commit_measure_on(
+        repo,
+        trial,
+        protocol,
+        here.cpu.as_deref(),
+        here.host.as_deref(),
+    );
+}
+
+/// The same, on the machine with the CPU model `cpu` and the host id `host`.
+pub fn commit_measure_on(
+    repo: &Repo,
+    trial: &TrialKey,
+    protocol: Protocol,
+    cpu: Option<&str>,
+    host: Option<&str>,
+) {
+    let experiment = repo.experiment();
+    let current = Current::of(&experiment, trial, &repo.toolchains).unwrap();
+    let dir = experiment.results().trial(trial);
+    let inputs = MeasureInputs::new(
+        current.language(),
+        &repo.toolchains,
+        current.scenario(),
+        &dir.final_workspace(),
+        &protocol,
+    )
+    .unwrap();
+    let record = serde_json::json!({
+        "session": session(),
+        "inputs": inputs,
+        "machine": {
+            "cpu": cpu, "host": host, "cpus": 1, "core": 0, "governor": null, "kernel": "7.3.0",
+            "perf_event_paranoid": 1, "load": {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0]},
+        },
+        "workloads": {},
+    });
+    let partial = PartialDir::begin(&dir.phase(Phase::Measure)).unwrap();
+    partial.commit(&record).unwrap();
 }
 
 /// A sandbox whose every build step succeeds and whose program echoes each case.
