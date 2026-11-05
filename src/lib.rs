@@ -12,6 +12,7 @@ pub mod language;
 pub mod lifecycle;
 pub mod measure;
 pub mod provenance;
+pub mod quota;
 pub mod report;
 pub mod run;
 pub mod sandbox;
