@@ -5,6 +5,12 @@ repetitions = 1
 scenarios = ["interval-cover"]
 languages = ["python"]
 
+[measure]
+blocks = 6
+runs = 3
+warmup = 0
+clock_mhz = 5500
+
 [pins]
 claude-code = "2.1.316"
 codex = "0.166.0"

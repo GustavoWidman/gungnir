@@ -9,6 +9,12 @@ languages = ["python", "rust", "zig"]
 cpu = "13th Gen Intel(R) Core(TM) i9-13900K"
 host = "11b301add99fa61a4eb9f0a36eae41f1"
 
+[measure]
+blocks = 6
+runs = 3
+warmup = 0
+clock_mhz = 5500
+
 [pins]
 codex = "0.166.0"
 
