@@ -193,7 +193,7 @@ pub trait Backend: Send + Sync {
 }
 ```
 
-The first backend is bubblewrap. Its argv builder is a pure function with unit tests. It uses `--unshare-all`, `--die-with-parent`, `--new-session` and `--clearenv`, binds the closure read-only, provides a private `/tmp` and home, and wraps the process in `systemd-run --user --scope` for `MemoryMax`, `TasksMax` and OOM detection. `taskset` pins measurement runs. Guest paths are constants (`/work`, `/home/agent`), so nothing the agent sees reveals the trial, model or effort. A microVM backend implements the same trait later.
+The first backend is bubblewrap. Its argv builder is a pure function with unit tests. It uses `--unshare-all`, `--die-with-parent`, `--new-session` and `--clearenv`, binds the closure read-only, provides a private `/tmp` and home, and wraps the process in `systemd-run --user --scope` for `MemoryMax`, `TasksMax` and OOM detection. An OOM kill ends the whole sandbox of a program under test, which has then failed, but only the process the kernel picks in an agent's sandbox, as on an ordinary machine: an agent's session outlives a test of its own that runs out of memory and sees that command killed. `taskset` pins measurement runs. Guest paths are constants (`/work`, `/home/agent`), so nothing the agent sees reveals the trial, model or effort. A microVM backend implements the same trait later.
 
 `Finished` covers every way the program can end, including timeouts and OOM kills. `Fault` means the sandbox itself could not run the command. The grader records a fault as an environment error, never as the model's failure.
 

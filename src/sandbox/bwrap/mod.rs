@@ -256,7 +256,8 @@ fn kill_group(child: &Child) -> Result<()> {
 
 /// How the program ended, or `None` when it never started, which is the sandbox's fault. A kill
 /// by gungnir explains the end better than the status it caused, and a timeout better than an
-/// OOM kill along the way.
+/// OOM kill along the way. An OOM kill explains the end only of a program that a signal ended:
+/// a program that exited on its own outlived the process the kernel killed.
 fn conclude(
     cut: Option<Cut>,
     started: bool,
@@ -267,8 +268,10 @@ fn conclude(
         Some(Cut::Killed) => Exit::Killed,
         _ if !started => return None,
         Some(Cut::TimedOut) => Exit::TimedOut,
-        None if out_of_memory => Exit::OutOfMemory,
-        None => exit(status),
+        None => match exit(status) {
+            Exit::Signal(_) if out_of_memory => Exit::OutOfMemory,
+            exit => exit,
+        },
     })
 }
 
@@ -307,6 +310,18 @@ mod tests {
         assert_eq!(
             conclude(None, true, false, ExitStatus::from_raw(2 << 8)),
             Some(Exit::Code(2))
+        );
+    }
+
+    #[test]
+    fn a_program_that_exits_on_its_own_outlived_an_oom_kill() {
+        assert_eq!(
+            conclude(None, true, true, ExitStatus::from_raw(0)),
+            Some(Exit::Code(0))
+        );
+        assert_eq!(
+            conclude(None, true, true, ExitStatus::from_raw((128 + 9) << 8)),
+            Some(Exit::OutOfMemory)
         );
     }
 }

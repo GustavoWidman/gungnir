@@ -9,7 +9,7 @@ use crate::{
     language::{CallGraph, Language},
     lifecycle::{Current, Lifecycle, Stage},
     provenance::{Session, SessionId},
-    sandbox::{Backend, Input, Io, Kill, Limits, Mount, Output},
+    sandbox::{Backend, Input, Io, Kill, Limits, Mount, OomKill, Output},
     secret::EnvValue,
     stop::Stop,
     store::PartialDir,
@@ -221,6 +221,7 @@ impl Sampler<'_> {
             memory: self.memory,
             tasks: TASKS,
             cpu: None,
+            oom: OomKill::Sandbox,
         };
         let mut spec = program.spec(self.input, limits);
         let tools = self.toolchains.profile()?;

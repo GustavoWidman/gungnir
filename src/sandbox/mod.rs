@@ -71,6 +71,17 @@ pub struct Limits {
     pub tasks: u32,
     /// The one CPU to pin the sandbox to, for measurement.
     pub cpu: Option<u32>,
+    pub oom: OomKill,
+}
+
+/// What the kernel's kill at the memory limit ends.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OomKill {
+    /// The whole sandbox: a program under test that runs out of memory has failed.
+    Sandbox,
+    /// Only the process the kernel picks, as on an ordinary machine, so an agent's session
+    /// outlives a program of its own that runs out of memory and sees that command killed.
+    Process,
 }
 
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
@@ -105,7 +116,7 @@ pub enum Exit {
     Signal(i32),
     /// Killed at the wall-time limit.
     TimedOut,
-    /// The kernel killed a process in the sandbox at the memory limit.
+    /// The kernel killed the program at the memory limit.
     OutOfMemory,
     /// Killed through `Io::kill` or the second Ctrl-C.
     Killed,

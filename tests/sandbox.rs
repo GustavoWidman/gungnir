@@ -7,8 +7,8 @@ use eyre::Result;
 use gungnir::{
     egress::{Allowlist, Proxy, Record, Verdict},
     sandbox::{
-        Backend, Bubblewrap, Exit, Finished, HOME, Input, Io, Kill, Limits, Mount, Network, Output,
-        Spec, WORK,
+        Backend, Bubblewrap, Exit, Finished, HOME, Input, Io, Kill, Limits, Mount, Network,
+        OomKill, Output, Spec, WORK,
     },
     secret::{EnvValue, Secret},
     stop::Stop,
@@ -49,6 +49,7 @@ impl Rig {
                 memory: 512 * MIB,
                 tasks: 128,
                 cpu: None,
+                oom: OomKill::Sandbox,
             },
         }
     }
@@ -256,6 +257,22 @@ async fn the_wall_time_limit_kills_the_program() -> Result<()> {
         "{:?}",
         finished.wall
     );
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs bwrap and GUNGNIR_TOOLCHAINS"]
+async fn an_agent_sandbox_outlives_a_process_killed_at_the_memory_limit() -> Result<()> {
+    let rig = Rig::new()?;
+    let mut spec = rig.spec();
+    spec.limits.memory = 64 * MIB;
+    spec.limits.oom = OomKill::Process;
+
+    let finished = rig
+        .bash(&spec, "head -c 1G /dev/zero | tail; echo survived")
+        .await?;
+    assert_eq!(finished.exit, Exit::Code(0));
+    assert_eq!(text(&finished.stdout.bytes), "survived\n");
     Ok(())
 }
 

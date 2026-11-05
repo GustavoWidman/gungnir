@@ -24,7 +24,8 @@ use crate::{
     id::CaseId,
     language::{Argv, Language},
     sandbox::{
-        Backend, Fault, Finished, Input, Io, Kill, Limits, Mount, Network, Output, Spec, WORK,
+        Backend, Fault, Finished, Input, Io, Kill, Limits, Mount, Network, OomKill, Output, Spec,
+        WORK,
     },
     scenario::{CaseFiles, Compare, Scenario},
     secret::EnvValue,
@@ -46,6 +47,7 @@ const BUILD_LIMITS: Limits = Limits {
     memory: 4 << 30,
     tasks: 1024,
     cpu: None,
+    oom: OomKill::Sandbox,
 };
 /// How much of each build step's output the log keeps.
 const BUILD_LOG_CAP: u64 = 1 << 20;
@@ -227,6 +229,7 @@ impl<'a> Offline<'a> {
             memory: scenario.limits().memory_bytes(),
             tasks: CASE_TASKS,
             cpu: None,
+            oom: OomKill::Sandbox,
         };
         let spec = self.spec(false, limits);
         let command: Vec<OsString> = run.args().iter().map(OsString::from).collect();

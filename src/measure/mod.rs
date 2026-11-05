@@ -23,7 +23,7 @@ use crate::{
     grade::{Abnormal, BuildOutcome, Crash, Offline, tree},
     id::WorkloadId,
     language::Language,
-    sandbox::{Backend, Finished, Input, Io, Kill, Limits, Mount, Output, Spec},
+    sandbox::{Backend, Finished, Input, Io, Kill, Limits, Mount, OomKill, Output, Spec},
     scenario::Workload,
     stop::{Stage, Stop},
     store::write_atomic,
@@ -322,6 +322,7 @@ impl Bench<'_> {
             memory: self.settings.memory,
             tasks: TASKS,
             cpu: Some(self.settings.core),
+            oom: OomKill::Sandbox,
         };
         let io = Io {
             stdin: Input::File(workload.to_owned()),
@@ -348,6 +349,7 @@ impl Bench<'_> {
             memory: settings.memory.saturating_add(TIMER_MEMORY),
             tasks: TASKS,
             cpu: Some(settings.core),
+            oom: OomKill::Sandbox,
         };
         let io = Io {
             stdin: Input::Null,

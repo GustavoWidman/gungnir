@@ -14,7 +14,7 @@ use eyre::{Context, ContextCompat, Result, bail, ensure};
 use crate::{
     id::LanguageId,
     language::{Language, Version},
-    sandbox::{Backend, HOME, Input, Io, Kill, Limits, Network, Output, Spec},
+    sandbox::{Backend, HOME, Input, Io, Kill, Limits, Network, OomKill, Output, Spec},
     secret::EnvValue,
     stop::Stop,
 };
@@ -27,6 +27,7 @@ const PROBE_LIMITS: Limits = Limits {
     memory: 1 << 30,
     tasks: 256,
     cpu: None,
+    oom: OomKill::Sandbox,
 };
 const PROBE_OUTPUT: u64 = 64 << 10;
 

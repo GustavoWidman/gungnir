@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    sandbox::{HOME, Network, Spec},
+    sandbox::{HOME, Network, OomKill, Spec},
     secret::{EnvValue, Secret},
     toolchains::{Closure, Toolchain},
 };
@@ -93,6 +93,13 @@ pub(super) fn invocation(layout: &Layout<'_>, spec: &Spec, command: &[OsString])
         .arg(format!("--property=MemoryMax={}", limits.memory))
         .arg("--property=MemorySwapMax=0")
         .arg(format!("--property=TasksMax={}", limits.tasks))
+        .arg(format!(
+            "--property=OOMPolicy={}",
+            match limits.oom {
+                OomKill::Sandbox => "stop",
+                OomKill::Process => "continue",
+            }
+        ))
         .arg("--");
     if let Some(cpu) = limits.cpu {
         argv.arg("taskset").arg("--cpu-list").arg(cpu.to_string());
@@ -284,6 +291,7 @@ mod tests {
                 memory: 1 << 30,
                 tasks: 256,
                 cpu: None,
+                oom: OomKill::Sandbox,
             },
         }
     }
@@ -343,6 +351,7 @@ mod tests {
             "--property=MemoryMax=1073741824",
             "--property=MemorySwapMax=0",
             "--property=TasksMax=256",
+            "--property=OOMPolicy=stop",
         ] {
             assert!(scope.iter().any(|arg| arg == expected), "{expected}");
         }

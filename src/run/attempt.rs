@@ -13,7 +13,8 @@ use crate::{
     id::AttemptNo,
     provenance::SessionId,
     sandbox::{
-        Backend, Fault, Finished, HOME, Input, Io, Kill, Limits, Mount, Network, Output, Spec, WORK,
+        Backend, Fault, Finished, HOME, Input, Io, Kill, Limits, Mount, Network, OomKill, Output,
+        Spec, WORK,
     },
     secret::{EnvValue, Redactor},
     stop::Stop,
@@ -242,6 +243,7 @@ impl Rig<'_> {
                 memory: MEMORY,
                 tasks: TASKS,
                 cpu: None,
+                oom: OomKill::Process,
             },
         })
     }

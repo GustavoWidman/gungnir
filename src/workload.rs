@@ -1,7 +1,7 @@
 //! Workload files: timing inputs that each scenario's `gen/gen.py workloads` writes on demand,
 //! pinned byte for byte by its `workloads.sha256`.
 use crate::{
-    sandbox::{Backend, Input, Io, Kill, Limits, Mount, Network, Output, Spec},
+    sandbox::{Backend, Input, Io, Kill, Limits, Mount, Network, OomKill, Output, Spec},
     scenario::Scenario,
     stop::Stop,
     store::Digest,
@@ -26,6 +26,7 @@ const LIMITS: Limits = Limits {
     memory: 4 << 30,
     tasks: 64,
     cpu: None,
+    oom: OomKill::Sandbox,
 };
 const STDERR_CAP: u64 = 64 << 10;
 
