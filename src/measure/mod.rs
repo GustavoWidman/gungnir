@@ -15,7 +15,10 @@ mod tests;
 mod timing;
 
 pub use lanes::Cores;
-pub use machine::{Clock, Identity, Load, Machine, check_clock, isolated_cpus, parse_cpu_list};
+pub use machine::{
+    Clock, Identity, Load, Machine, check_clock, first_threads, isolated_cpus, parse_cpu_list,
+    thread_siblings,
+};
 pub use phase::{Measured, Quiet, Request, Selection, measure_trials};
 pub use profile::{Profiled, profile_trial};
 pub use record::{MeasureInputs, MeasureRecord};

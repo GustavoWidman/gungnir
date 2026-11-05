@@ -98,9 +98,10 @@ an isolated home per attempt and redacted from every stored transcript and log.
   - `~/.config/gungnir/codex/` for OpenAI, a `CODEX_HOME` after `codex login`;
   - `~/.config/gungnir/glm/api_key` for Z.ai.
 - For measuring, a quiet machine with `kernel.perf_event_paranoid` at 1 or less, ideally
-  with an isolated core (`isolcpus`, `nohz_full`) and fixed clocks, which `clock_mhz` in an
-  experiment's `[measure]` table checks. An experiment's `[machine]` table pins its
-  measurements to one machine, and `gungnir measure` refuses any other.
+  with isolated cores (`isolcpus`, `nohz_full`), where `measure` runs one lane on the first
+  thread of each, and fixed clocks, which `clock_mhz` in an experiment's `[measure]` table
+  checks. An experiment's `[machine]` table pins its measurements to one machine, and
+  `gungnir measure` refuses any other.
 
 ## Usage
 

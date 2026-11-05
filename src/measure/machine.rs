@@ -2,7 +2,7 @@
 use crate::{provenance::cpu_model, store::Digest};
 use eyre::{Result, WrapErr, bail, eyre};
 use serde::{Deserialize, Serialize};
-use std::{fmt, fs, num::NonZeroU32, sync::OnceLock};
+use std::{collections::BTreeSet, fmt, fs, num::NonZeroU32, sync::OnceLock};
 
 /// Which machine timed a comparison: its CPU model and its host id. Timings compare only within
 /// one machine: an experiment's `[machine]` pins the one its measurements must come from, and
@@ -228,6 +228,37 @@ pub fn isolated_cpus() -> Vec<u32> {
         .unwrap_or_default()
 }
 
+/// The CPUs that share `cpu`'s physical core, `cpu` among them, or only `cpu` when the kernel
+/// does not say.
+pub fn thread_siblings(cpu: u32) -> Vec<u32> {
+    let path = format!("/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list");
+    fs::read_to_string(path)
+        .ok()
+        .and_then(|list| parse_cpu_list(&list))
+        .filter(|siblings| siblings.contains(&cpu))
+        .unwrap_or_else(|| vec![cpu])
+}
+
+/// One CPU on each physical core that holds a CPU of `isolated` that gungnir may run on
+/// (`allowed`): the first such CPU, in order. `siblings` names the CPUs that share a CPU's core.
+/// The other threads of each core get no lane and stay idle, so no two lanes share a core.
+pub fn first_threads(
+    isolated: &[u32],
+    allowed: &[u32],
+    siblings: impl Fn(u32) -> Vec<u32>,
+) -> Vec<u32> {
+    let mut taken = BTreeSet::new();
+    let mut first = Vec::new();
+    for &cpu in isolated {
+        if allowed.contains(&cpu) && !taken.contains(&cpu) {
+            taken.extend(siblings(cpu));
+            taken.insert(cpu);
+            first.push(cpu);
+        }
+    }
+    first
+}
+
 /// A kernel CPU list such as `14-15` or `0,2-4`, or `None` when it is malformed.
 pub fn parse_cpu_list(text: &str) -> Option<Vec<u32>> {
     let text = text.trim();
@@ -355,6 +386,37 @@ mod tests {
         assert_eq!(parse_cpu_list("\n"), Some(vec![]));
         assert_eq!(parse_cpu_list("4-2"), None);
         assert_eq!(parse_cpu_list("a-b"), None);
+    }
+
+    #[test]
+    fn each_isolated_physical_core_gets_its_first_thread() {
+        let all: Vec<u32> = (0..32).collect();
+        let pairs = |cpu: u32| {
+            if cpu < 16 {
+                vec![cpu & !1, cpu | 1]
+            } else {
+                vec![cpu]
+            }
+        };
+        let isolated: Vec<u32> = (8..16).collect();
+        assert_eq!(first_threads(&isolated, &all, pairs), [8, 10, 12, 14]);
+
+        let alone = |cpu: u32| vec![cpu];
+        assert_eq!(first_threads(&[14, 15], &all, alone), [14, 15]);
+        assert_eq!(first_threads(&[9, 10, 11], &all, pairs), [9, 10]);
+        let without_8: Vec<u32> = (9..32).collect();
+        assert_eq!(first_threads(&isolated, &without_8, pairs), [9, 10, 12, 14]);
+        assert_eq!(first_threads(&isolated, &[0, 1, 2], pairs), [] as [u32; 0]);
+        assert_eq!(first_threads(&[], &all, pairs), [] as [u32; 0]);
+    }
+
+    #[test]
+    fn every_cpu_shares_its_core_with_itself() {
+        let cpus = u32::try_from(std::thread::available_parallelism().unwrap().get()).unwrap();
+        for cpu in 0..cpus {
+            assert!(thread_siblings(cpu).contains(&cpu), "CPU {cpu}");
+        }
+        assert_eq!(thread_siblings(1 << 20), [1 << 20]);
     }
 
     #[test]

@@ -472,8 +472,9 @@ struct Measure {
     #[arg(long = "system", value_name = "GLOB")]
     systems: Vec<String>,
     /// The CPUs to measure on, as a kernel CPU list such as 8,10,12,14 or 8-15. Each runs one
-    /// comparison at a time, with every run of it pinned there. Defaults to the first CPU the
-    /// kernel isolates from the scheduler, or else the last one gungnir may run on.
+    /// comparison at a time, with every run of it pinned there. Defaults to the first thread of
+    /// each physical core the kernel isolates from the scheduler, leaving the other threads of
+    /// those cores idle, or else to the last CPU gungnir may run on.
     #[arg(long, value_name = "LIST", value_parser = cores)]
     cores: Option<Cores>,
     /// Measure while other work runs: skip the load check, and do not hold the run and grade
@@ -1105,15 +1106,20 @@ impl fmt::Display for StatusTable<'_> {
     }
 }
 
+/// The CPUs gungnir may run on, in order.
+fn allowed_cpus() -> Result<Vec<u32>> {
+    let affinity = sched_getaffinity(Pid::from_raw(0)).wrap_err("reading the CPU affinity")?;
+    Ok((0..CpuSet::count())
+        .filter(|&cpu| affinity.is_set(cpu).unwrap_or(false))
+        .filter_map(|cpu| u32::try_from(cpu).ok())
+        .collect())
+}
+
 /// `core` when gungnir may run on it. Without one, the first isolated CPU gungnir may run on,
 /// since a machine set up for measuring keeps the scheduler off its isolated CPUs, or else the
 /// last CPU gungnir may run on.
 fn pinned_core(core: Option<u32>) -> Result<u32> {
-    let affinity = sched_getaffinity(Pid::from_raw(0)).wrap_err("reading the CPU affinity")?;
-    let allowed: Vec<u32> = (0..CpuSet::count())
-        .filter(|&cpu| affinity.is_set(cpu).unwrap_or(false))
-        .filter_map(|cpu| u32::try_from(cpu).ok())
-        .collect();
+    let allowed = allowed_cpus()?;
     match core {
         Some(core) => {
             ensure!(
@@ -1130,11 +1136,17 @@ fn pinned_core(core: Option<u32>) -> Result<u32> {
     }
 }
 
-/// `cores` when gungnir may run on every one of them. Without a list, the one CPU
-/// [`pinned_core`] picks.
+/// `cores` when gungnir may run on every one of them. Without a list, the first thread
+/// gungnir may run on of each physical core the kernel isolates, so that every lane has a core
+/// of its own whose other threads stay idle, or else the one CPU [`pinned_core`] picks.
 fn measurement_cores(cores: Option<Cores>) -> Result<Cores> {
     let Some(cores) = cores else {
-        return pinned_core(None).map(Cores::one);
+        let isolated = measure::isolated_cpus();
+        let first = measure::first_threads(&isolated, &allowed_cpus()?, measure::thread_siblings);
+        if first.is_empty() {
+            return pinned_core(None).map(Cores::one);
+        }
+        return Cores::new(first);
     };
     for core in cores.iter() {
         pinned_core(Some(core))?;
@@ -1445,12 +1457,29 @@ mod tests {
         assert!(twice.contains("CPU 9 is listed twice"), "{twice}");
 
         let last = pinned_core(None).unwrap();
-        assert_eq!(measurement_cores(None).unwrap(), Cores::one(last));
         let listed = Cores::new([last]).unwrap();
         assert_eq!(measurement_cores(Some(listed.clone())).unwrap(), listed);
         let beyond = Cores::new([last, 4096]).unwrap();
         let message = measurement_cores(Some(beyond)).unwrap_err().to_string();
         assert!(message.contains("may not run on CPU 4096"), "{message}");
+    }
+
+    #[test]
+    fn measure_defaults_to_cores_of_their_own_including_the_one_bench_picks() {
+        let cores = measurement_cores(None).unwrap();
+        assert!(cores.iter().any(|core| core == pinned_core(None).unwrap()));
+        assert_eq!(measurement_cores(Some(cores.clone())).unwrap(), cores);
+        for core in cores.iter() {
+            let siblings = measure::thread_siblings(core);
+            let shared: Vec<u32> = cores
+                .iter()
+                .filter(|other| *other != core && siblings.contains(other))
+                .collect();
+            assert!(
+                shared.is_empty(),
+                "CPU {core} shares its core with {shared:?}"
+            );
+        }
     }
 
     #[test]
