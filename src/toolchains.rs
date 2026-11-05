@@ -289,7 +289,7 @@ fn load_all(dir: &Path) -> Result<BTreeMap<String, Toolchain>> {
         .collect()
 }
 
-/// The environment at `dir`, or `None` when the set was built before it existed.
+/// The environment at `dir`, or `None` when the set has none.
 fn load_optional(dir: &Path) -> Result<Option<Toolchain>> {
     match fs::symlink_metadata(dir) {
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),

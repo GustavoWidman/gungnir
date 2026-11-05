@@ -38,7 +38,7 @@ impl Identity {
 pub struct Machine {
     /// The CPU model, which some architectures do not report.
     pub cpu: Option<String>,
-    /// The host id, `/etc/machine-id`. A record made before gungnir kept it names none.
+    /// The host id, `/etc/machine-id`, which a record may lack.
     #[serde(default)]
     pub host: Option<String>,
     /// How many CPUs gungnir could run on, as `nproc` counts them.

@@ -106,7 +106,7 @@ pub fn report(
 }
 
 /// Every trial of `experiment` whose committed run is a sample, as its records stand now. A
-/// committed run that is no sample, made before the policy or by an older gungnir, is left out
+/// committed run that is no sample, which an older parser or policy committed, is left out
 /// until `run` withdraws it.
 fn read(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<Trial>> {
     let mut trials = Vec::new();
