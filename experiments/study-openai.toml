@@ -1,7 +1,8 @@
-# The study's OpenAI arm: every effort level of the cheaper GPT models on the full suite.
+# The study's OpenAI arm: every effort level of the cheaper GPT models on the full suite, three
+# repetitions now and the rest once the weekly quota resets.
 name = "study-openai"
 results = "../runs/study-openai"
-repetitions = 1
+repetitions = 3
 scenarios = [
   "bigint-calc",
   "exact-cover",
