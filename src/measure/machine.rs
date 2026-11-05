@@ -105,11 +105,14 @@ impl fmt::Display for Clock {
 
 /// Refuses unless every one of `cores` runs at `clock_mhz`, with cpufreq's `scaling_min_freq`
 /// and `scaling_max_freq` both at that frequency, when a protocol holds the clock there.
-pub fn check_clock(clock_mhz: Option<NonZeroU32>, cores: &[u32]) -> Result<()> {
+pub fn check_clock(
+    clock_mhz: Option<NonZeroU32>,
+    cores: impl IntoIterator<Item = u32>,
+) -> Result<()> {
     let Some(mhz) = clock_mhz else {
         return Ok(());
     };
-    for &core in cores {
+    for core in cores {
         if let Some(why) = off_clock(mhz, core, Clock::of(core)) {
             bail!("{why}; set both to {} kHz", u64::from(mhz.get()) * 1000);
         }
@@ -226,7 +229,7 @@ pub fn isolated_cpus() -> Vec<u32> {
 }
 
 /// A kernel CPU list such as `14-15` or `0,2-4`, or `None` when it is malformed.
-fn parse_cpu_list(text: &str) -> Option<Vec<u32>> {
+pub fn parse_cpu_list(text: &str) -> Option<Vec<u32>> {
     let text = text.trim();
     if text.is_empty() {
         return Some(Vec::new());
@@ -379,7 +382,7 @@ mod tests {
         let why = off_clock(mhz, 12, None).unwrap();
         assert!(why.contains("CPU 12 reports no cpufreq"), "{why}");
 
-        assert!(check_clock(None, &[0]).is_ok());
+        assert!(check_clock(None, [0]).is_ok());
         assert_eq!(free.to_string(), "800 to 5800 MHz");
     }
 

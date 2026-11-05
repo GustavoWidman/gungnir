@@ -1,8 +1,12 @@
 //! The measure phase: each trial whose passing grade has no current measurement, timed against
-//! the reference in its language one comparison at a time, and committed with hyperfine's
-//! exports. Timing needs a quiet machine, so unless told otherwise the phase refuses a busy one
-//! and holds the run and grade locks, which keeps both phases from starting.
-use super::{Identity, MeasureRecord, Outcome, Program, Protocol, Settings, compare, machine};
+//! the reference in its language in one lane per measurement core, and committed with
+//! hyperfine's exports. Timing needs a quiet machine, so unless told otherwise the phase
+//! refuses a busy one and holds the run and grade locks, which keeps both phases from starting.
+use super::{
+    Identity, MeasureRecord, Outcome, Program, Protocol, Settings, compare,
+    lanes::{self, Cores},
+    machine,
+};
 use crate::{
     experiment::Experiment,
     grade::Verdict,
@@ -10,7 +14,7 @@ use crate::{
     lifecycle::{Current, Lifecycle, Stage},
     provenance::{Session, SessionId},
     sandbox::{Backend, Fault},
-    stop::{Stage as StopStage, Stop},
+    stop::Stop,
     store::{Lock, PartialDir, sweep_partial},
     toolchains::Toolchains,
     trial::{Phase, ResultsDir, TrialDir, TrialKey},
@@ -23,10 +27,11 @@ use std::{
     fmt::Write,
     path::Path,
 };
+use tokio::sync::OnceCell;
 use tracing::{error, info, warn};
 
-/// The one-minute load average from which a machine counts as busy. Timing pins one CPU-bound
-/// program; a second task's worth of runnable work shares that core's caches, the memory bus
+/// The one-minute load average from which a machine counts as busy before measuring starts. A
+/// task's worth of runnable work beside the timed programs shares their caches, the memory bus
 /// and the package's power budget, which sets the clock of every core.
 pub const BUSY_LOAD: f64 = 1.0;
 
@@ -42,8 +47,8 @@ pub enum Quiet {
 /// How one invocation measures.
 pub struct Request {
     pub selection: Selection,
-    /// The CPU every timed run is pinned to.
-    pub core: u32,
+    /// The CPUs the lanes pin their comparisons to, one lane per CPU.
+    pub cores: Cores,
     pub quiet: Quiet,
 }
 
@@ -112,9 +117,10 @@ pub struct Measured {
 }
 
 /// Measures every selected trial of `experiment`, held in the repository `repo`, whose grade
-/// passed and whose measurement is missing or stale under the experiment's protocol, strictly
-/// one at a time, committing each measurement under its trial. Each reference is built once
-/// per invocation.
+/// passed and whose measurement is missing or stale under the experiment's protocol, committing
+/// each measurement under its trial. The trials start in order, one comparison per core of the
+/// request at a time, each pinned to its core for all its runs. Each reference is built once
+/// per invocation and shared by the lanes.
 pub async fn measure_trials(
     experiment: &Experiment,
     repo: &Path,
@@ -125,7 +131,7 @@ pub async fn measure_trials(
 ) -> Result<Measured> {
     let results = experiment.results();
     pinned(experiment.machine(), Identity::here()?)?;
-    machine::check_clock(experiment.protocol().clock_mhz, &[request.core])?;
+    machine::check_clock(experiment.protocol().clock_mhz, request.cores.iter())?;
     let _locks = quiet(results, request.quiet)?;
     results.sweep_scratch(Phase::Measure)?;
     let mut used = vec![
@@ -151,18 +157,23 @@ pub async fn measure_trials(
         let current = Current::of(experiment, trial, toolchains)?;
         let lifecycle = Lifecycle::read(&dir, &current)?;
         if is_due(&lifecycle) {
-            due.push((trial, dir, current));
+            due.push(Due {
+                trial,
+                dir,
+                current,
+            });
         }
     }
     info!(
-        "{}: {} of {} selected trials to measure",
+        "{}: {} of {} selected trials to measure on CPUs {}",
         experiment.name(),
         due.len(),
-        trials.len()
+        trials.len(),
+        request.cores
     );
     let scenarios: BTreeMap<&ScenarioId, _> = due
         .iter()
-        .map(|(_, _, current)| (current.scenario().id(), current.scenario()))
+        .map(|due| (due.current.scenario().id(), due.current.scenario()))
         .collect();
     for scenario in scenarios.values() {
         if workload::ensure(scenario, toolchains, backend, stop).await? == Ensured::Regenerated {
@@ -170,30 +181,28 @@ pub async fn measure_trials(
         }
     }
 
-    let mut references = References::default();
+    let measuring = Measuring {
+        results,
+        protocol: experiment.protocol(),
+        toolchains,
+        backend,
+        session: session.id(),
+        stop,
+        references: References::of(&due),
+    };
     let mut measured = Measured::default();
-    for (trial, dir, current) in &due {
-        if stop.stage() != StopStage::Running {
-            measured.unstarted += 1;
-            continue;
-        }
-        let trial_run = Trial {
-            results,
-            dir,
-            current,
-            protocol: experiment.protocol(),
-            toolchains,
-            backend,
-            session: session.id(),
-            stop,
-        };
-        let done = match references.get(current, toolchains, backend, stop).await {
-            Ok(reference) => trial_run.measure(reference, request.core).await,
-            Err(err) => Err(err),
-        };
-        settle(&mut measured, trial, done);
-    }
-    Ok(measured)
+    let unstarted = lanes::on_cores(
+        &due,
+        &request.cores,
+        stop,
+        async |due: &&Due, core: u32| measuring.measure(due, core).await,
+        |due, done| settle(&mut measured, due.trial, done),
+    )
+    .await;
+    Ok(Measured {
+        unstarted,
+        ..measured
+    })
 }
 
 /// Whether a trial in this state needs measuring: graded, passed, and not measured under the
@@ -252,16 +261,38 @@ fn busy(load: [f64; 3]) -> Option<String> {
     })
 }
 
-/// Each (scenario, language) reference, built the first time a trial needs it. A reference
-/// that does not build fails every trial that needs it in this invocation.
-#[derive(Default)]
+/// A selected trial that needs measuring.
+struct Due<'a> {
+    trial: &'a TrialKey,
+    dir: TrialDir,
+    current: Current<'a>,
+}
+
+/// Each (scenario, language) reference a due trial needs, built the first time a lane needs it
+/// and shared by every lane. A lane that needs a reference while another lane builds it waits
+/// for that build. A reference that does not build fails every trial that needs it in this
+/// invocation.
 struct References<'a> {
-    built: BTreeMap<(ScenarioId, LanguageId), Result<Program<'a>, String>>,
+    built: BTreeMap<(ScenarioId, LanguageId), OnceCell<Result<Program<'a>, String>>>,
 }
 
 impl<'a> References<'a> {
+    /// None built yet, with a place for the reference of each of `due`.
+    fn of(due: &[Due<'_>]) -> Self {
+        let keys = due.iter().map(|due| {
+            let (scenario, language) = (due.current.scenario(), due.current.language());
+            (
+                (scenario.id().clone(), language.id().clone()),
+                OnceCell::new(),
+            )
+        });
+        Self {
+            built: keys.collect(),
+        }
+    }
+
     async fn get(
-        &mut self,
+        &self,
         current: &Current<'_>,
         toolchains: &Toolchains,
         backend: &'a dyn Backend,
@@ -269,42 +300,54 @@ impl<'a> References<'a> {
     ) -> Result<&Program<'a>> {
         let (scenario, language) = (current.scenario(), current.language());
         let key = (scenario.id().clone(), language.id().clone());
-        if !self.built.contains_key(&key) {
-            let built = match scenario.reference(language.id()) {
-                Some(reference) => {
-                    Program::build(language, toolchains, reference.dir(), backend, stop).await
-                }
-                None => Err(eyre!("there is no such reference")),
-            };
-            self.built
-                .insert(key.clone(), built.map_err(|err| format!("{err:#}")));
-        }
-        match &self.built[&key] {
+        let cell = self.built.get(&key).ok_or_else(|| {
+            eyre!(
+                "the {} reference of {} is not among the ones due",
+                key.1,
+                key.0
+            )
+        })?;
+        let built = cell
+            .get_or_init(async || {
+                let built = match scenario.reference(language.id()) {
+                    Some(reference) => {
+                        Program::build(language, toolchains, reference.dir(), backend, stop).await
+                    }
+                    None => Err(eyre!("there is no such reference")),
+                };
+                built.map_err(|err| format!("{err:#}"))
+            })
+            .await;
+        match built {
             Ok(program) => Ok(program),
             Err(why) => bail!("the {} reference of {} did not build: {why}", key.1, key.0),
         }
     }
 }
 
-/// One trial to measure, with what measuring it needs.
-struct Trial<'a> {
+/// What every lane measures with.
+struct Measuring<'a> {
     results: &'a ResultsDir,
-    dir: &'a TrialDir,
-    current: &'a Current<'a>,
     protocol: Protocol,
     toolchains: &'a Toolchains,
     backend: &'a dyn Backend,
     session: &'a SessionId,
     stop: &'a Stop,
+    references: References<'a>,
 }
 
-impl Trial<'_> {
-    /// Builds the committed workspace, times it against `reference` with every run pinned to
-    /// `core`, and commits the measurement in place of a stale one.
-    async fn measure(&self, reference: &Program<'_>, core: u32) -> Result<MeasureRecord> {
-        let (scenario, language) = (self.current.scenario(), self.current.language());
-        let workspace = self.dir.final_workspace();
-        let inputs = self.current.measure(&workspace)?;
+impl Measuring<'_> {
+    /// Builds `due`'s committed workspace, times it against the reference in its language with
+    /// every run pinned to `core`, and commits the measurement in place of a stale one.
+    async fn measure(&self, due: &Due<'_>, core: u32) -> Result<MeasureRecord> {
+        let current = &due.current;
+        let reference = self
+            .references
+            .get(current, self.toolchains, self.backend, self.stop)
+            .await?;
+        let (scenario, language) = (current.scenario(), current.language());
+        let workspace = due.dir.final_workspace();
+        let inputs = current.measure(&workspace)?;
         let candidate = Program::build(
             language,
             self.toolchains,
@@ -314,7 +357,7 @@ impl Trial<'_> {
         )
         .await
         .wrap_err("building the candidate")?;
-        let target = self.dir.phase(Phase::Measure);
+        let target = due.dir.phase(Phase::Measure);
         self.results.retract(Phase::Measure, &target)?;
         let partial = PartialDir::begin(&target)?;
         let settings = Settings {
@@ -343,7 +386,11 @@ fn settle(measured: &mut Measured, trial: &TrialKey, done: Result<MeasureRecord>
     match done {
         Ok(record) => {
             measured.committed += 1;
-            info!("{trial}: {}", describe(&record));
+            info!(
+                "{trial} on CPU {}: {}",
+                record.machine().core,
+                describe(&record)
+            );
         }
         Err(err) if err.chain().any(|cause| cause.is::<Fault>()) => {
             measured.faulted += 1;
@@ -408,6 +455,7 @@ mod pin_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sandbox::{BoxFuture, Spec};
     use crate::{
         grade::{
             self,
@@ -420,8 +468,14 @@ mod tests {
     };
     use serde_json::json;
     use std::{
+        ffi::OsString,
         fs,
         num::{NonZeroU32, NonZeroUsize},
+        sync::{
+            Mutex,
+            atomic::{AtomicBool, AtomicUsize, Ordering},
+        },
+        time::Duration,
     };
 
     const QUICK: Protocol = Protocol {
@@ -465,11 +519,68 @@ mod tests {
         }
     }
 
+    /// A backend that answers as [`timed`] does, a millisecond later, so that lanes overlap.
+    /// It counts the builds it runs and the most programs pinned to CPUs at once, and fails a
+    /// program pinned to a CPU that another running program holds.
+    #[derive(Default)]
+    struct Overlapping {
+        builds: AtomicUsize,
+        pinned: Mutex<BTreeSet<u32>>,
+        most: AtomicUsize,
+        /// Escalate the stop the first time a program is pinned.
+        drain: AtomicBool,
+    }
+
+    impl Backend for Overlapping {
+        fn exec<'a>(
+            &'a self,
+            spec: &'a Spec,
+            argv: &'a [OsString],
+            io: Io,
+            stop: &'a Stop,
+        ) -> BoxFuture<'a, Result<Finished, Fault>> {
+            Box::pin(async move {
+                let argv: Vec<String> = argv
+                    .iter()
+                    .map(|arg| arg.to_str().unwrap().to_owned())
+                    .collect();
+                if argv.iter().any(|arg| arg == "compileall") {
+                    self.builds.fetch_add(1, Ordering::SeqCst);
+                }
+                let cpu = spec.limits.cpu;
+                if let Some(cpu) = cpu {
+                    let mut pinned = self.pinned.lock().unwrap();
+                    assert!(
+                        pinned.insert(cpu),
+                        "two programs pinned to CPU {cpu} at once"
+                    );
+                    self.most.fetch_max(pinned.len(), Ordering::SeqCst);
+                    if self.drain.swap(false, Ordering::SeqCst) {
+                        stop.escalate();
+                    }
+                }
+                tokio::time::sleep(Duration::from_millis(1)).await;
+                let finished = timed(spec, &argv, io);
+                if let Some(cpu) = cpu {
+                    self.pinned.lock().unwrap().remove(&cpu);
+                }
+                finished
+            })
+        }
+    }
+
     fn request() -> Request {
         Request {
             selection: Selection::default(),
-            core: 0,
+            cores: Cores::one(0),
             quiet: Quiet::Waived,
+        }
+    }
+
+    fn two_lanes() -> Request {
+        Request {
+            cores: Cores::new([0, 1]).unwrap(),
+            ..request()
         }
     }
 
@@ -491,10 +602,31 @@ mod tests {
     async fn graded(repo: &Repo, models: &[&str]) {
         fixture::declare_protocol(repo, QUICK);
         let experiment = repo.experiment();
-        for model in models {
-            let trial = fixture::trial(&experiment, model);
-            fixture::commit_run(repo, &trial, &[("main.py", "print(input())\n")]);
+        let trials: Vec<TrialKey> = models
+            .iter()
+            .map(|model| fixture::trial(&experiment, model))
+            .collect();
+        commit_and_grade(repo, &trials).await;
+    }
+
+    /// Makes the fixture experiment measure under [`QUICK`] and run each system `reps` times,
+    /// and commits and grades an echoing run for every trial.
+    async fn every_trial_graded(repo: &Repo, reps: u32) {
+        fixture::declare_protocol(repo, QUICK);
+        let file = repo.root.path().join("experiments/fixture.toml");
+        let text = fs::read_to_string(&file).unwrap();
+        let repeated = text.replacen("repetitions = 1", &format!("repetitions = {reps}"), 1);
+        fs::write(&file, repeated).unwrap();
+        commit_and_grade(repo, &repo.experiment().trials()).await;
+    }
+
+    /// Commits an echoing run for each of `trials`, and grades every run without a current
+    /// grade.
+    async fn commit_and_grade(repo: &Repo, trials: &[TrialKey]) {
+        for trial in trials {
+            fixture::commit_run(repo, trial, &[("main.py", "print(input())\n")]);
         }
+        let experiment = repo.experiment();
         let (root, toolchains, stop) = (repo.root.path(), &repo.toolchains, Stop::default());
         let echo = fixture::echo();
         grade::grade_runs(
@@ -507,6 +639,56 @@ mod tests {
         )
         .await
         .unwrap();
+    }
+
+    #[tokio::test]
+    async fn two_lanes_measure_each_trial_once_on_their_own_cores_and_share_the_reference() {
+        let repo = Repo::new();
+        every_trial_graded(&repo, 2).await;
+        let lanes = Overlapping::default();
+        let measured = measure(&repo, &lanes, &two_lanes()).await.unwrap();
+        assert_eq!(
+            measured,
+            Measured {
+                committed: 4,
+                ..Measured::default()
+            }
+        );
+        assert_eq!(lanes.builds.load(Ordering::SeqCst), 1 + 4);
+        assert_eq!(lanes.most.load(Ordering::SeqCst), 2);
+
+        let experiment = repo.experiment();
+        let mut cores = BTreeSet::new();
+        for trial in experiment.trials() {
+            let dir = experiment.results().trial(&trial);
+            let record = read_record::<MeasureRecord>(&dir.phase(Phase::Measure)).unwrap();
+            cores.insert(record.unwrap().machine().core);
+        }
+        assert_eq!(cores, BTreeSet::from([0, 1]));
+        let again = measure(&repo, &lanes, &two_lanes()).await.unwrap();
+        assert_eq!(again, Measured::default());
+    }
+
+    #[tokio::test]
+    async fn a_drain_lets_every_comparison_in_progress_finish_and_starts_no_more() {
+        let repo = Repo::new();
+        every_trial_graded(&repo, 2).await;
+        let lanes = Overlapping {
+            drain: AtomicBool::new(true),
+            ..Overlapping::default()
+        };
+        let measured = measure(&repo, &lanes, &two_lanes()).await.unwrap();
+        assert_eq!(
+            measured,
+            Measured {
+                committed: 2,
+                unstarted: 2,
+                ..Measured::default()
+            }
+        );
+        assert!(!lanes.drain.load(Ordering::SeqCst));
+        let rest = measure(&repo, &lanes, &two_lanes()).await.unwrap();
+        assert_eq!(rest.committed, 2);
     }
 
     #[tokio::test]

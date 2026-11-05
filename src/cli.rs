@@ -7,8 +7,8 @@ use crate::{
     language::Language,
     lifecycle::{self, Current, Lifecycle},
     measure::{
-        self, Machine, MeasureInputs, MeasureRecord, Measured, Program, Protocol, Quiet, Selection,
-        Settings, Spread, Summary,
+        self, Cores, Machine, MeasureInputs, MeasureRecord, Measured, Program, Protocol, Quiet,
+        Selection, Settings, Spread, Summary,
     },
     provenance::Session,
     report,
@@ -119,10 +119,10 @@ enum Command {
         jobs: NonZeroUsize,
     },
     /// Time each passing trial without a current measurement against the reference in its
-    /// language, under the experiment's [measure] protocol, one comparison at a time on one
-    /// pinned core. Refuses a busy machine, and holds the run and grade locks, unless
-    /// --allow-busy. The first Ctrl-C lets the comparison in progress finish, the second kills
-    /// it.
+    /// language, under the experiment's [measure] protocol, one comparison per measurement core
+    /// at a time. Refuses a busy machine, and holds the run and grade locks, unless
+    /// --allow-busy. The first Ctrl-C lets the comparisons in progress finish, the second kills
+    /// them.
     Measure(Measure),
     /// Print this machine's identity as the [machine] table that pins an experiment's
     /// measurements to it.
@@ -471,10 +471,11 @@ struct Measure {
     /// several.
     #[arg(long = "system", value_name = "GLOB")]
     systems: Vec<String>,
-    /// The CPU every run is pinned to. Defaults to the first CPU the kernel isolates from the
-    /// scheduler, or else the last one gungnir may run on.
-    #[arg(long, value_name = "N")]
-    core: Option<u32>,
+    /// The CPUs to measure on, as a kernel CPU list such as 8,10,12,14 or 8-15. Each runs one
+    /// comparison at a time, with every run of it pinned there. Defaults to the first CPU the
+    /// kernel isolates from the scheduler, or else the last one gungnir may run on.
+    #[arg(long, value_name = "LIST", value_parser = cores)]
+    cores: Option<Cores>,
     /// Measure while other work runs: skip the load check, and do not hold the run and grade
     /// locks. Each record still keeps the load averages it ran under.
     #[arg(long)]
@@ -490,7 +491,7 @@ impl Measure {
         let repo = repository_of(&self.experiment)?;
         let request = measure::Request {
             selection: Selection::new(&experiment, &self.reps, &self.systems)?,
-            core: pinned_core(self.core)?,
+            cores: measurement_cores(self.cores)?,
             quiet: if self.allow_busy {
                 Quiet::Waived
             } else {
@@ -579,6 +580,13 @@ fn machine_pin(identity: &measure::Identity) -> Result<String> {
         bail!("this machine is {identity}, which lacks a CPU model or a host id to pin");
     };
     Ok(format!("[machine]\ncpu = {cpu:?}\nhost = {host:?}\n"))
+}
+
+/// Parses a kernel CPU list such as `8,10,12,14` or `8-15`, each CPU once.
+fn cores(arg: &str) -> Result<Cores> {
+    let cpus = measure::parse_cpu_list(arg)
+        .ok_or_else(|| eyre!("{arg:?} is not a CPU list such as 8,10,12,14 or 8-15"))?;
+    Cores::new(cpus)
 }
 
 /// Parses a repetition as `3` or `r3`.
@@ -941,7 +949,7 @@ impl Bench {
             protocol,
             memory: scenario.limits().memory_bytes(),
         };
-        measure::check_clock(protocol.clock_mhz, &[settings.core])?;
+        measure::check_clock(protocol.clock_mhz, [settings.core])?;
         let session = Session::start(&root)?;
         let toolchains = Toolchains::from_env()?;
         let backend = Bubblewrap::new(toolchains.base().clone())?;
@@ -1120,6 +1128,18 @@ fn pinned_core(core: Option<u32>) -> Result<u32> {
             .or_else(|| allowed.last().copied())
             .ok_or_else(|| eyre!("gungnir may run on no CPU")),
     }
+}
+
+/// `cores` when gungnir may run on every one of them. Without a list, the one CPU
+/// [`pinned_core`] picks.
+fn measurement_cores(cores: Option<Cores>) -> Result<Cores> {
+    let Some(cores) = cores else {
+        return pinned_core(None).map(Cores::one);
+    };
+    for core in cores.iter() {
+        pinned_core(Some(core))?;
+    }
+    Ok(cores)
 }
 
 /// One row per workload: each program's median wall time and range, the ratio of the
@@ -1409,6 +1429,56 @@ mod tests {
         assert_eq!(pinned_core(Some(last)).unwrap(), last);
         let message = pinned_core(Some(4096)).unwrap_err().to_string();
         assert!(message.contains("may not run on CPU 4096"), "{message}");
+    }
+
+    #[test]
+    fn measure_takes_a_list_of_cores_each_one_gungnir_may_run_on() {
+        assert_eq!(
+            cores("8,10,12,14").unwrap(),
+            Cores::new([8, 10, 12, 14]).unwrap()
+        );
+        assert_eq!(cores("8-11").unwrap(), Cores::new([8, 9, 10, 11]).unwrap());
+        for bad in ["", "eight", "8-", "10-8"] {
+            assert!(cores(bad).is_err(), "{bad:?}");
+        }
+        let twice = cores("8-10,9").unwrap_err().to_string();
+        assert!(twice.contains("CPU 9 is listed twice"), "{twice}");
+
+        let last = pinned_core(None).unwrap();
+        assert_eq!(measurement_cores(None).unwrap(), Cores::one(last));
+        let listed = Cores::new([last]).unwrap();
+        assert_eq!(measurement_cores(Some(listed.clone())).unwrap(), listed);
+        let beyond = Cores::new([last, 4096]).unwrap();
+        let message = measurement_cores(Some(beyond)).unwrap_err().to_string();
+        assert!(message.contains("may not run on CPU 4096"), "{message}");
+    }
+
+    #[test]
+    fn measure_takes_no_core_or_protocol_flag_and_bench_takes_them_all() {
+        let parse = |args: &[&str]| Cli::try_parse_from(["gungnir"].iter().chain(args));
+        assert!(parse(&["measure", "e.toml", "--cores", "8,10"]).is_ok());
+        for flag in ["--core", "--blocks", "--runs", "--warmup", "--clock-mhz"] {
+            let refused = parse(&["measure", "e.toml", flag, "8"]);
+            assert!(refused.is_err(), "measure took {flag}");
+        }
+        let bench = [
+            "bench",
+            "--scenario",
+            "echo",
+            "--language",
+            "python",
+            "--core",
+            "8",
+            "--blocks",
+            "4",
+            "--runs",
+            "2",
+            "--warmup",
+            "1",
+            "--clock-mhz",
+            "3000",
+        ];
+        assert!(parse(&bench).is_ok());
     }
 
     /// The fixture repository with languages `python` and `rust` and no lizard, so judging

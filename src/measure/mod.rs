@@ -1,7 +1,9 @@
 //! Measuring. A program that passed grading is timed against the reference solution in its
 //! language. On each workload the candidate must first print exactly what the reference
 //! prints; then hyperfine times both in ABBA blocks, in offline sandboxes pinned to one core.
+//! The measure phase runs one such comparison per measurement core at a time.
 mod hyperfine;
+mod lanes;
 mod machine;
 mod phase;
 mod profile;
@@ -12,7 +14,8 @@ mod stats;
 mod tests;
 mod timing;
 
-pub use machine::{Clock, Identity, Load, Machine, check_clock, isolated_cpus};
+pub use lanes::Cores;
+pub use machine::{Clock, Identity, Load, Machine, check_clock, isolated_cpus, parse_cpu_list};
 pub use phase::{Measured, Quiet, Request, Selection, measure_trials};
 pub use profile::{Profiled, profile_trial};
 pub use record::{MeasureInputs, MeasureRecord};

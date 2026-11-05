@@ -123,7 +123,7 @@ gungnir report experiments/study-*.toml --out runs/report
 | `check` | Build and grade every reference solution, regenerating missing workloads |
 | `run` | Run pending trials, one lane per backend, behind quota ceilings, deadlines and an error stop |
 | `grade` | Grade committed runs offline against the hidden cases |
-| `measure` | Time passing programs against the reference under the experiment's protocol, on one pinned core |
+| `measure` | Time passing programs against the reference under the experiment's protocol, one comparison per measurement core (`--cores`) |
 | `bench` | Time any workspace against a reference, or the reference against itself as an A/A test |
 | `profile` | Sample one trial and its reference under perf and write flame graphs |
 | `machine` | Print this machine's identity as a `[machine]` pin |

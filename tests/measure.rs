@@ -1,7 +1,15 @@
 //! Measuring against real bubblewrap, systemd, hyperfine and toolchains, on copies of the
-//! word-freq Python reference. Run them in the dev shell with `cargo test -- --ignored`.
+//! word-freq Python reference. Run them in the dev shell with `cargo test -- --ignored`. The
+//! tests compare in two lanes on two CPUs, as the measure phase does, so two comparisons run at
+//! once and never on one CPU.
 
-use std::{collections::BTreeMap, fs, num::NonZeroU32, path::Path};
+use std::{
+    collections::BTreeMap,
+    fs,
+    num::NonZeroU32,
+    path::Path,
+    sync::{LazyLock, Mutex},
+};
 
 use eyre::Result;
 use gungnir::{
@@ -15,17 +23,55 @@ use gungnir::{
     toolchains::Toolchains,
 };
 use tempfile::TempDir;
-use tokio::sync::Mutex;
+use tokio::sync::{Semaphore, SemaphorePermit};
 
-/// The last CPU this process may use, which every run is pinned to.
-fn core() -> u32 {
+/// The CPUs the comparisons run on: the last two this process may use, or the one it may use.
+fn lane_cpus() -> Vec<u32> {
     let cpus = std::thread::available_parallelism().map_or(1, |cpus| cpus.get());
-    u32::try_from(cpus - 1).expect("a CPU index")
+    let cpus = u32::try_from(cpus).expect("a CPU count");
+    (cpus.saturating_sub(2)..cpus).collect()
 }
 
-fn settings() -> Settings {
+/// The CPUs no test holds.
+static CPUS: LazyLock<Mutex<Vec<u32>>> = LazyLock::new(|| Mutex::new(lane_cpus()));
+static FREE: LazyLock<Semaphore> = LazyLock::new(|| Semaphore::new(lane_cpus().len()));
+
+/// CPUs held for the comparisons of one test, each the only one running on its CPU.
+struct Lanes {
+    cores: Vec<u32>,
+    _permit: SemaphorePermit<'static>,
+}
+
+impl Lanes {
+    /// Waits until `count` CPUs are free and holds them.
+    async fn hold(count: u32) -> Self {
+        let total = lane_cpus().len();
+        assert!(
+            usize::try_from(count).is_ok_and(|count| count <= total),
+            "this process may use {total} CPUs, not {count}"
+        );
+        let permit = FREE
+            .acquire_many(count)
+            .await
+            .expect("the semaphore is open");
+        let mut free = CPUS.lock().expect("the CPUs");
+        let at = free.len() - usize::try_from(count).expect("a count");
+        Self {
+            cores: free.split_off(at),
+            _permit: permit,
+        }
+    }
+}
+
+impl Drop for Lanes {
+    fn drop(&mut self) {
+        CPUS.lock().expect("the CPUs").append(&mut self.cores);
+    }
+}
+
+fn settings(core: u32) -> Settings {
     Settings {
-        core: core(),
+        core,
         protocol: Protocol {
             blocks: NonZeroU32::new(2).expect("non-zero"),
             runs: NonZeroU32::new(3).expect("non-zero"),
@@ -98,12 +144,20 @@ impl Rig {
         Ok(target)
     }
 
-    /// Builds both workspaces and compares them, returning the evidence directory alongside.
-    /// Comparisons run one at a time, as the measure phase runs them, since every test pins
-    /// its runs to the same CPU.
+    /// Builds both workspaces and compares them on a CPU no other comparison holds, returning
+    /// the evidence directory alongside.
     async fn compare(&self, reference: &Path, candidate: &Path) -> Result<(Comparison, TempDir)> {
-        static ONE_AT_A_TIME: Mutex<()> = Mutex::const_new(());
-        let _turn = ONE_AT_A_TIME.lock().await;
+        let lane = Lanes::hold(1).await;
+        self.compare_on(lane.cores[0], reference, candidate).await
+    }
+
+    /// The same, with every run pinned to `core`, which the caller holds.
+    async fn compare_on(
+        &self,
+        core: u32,
+        reference: &Path,
+        candidate: &Path,
+    ) -> Result<(Comparison, TempDir)> {
         let stop = Stop::default();
         let (language, toolchains) = (&self.language, &self.toolchains);
         let reference =
@@ -115,7 +169,7 @@ impl Rig {
             &reference,
             &candidate,
             &self.workloads,
-            &settings(),
+            &settings(core),
             &self.backend,
             &stop,
             evidence.path(),
@@ -237,17 +291,50 @@ async fn a_candidate_that_prints_something_else_is_not_timed() -> Result<()> {
     Ok(())
 }
 
+/// A workspace that prints the CPUs it may run on, and one that prints `[core]`.
+fn affinity_and_expected(rig: &Rig, core: u32) -> Result<(std::path::PathBuf, std::path::PathBuf)> {
+    let affinity = rig.workspace(&format!("affinity-{core}"), |_| {
+        "import os\nprint(sorted(os.sched_getaffinity(0)))\n".to_owned()
+    })?;
+    let expected = rig.workspace(&format!("expected-{core}"), |_| {
+        format!("print([{core}])\n")
+    })?;
+    Ok((affinity, expected))
+}
+
 #[tokio::test]
 #[ignore = "needs bwrap and GUNGNIR_TOOLCHAINS"]
 async fn every_run_is_pinned_to_the_configured_core() -> Result<()> {
     let rig = Rig::new()?;
-    let affinity = rig.workspace("affinity", |_| {
-        "import os\nprint(sorted(os.sched_getaffinity(0)))\n".to_owned()
-    })?;
-    let expected = rig.workspace("expected", |_| format!("print([{}])\n", core()))?;
-    let (comparison, _evidence) = rig.compare(&affinity, &expected).await?;
+    let lane = Lanes::hold(1).await;
+    let core = lane.cores[0];
+    let (affinity, expected) = affinity_and_expected(&rig, core)?;
+    let (comparison, _evidence) = rig.compare_on(core, &affinity, &expected).await?;
 
     timed(&comparison, "short");
     timed(&comparison, "long");
+    assert_eq!(comparison.machine.core, core);
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs bwrap and GUNGNIR_TOOLCHAINS"]
+async fn two_comparisons_at_once_each_stay_on_their_own_core() -> Result<()> {
+    let rig = Rig::new()?;
+    let lanes = Lanes::hold(2).await;
+    let [first, second] = lanes.cores[..] else {
+        panic!("two CPUs to hold, got {:?}", lanes.cores);
+    };
+    let (first_affinity, first_expected) = affinity_and_expected(&rig, first)?;
+    let (second_affinity, second_expected) = affinity_and_expected(&rig, second)?;
+    let (on_first, on_second) = tokio::join!(
+        rig.compare_on(first, &first_affinity, &first_expected),
+        rig.compare_on(second, &second_affinity, &second_expected),
+    );
+    for ((comparison, _evidence), core) in [(on_first?, first), (on_second?, second)] {
+        timed(&comparison, "short");
+        timed(&comparison, "long");
+        assert_eq!(comparison.machine.core, core);
+    }
     Ok(())
 }
