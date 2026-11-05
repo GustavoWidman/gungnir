@@ -1,5 +1,5 @@
 //! The host a comparison ran on: what it is, and how busy it was.
-use crate::provenance::cpu_model;
+use crate::{provenance::cpu_model, store::Digest};
 use eyre::{Result, WrapErr, eyre};
 use serde::{Deserialize, Serialize};
 use std::{fmt, fs, sync::OnceLock};
@@ -11,7 +11,7 @@ use std::{fmt, fs, sync::OnceLock};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Identity {
     pub cpu: Option<String>,
-    /// `/etc/machine-id`, when the host has one.
+    /// The [`host_id`] of `/etc/machine-id`, when the host has one.
     pub host: Option<String>,
 }
 
@@ -28,10 +28,19 @@ impl Identity {
             host: fs::read_to_string("/etc/machine-id")
                 .ok()
                 .map(|id| id.trim().to_owned())
-                .filter(|id| !id.is_empty()),
+                .filter(|id| !id.is_empty())
+                .map(|id| host_id(&id)),
         };
         Ok(HERE.get_or_init(|| here))
     }
+}
+
+/// The host id gungnir records and pins for a machine: 128 bits of a SHA-256 digest of its
+/// machine id under a prefix of gungnir's own, in hex. systemd asks applications to keep the
+/// machine id itself confidential, so it never reaches a record or an experiment file.
+pub fn host_id(machine_id: &str) -> String {
+    let digest = Digest::of_bytes(format!("gungnir host id\n{machine_id}").as_bytes());
+    digest.to_string()[..32].to_owned()
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -106,9 +115,15 @@ impl fmt::Display for Identity {
 
 impl Machine {
     /// Whether the comparison ran on the machine `identity` names. A record that names no host
-    /// matches on its CPU model alone.
+    /// matches on its CPU model alone, and one that names a raw machine id matches its
+    /// [`host_id`].
     pub fn is(&self, identity: &Identity) -> bool {
-        self.cpu == identity.cpu && (self.host.is_none() || self.host == identity.host)
+        let host = match (&self.host, &identity.host) {
+            (None, _) => true,
+            (Some(recorded), Some(host)) => recorded == host || host_id(recorded) == *host,
+            (Some(_), None) => false,
+        };
+        self.cpu == identity.cpu && host
     }
 }
 
@@ -216,11 +231,11 @@ mod tests {
         assert!(busier.is(&vm));
 
         assert!(!machine(Some("AMD EPYC 9655"), Some("4a7c1e90")).is(&vm));
-        assert!(!machine(Some("AMD Ryzen 7 5800U"), Some("0b5e7a11")).is(&vm));
+        assert!(!machine(Some("AMD Ryzen 7 5800U"), Some("b2d9f6e3")).is(&vm));
         assert!(!machine(None, Some("4a7c1e90")).is(&vm));
         let bench = Identity {
             cpu: Some("AMD EPYC 9655".into()),
-            host: Some("0b5e7a11".into()),
+            host: Some("b2d9f6e3".into()),
         };
         assert!(!machine(Some("AMD Ryzen 7 5800U"), Some("4a7c1e90")).is(&bench));
     }
@@ -233,6 +248,27 @@ mod tests {
         };
         assert!(machine(Some("AMD Ryzen 7 5800U"), None).is(&here));
         assert!(!machine(Some("AMD EPYC 9655"), None).is(&here));
+    }
+
+    #[test]
+    fn a_host_id_is_a_digest_of_the_machine_id() {
+        let id = host_id("6f3e0c1b9a8d4e2f7c5b1a0d9e8f7a6b");
+        assert_eq!(id.len(), 32);
+        assert!(id.bytes().all(|b| b.is_ascii_hexdigit()));
+        assert_eq!(id, host_id("6f3e0c1b9a8d4e2f7c5b1a0d9e8f7a6b"));
+        assert_ne!(id, host_id("6f3e0c1b9a8d4e2f7c5b1a0d9e8f7a6c"));
+        assert_ne!(id, "6f3e0c1b9a8d4e2f7c5b1a0d9e8f7a6b");
+    }
+
+    #[test]
+    fn a_record_naming_the_raw_machine_id_matches_its_host_id() {
+        let raw = "6f3e0c1b9a8d4e2f7c5b1a0d9e8f7a6b";
+        let here = Identity {
+            cpu: Some("AMD Ryzen 7 5800U".into()),
+            host: Some(host_id(raw)),
+        };
+        assert!(machine(Some("AMD Ryzen 7 5800U"), Some(raw)).is(&here));
+        assert!(!machine(Some("AMD Ryzen 7 5800U"), Some("4a7c1e90")).is(&here));
     }
 
     #[test]
