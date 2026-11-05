@@ -279,8 +279,11 @@ pub fn declare_protocol(repo: &Repo, protocol: Protocol) {
         blocks,
         runs,
         warmup,
+        clock_mhz,
     } = protocol;
-    let table = format!("[measure]\nblocks = {blocks}\nruns = {runs}\nwarmup = {warmup}\n\n[pins]");
+    let clock = clock_mhz.map_or_else(String::new, |mhz| format!("clock_mhz = {mhz}\n"));
+    let table =
+        format!("[measure]\nblocks = {blocks}\nruns = {runs}\nwarmup = {warmup}\n{clock}\n[pins]");
     write(
         repo.root.path(),
         "experiments/fixture.toml",

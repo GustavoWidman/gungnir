@@ -281,6 +281,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_declared_clock_reads_a_measurement_at_another_clock_or_none_as_stale() {
+        let repo = Repo::new();
+        let experiment = repo.experiment();
+        let trial = fixture::trial(&experiment, "opus");
+        fixture::commit_run(&repo, &trial, &[("main.py", "print(input())\n")]);
+        fixture::commit_grade(&repo, &trial).await;
+        fixture::commit_measure(&repo, &trial, Protocol::DEFAULT);
+        assert_eq!(read(&repo, "opus").stale, None);
+
+        let at = |mhz| Protocol {
+            clock_mhz: std::num::NonZeroU32::new(mhz),
+            ..Protocol::DEFAULT
+        };
+        fixture::declare_protocol(&repo, at(3000));
+        assert_eq!(read(&repo, "opus").stale, Some(Phase::Measure));
+        let dir = experiment.results().trial(&trial);
+        let measured_at = |mhz| {
+            fs::remove_dir_all(dir.phase(Phase::Measure)).unwrap();
+            fixture::commit_measure(&repo, &trial, at(mhz));
+            read(&repo, "opus").stale
+        };
+        assert_eq!(measured_at(3000), None);
+        assert_eq!(measured_at(3200), Some(Phase::Measure));
+    }
+
+    #[tokio::test]
     async fn a_measurement_made_on_another_machine_is_stale() {
         let repo = Repo::new();
         let experiment = repo.experiment();

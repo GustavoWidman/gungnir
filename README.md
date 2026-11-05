@@ -98,8 +98,9 @@ an isolated home per attempt and redacted from every stored transcript and log.
   - `~/.config/gungnir/codex/` for OpenAI, a `CODEX_HOME` after `codex login`;
   - `~/.config/gungnir/glm/api_key` for Z.ai.
 - For measuring, a quiet machine with `kernel.perf_event_paranoid` at 1 or less, ideally
-  with an isolated core (`isolcpus`, `nohz_full`) and fixed clocks. An experiment's `[machine]`
-  table pins its measurements to one machine, and `gungnir measure` refuses any other.
+  with an isolated core (`isolcpus`, `nohz_full`) and fixed clocks, which `clock_mhz` in an
+  experiment's `[measure]` table checks. An experiment's `[machine]` table pins its
+  measurements to one machine, and `gungnir measure` refuses any other.
 
 ## Usage
 
@@ -172,8 +173,12 @@ efforts = "all"
 
 An optional `[measure]` table states the timing protocol with all three of its keys: `blocks`
 ABBA blocks, each timing both programs `runs` times after `warmup` untimed runs. Without it an
-experiment measures under 6 blocks of 3 runs and no warmup. A measurement made under another
-protocol is stale, so `measure` takes it again and `status` and `report` count it as stale.
+experiment measures under 6 blocks of 3 runs and no warmup. The table may add `clock_mhz`, the
+one frequency every measurement core's clock is held at: `measure` then refuses to start unless
+each core's cpufreq `scaling_min_freq` and `scaling_max_freq` are both that frequency, and
+`bench --clock-mhz` makes the same check for an A/A test. A measurement made under another
+protocol, another clock included, is stale, so `measure` takes it again and `status` and
+`report` count it as stale.
 
 Trials run repetition by repetition, so a run stopped early leaves the matrix evenly covered.
 Results live under `runs/`, which is not tracked.

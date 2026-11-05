@@ -125,6 +125,7 @@ pub async fn measure_trials(
 ) -> Result<Measured> {
     let results = experiment.results();
     pinned(experiment.machine(), Identity::here()?)?;
+    machine::check_clock(experiment.protocol().clock_mhz, &[request.core])?;
     let _locks = quiet(results, request.quiet)?;
     results.sweep_scratch(Phase::Measure)?;
     let mut used = vec![
@@ -427,6 +428,7 @@ mod tests {
         blocks: NonZeroU32::new(2).unwrap(),
         runs: NonZeroU32::new(1).unwrap(),
         warmup: 0,
+        clock_mhz: None,
     };
 
     /// Builds succeed and programs echo their input, peaking at 2 MiB in their output check
@@ -626,6 +628,29 @@ mod tests {
         assert!(message.contains("--allow-busy"), "{message}");
         let measured = measure(&repo, &timer, &request()).await.unwrap();
         assert_eq!(measured.committed, 1);
+    }
+
+    #[tokio::test]
+    async fn a_clock_the_core_does_not_hold_refuses_before_anything_runs() {
+        let repo = Repo::new();
+        graded(&repo, &["opus"]).await;
+        let held = Protocol {
+            clock_mhz: NonZeroU32::new(4_000_000),
+            ..QUICK
+        };
+        fixture::declare_protocol(&repo, held);
+        let timer = Scripted::new(timed);
+        let message = format!(
+            "{:#}",
+            measure(&repo, &timer, &request()).await.unwrap_err()
+        );
+        assert!(message.contains("CPU 0"), "{message}");
+        assert!(message.contains("4000000 MHz"), "{message}");
+        assert!(timer.calls().is_empty());
+        assert!(matches!(
+            lifecycle(&repo, "opus").stage,
+            Stage::Graded { .. }
+        ));
     }
 
     #[test]

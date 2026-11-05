@@ -30,6 +30,7 @@ fn settings() -> Settings {
             blocks: NonZeroU32::new(2).expect("non-zero"),
             runs: NonZeroU32::new(3).expect("non-zero"),
             warmup: 1,
+            clock_mhz: None,
         },
         memory: 512 << 20,
     }

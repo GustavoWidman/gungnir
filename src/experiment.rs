@@ -218,14 +218,16 @@ impl RawMachine {
     }
 }
 
-/// `[measure]`: the timing protocol, every key of it, so that the file states the whole
-/// protocol its measurements are made under.
+/// `[measure]`: the timing protocol. `blocks`, `runs` and `warmup` are required, so that the
+/// file states the whole protocol its measurements are made under. Without `clock_mhz` the
+/// clock is left free.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawMeasure {
     blocks: NonZeroU32,
     runs: NonZeroU32,
     warmup: u32,
+    clock_mhz: Option<NonZeroU32>,
 }
 
 #[derive(Deserialize)]
@@ -330,6 +332,7 @@ impl RawExperiment {
                 blocks: measure.blocks,
                 runs: measure.runs,
                 warmup: measure.warmup,
+                clock_mhz: measure.clock_mhz,
             }),
             budget: Budget {
                 wall: positive_duration("budget.wall", &self.budget.wall)?,

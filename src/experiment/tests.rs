@@ -312,12 +312,20 @@ fn a_measure_table_states_the_timing_protocol() {
     assert_eq!(load(root.path()).unwrap().protocol(), Protocol::DEFAULT);
     let table = "[measure]\nblocks = 8\nruns = 5\nwarmup = 1\n\n[pins]";
     edit(root.path(), "[pins]", table);
+    let free = Protocol {
+        blocks: NonZeroU32::new(8).unwrap(),
+        runs: NonZeroU32::new(5).unwrap(),
+        warmup: 1,
+        clock_mhz: None,
+    };
+    assert_eq!(load(root.path()).unwrap().protocol(), free);
+    let table = "[measure]\nblocks = 8\nruns = 5\nwarmup = 1\nclock_mhz = 3000\n\n[pins]";
+    edit(root.path(), "[pins]", table);
     assert_eq!(
         load(root.path()).unwrap().protocol(),
         Protocol {
-            blocks: NonZeroU32::new(8).unwrap(),
-            runs: NonZeroU32::new(5).unwrap(),
-            warmup: 1,
+            clock_mhz: NonZeroU32::new(3000),
+            ..free
         }
     );
 
@@ -330,6 +338,11 @@ fn a_measure_table_states_the_timing_protocol() {
         "[pins]",
         "[measure]\nblocks = 6\nruns = 3\n\n[pins]",
         &["warmup"],
+    );
+    rejects(
+        "[pins]",
+        "[measure]\nblocks = 6\nruns = 3\nwarmup = 0\nclock_mhz = 0\n\n[pins]",
+        &["clock_mhz = 0", "nonzero"],
     );
     rejects(
         "[pins]",

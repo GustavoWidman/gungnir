@@ -12,7 +12,7 @@ mod stats;
 mod tests;
 mod timing;
 
-pub use machine::{Identity, Load, Machine, isolated_cpus};
+pub use machine::{Clock, Identity, Load, Machine, check_clock, isolated_cpus};
 pub use phase::{Measured, Quiet, Request, Selection, measure_trials};
 pub use profile::{Profiled, profile_trial};
 pub use record::{MeasureInputs, MeasureRecord};
@@ -71,6 +71,10 @@ pub struct Protocol {
     pub runs: NonZeroU32,
     /// hyperfine's untimed runs before them.
     pub warmup: u32,
+    /// The one frequency, in MHz, that every measurement core's clock is held at, when the
+    /// protocol holds it. A record that names none was made with the clock left free.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub clock_mhz: Option<NonZeroU32>,
 }
 
 impl Protocol {
@@ -85,6 +89,7 @@ impl Protocol {
         blocks: NonZeroU32::new(6).unwrap(),
         runs: NonZeroU32::new(3).unwrap(),
         warmup: 0,
+        clock_mhz: None,
     };
 }
 

@@ -1,8 +1,8 @@
 //! The host a comparison ran on: what it is, and how busy it was.
 use crate::{provenance::cpu_model, store::Digest};
-use eyre::{Result, WrapErr, eyre};
+use eyre::{Result, WrapErr, bail, eyre};
 use serde::{Deserialize, Serialize};
-use std::{fmt, fs, sync::OnceLock};
+use std::{fmt, fs, num::NonZeroU32, sync::OnceLock};
 
 /// Which machine timed a comparison: its CPU model and its host id. Timings compare only within
 /// one machine: an experiment's `[machine]` pins the one its measurements must come from, and
@@ -59,6 +59,10 @@ pub struct Machine {
     pub isolated: bool,
     /// The frequency governor of that CPU, when the kernel exposes one.
     pub governor: Option<String>,
+    /// The range cpufreq let that CPU's clock move in when timing ended, when the kernel
+    /// exposes one.
+    #[serde(default)]
+    pub clock: Option<Clock>,
     /// Whether the CPU could boost above its base clock, when the kernel says.
     #[serde(default)]
     pub turbo: Option<bool>,
@@ -68,6 +72,68 @@ pub struct Machine {
     pub perf_event_paranoid: Option<i32>,
     /// The 1, 5 and 15 minute load averages when timing started and when it ended.
     pub load: Load,
+}
+
+/// The range cpufreq lets one CPU's clock move in: its `scaling_min_freq` and
+/// `scaling_max_freq`, in kHz. A machine holds a CPU at one frequency by setting both to it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Clock {
+    pub min_khz: u32,
+    pub max_khz: u32,
+}
+
+impl Clock {
+    /// `cpu`'s range now, when the kernel exposes one.
+    pub fn of(cpu: u32) -> Option<Self> {
+        let read = |name: &str| -> Option<u32> {
+            let path = format!("/sys/devices/system/cpu/cpu{cpu}/cpufreq/{name}");
+            fs::read_to_string(path).ok()?.trim().parse().ok()
+        };
+        Some(Self {
+            min_khz: read("scaling_min_freq")?,
+            max_khz: read("scaling_max_freq")?,
+        })
+    }
+}
+
+impl fmt::Display for Clock {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mhz = |khz: u32| f64::from(khz) / 1000.0;
+        write!(f, "{} to {} MHz", mhz(self.min_khz), mhz(self.max_khz))
+    }
+}
+
+/// Refuses unless every one of `cores` runs at `clock_mhz`, with cpufreq's `scaling_min_freq`
+/// and `scaling_max_freq` both at that frequency, when a protocol holds the clock there.
+pub fn check_clock(clock_mhz: Option<NonZeroU32>, cores: &[u32]) -> Result<()> {
+    let Some(mhz) = clock_mhz else {
+        return Ok(());
+    };
+    for &core in cores {
+        if let Some(why) = off_clock(mhz, core, Clock::of(core)) {
+            bail!("{why}; set both to {} kHz", u64::from(mhz.get()) * 1000);
+        }
+    }
+    Ok(())
+}
+
+/// Why `core`, whose cpufreq range is `clock`, does not run at `mhz`, when it does not.
+fn off_clock(mhz: NonZeroU32, core: u32, clock: Option<Clock>) -> Option<String> {
+    let khz = u64::from(mhz.get()) * 1000;
+    let Some(clock) = clock else {
+        return Some(format!(
+            "measuring holds the clock at {mhz} MHz, and CPU {core} reports no cpufreq \
+             scaling_min_freq and scaling_max_freq"
+        ));
+    };
+    let held = u64::from(clock.min_khz) == khz && u64::from(clock.max_khz) == khz;
+    (!held).then(|| {
+        format!(
+            "measuring holds the clock at {mhz} MHz, and CPU {core} reports scaling_min_freq {} \
+             kHz and scaling_max_freq {} kHz",
+            clock.min_khz, clock.max_khz
+        )
+    })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -94,6 +160,7 @@ impl Machine {
             governor: fs::read_to_string(governor)
                 .ok()
                 .map(|governor| governor.trim().to_owned()),
+            clock: Clock::of(core),
             turbo: turbo(),
             kernel: read("/proc/sys/kernel/osrelease")?.trim().to_owned(),
             perf_event_paranoid: perf_event_paranoid(),
@@ -204,6 +271,7 @@ mod tests {
             core: 15,
             isolated: false,
             governor: Some("performance".into()),
+            clock: None,
             turbo: Some(true),
             kernel: "7.3.0".into(),
             perf_event_paranoid: Some(1),
@@ -284,6 +352,35 @@ mod tests {
         assert_eq!(parse_cpu_list("\n"), Some(vec![]));
         assert_eq!(parse_cpu_list("4-2"), None);
         assert_eq!(parse_cpu_list("a-b"), None);
+    }
+
+    #[test]
+    fn a_held_clock_is_a_range_of_one_frequency() {
+        let mhz = NonZeroU32::new(3000).unwrap();
+        let held = Clock {
+            min_khz: 3_000_000,
+            max_khz: 3_000_000,
+        };
+        assert_eq!(off_clock(mhz, 8, Some(held)), None);
+
+        let free = Clock {
+            min_khz: 800_000,
+            max_khz: 5_800_000,
+        };
+        let why = off_clock(mhz, 8, Some(free)).unwrap();
+        for needle in ["CPU 8", "3000 MHz", "800000 kHz", "5800000 kHz"] {
+            assert!(why.contains(needle), "{needle:?} missing from: {why}");
+        }
+        let higher = Clock {
+            min_khz: 3_200_000,
+            max_khz: 3_200_000,
+        };
+        assert!(off_clock(mhz, 10, Some(higher)).unwrap().contains("CPU 10"));
+        let why = off_clock(mhz, 12, None).unwrap();
+        assert!(why.contains("CPU 12 reports no cpufreq"), "{why}");
+
+        assert!(check_clock(None, &[0]).is_ok());
+        assert_eq!(free.to_string(), "800 to 5800 MHz");
     }
 
     #[test]

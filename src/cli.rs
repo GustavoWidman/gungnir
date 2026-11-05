@@ -906,6 +906,10 @@ struct Bench {
     /// Untimed runs of each program before its timed runs in each block.
     #[arg(long, value_name = "W", default_value_t = Protocol::DEFAULT.warmup)]
     warmup: u32,
+    /// Refuse unless the core's cpufreq scaling_min_freq and scaling_max_freq both hold its
+    /// clock at this frequency, and record the clock in the protocol.
+    #[arg(long, value_name = "MHZ")]
+    clock_mhz: Option<NonZeroU32>,
 }
 
 impl Bench {
@@ -930,12 +934,14 @@ impl Bench {
             blocks: self.blocks,
             runs: self.runs,
             warmup: self.warmup,
+            clock_mhz: self.clock_mhz,
         };
         let settings = Settings {
             core: pinned_core(self.core)?,
             protocol,
             memory: scenario.limits().memory_bytes(),
         };
+        measure::check_clock(protocol.clock_mhz, &[settings.core])?;
         let session = Session::start(&root)?;
         let toolchains = Toolchains::from_env()?;
         let backend = Bubblewrap::new(toolchains.base().clone())?;
@@ -1182,7 +1188,7 @@ impl fmt::Display for BenchTable<'_> {
         let load = |load: [f64; 3]| format!("{:.2} {:.2} {:.2}", load[0], load[1], load[2]);
         writeln!(
             f,
-            "pinned to {}CPU {} of {} ({}), governor {}, turbo {}",
+            "pinned to {}CPU {} of {} ({}), governor {}, turbo {}, clock {}",
             if machine.isolated { "isolated " } else { "" },
             machine.core,
             machine.cpus,
@@ -1192,7 +1198,10 @@ impl fmt::Display for BenchTable<'_> {
                 Some(true) => "on",
                 Some(false) => "off",
                 None => "unknown",
-            }
+            },
+            machine
+                .clock
+                .map_or_else(|| "unknown".to_owned(), |clock| clock.to_string())
         )?;
         writeln!(
             f,
@@ -1306,7 +1315,7 @@ mod tests {
     use super::*;
     use crate::{
         grade::fake::{self, Scripted, finished},
-        measure::{Block, Failure, Load, PeakMemory, Sample, Timed},
+        measure::{Block, Clock, Failure, Load, PeakMemory, Sample, Timed},
         sandbox::{Exit, Input},
         testing::{self, id, write},
     };
@@ -1367,6 +1376,10 @@ mod tests {
             core: 15,
             isolated: false,
             governor: None,
+            clock: Some(Clock {
+                min_khz: 3_000_000,
+                max_khz: 3_000_000,
+            }),
             turbo: None,
             kernel: "7.3.0".into(),
             perf_event_paranoid: Some(1),
@@ -1385,7 +1398,7 @@ mod tests {
             "workload    reference  range              candidate             range             ratio  95% interval    instructions  peak memory\n\
              full-range  750.0ms    [500.0ms, 1.000s]  1.500s                [1.000s, 2.000s]  2.000  [2.000, 2.000]  2.000         - (reference 48.0MiB)\n\
              uniform     -          -                  failed: wrong output  -                 -      -               -             -\n\
-             pinned to CPU 15 of 16 (AMD Ryzen 7 5800U), governor unknown, turbo unknown\n\
+             pinned to CPU 15 of 16 (AMD Ryzen 7 5800U), governor unknown, turbo unknown, clock 3000 to 3000 MHz\n\
              load average 6.65 4.26 3.28 at the start, 7.00 5.00 3.50 at the end\n"
         );
     }

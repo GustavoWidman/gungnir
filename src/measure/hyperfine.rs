@@ -244,6 +244,7 @@ mod tests {
             blocks: runs(4),
             runs: runs(7),
             warmup: 2,
+            clock_mhz: None,
         };
         let run = ["./my solution".to_owned(), "it's".to_owned()];
         let argv: Vec<String> = argv(&run, &protocol)

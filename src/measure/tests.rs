@@ -21,6 +21,7 @@ const PROTOCOL: Protocol = Protocol {
     blocks: NonZeroU32::new(2).unwrap(),
     runs: NonZeroU32::new(3).unwrap(),
     warmup: 1,
+    clock_mhz: None,
 };
 const SETTINGS: Settings = Settings {
     core: CORE,
@@ -556,4 +557,20 @@ fn stored_inputs_go_stale_exactly_when_timing_could_change() {
     let other = "0000000000000000000000000000000000000000000000000000000000000000  large.in\n";
     write(root, "scenarios/echo/workloads.sha256", other);
     assert_ne!(stored, fixture.inputs(&candidate, &PROTOCOL));
+}
+
+#[test]
+fn a_protocol_stores_a_clock_only_when_it_holds_one() {
+    let free = json!({"blocks": 6, "runs": 3, "warmup": 0});
+    assert_eq!(serde_json::to_value(Protocol::DEFAULT).unwrap(), free);
+    let read: Protocol = serde_json::from_value(free).unwrap();
+    assert_eq!(read, Protocol::DEFAULT);
+
+    let held = Protocol {
+        clock_mhz: NonZeroU32::new(3000),
+        ..Protocol::DEFAULT
+    };
+    let stored = serde_json::to_value(held).unwrap();
+    assert_eq!(stored["clock_mhz"], 3000);
+    assert_eq!(serde_json::from_value::<Protocol>(stored).unwrap(), held);
 }
