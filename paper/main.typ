@@ -263,22 +263,22 @@ The choice of language still decides the order of magnitude (@fig:absolute). Aga
 
 == The gungnir index
 
+#figure(
+  image("figures/gungnir-index.svg", width: 100%),
+  caption: [The gungnir index of each language over the three models, with its 95% interval. The dashed line marks the average language at 100; a dark bar's interval lies above it and a light bar's below.],
+) <fig:index>
+
 A developer choosing a language weighs all of these at once, so we fold them into one score, the gungnir index. It has five dimensions: the share of sessions whose program passes every hidden test, the tokens and the wall time of a session, the runtime of a passing program against the fastest reference for each workload, and the total cyclomatic complexity of a passing program as lizard counts it. For model $m$, task $t$, language $l$ and dimension $d$, let $x_(m,t,l,d)$ be the geometric mean of the dimension over the cell's sessions, or over its passing programs for runtime and complexity; the pass rate is estimated as $(k + 1 slash 2) slash (n + 1)$ from $k$ passes in $n$ sessions, so that a language that never passed a task stays finite. A language's advantage on a dimension is its distance from the mean of the eight languages for the same model and task, so that a model's own speed and price cancel,
 $ a_(m,t,l,d) = s_d (ln x_(m,t,l,d) - 1/8 sum_(l') ln x_(m,t,l',d)), $ <eq:advantage>
 #cont[its score on the dimension averages that advantage over models and tasks,]
 $ S_(l,d) = 100 dot exp(1 / (|M| |T|) sum_(m in M) sum_(t in T) a_(m,t,l,d)), $ <eq:score>
 #cont[and the index is the geometric mean of its five scores,]
 $ G_l = root(5, product_(d in D) S_(l,d)), $ <eq:index>
-#cont[where $M$ and $T$ are the models and tasks, $D$ the five dimensions, and $s_d$ is $+1$ for the pass rate and $-1$ for the others, so that a higher score is better on every dimension. An average language scores 100, and one whose programs run in half the average language's time scores 200 on runtime. @fig:index shows the five scores and the index, with 95% intervals that resample tasks and then sessions.]
-
-#figure(
-  image("figures/gungnir-index.svg", width: 100%),
-  caption: [The gungnir index (right, on its own axis) and its five dimension scores (on a shared log axis) over the three models, with 95% intervals. 100 is the average language, and higher means more passes, fewer tokens, less time, faster programs or fewer decision points.],
-) <fig:index>
+#cont[where $M$ and $T$ are the models and tasks, $D$ the five dimensions, and $s_d$ is $+1$ for the pass rate and $-1$ for the others, so that a higher score is better on every dimension. An average language scores 100, and one whose programs run in half the average language's time scores 200 on runtime. @fig:index shows the index with 95% intervals that resample tasks and then sessions, and @tab:dimensions in Appendix B gives the five scores behind it.]
 
 #lname.at(lead) leads the index at #r0(idx("all", lead).score) (#r0(idx("all", lead).lo)–#r0(idx("all", lead).hi))#if same-lead [, and every model puts it first]. Its programs run in #times(100 / dim("runtime", lead)) the average language's time and carry #times(100 / dim("complexity", lead)) its decision points, while a session takes #times(100 / dim("tokens", lead)) the average language's tokens. The dimensions pull the other languages apart. Python and JavaScript are among the cheapest and quickest languages in which to get a correct program, but their programs run #times(100 / dim("runtime", "python")) and #times(100 / dim("runtime", "javascript")) the average language's time, so Python scores #r0(idx("all", "python").score). Zig's programs are fast, but a session takes #times(100 / dim("tokens", "zig")) the tokens and #times(100 / dim("time", "zig")) the time of an average language's, and Zig scores #r0(idx("all", "zig").score). C's programs are fast too, but a C session takes #times(100 / dim("tokens", "c")) the average language's tokens#if langs.all(l => dim("complexity", "c") <= dim("complexity", l)) [, and its programs carry the most decision points of all].
 
-The index weighs its five dimensions equally, which suits compute-bound programs such as these. A developer who cares little how fast the program runs can drop that column of @fig:index: on the other four, #lname.at(lead-without-runtime) comes first at #r0(without-runtime(lead-without-runtime)), Python scores #r0(without-runtime("python")) and Zig #r0(without-runtime("zig")).
+The index weighs its five dimensions equally, which suits compute-bound programs such as these. A developer who cares little how fast the program runs can drop the speed score (@tab:dimensions): on the other four, #lname.at(lead-without-runtime) comes first at #r0(without-runtime(lead-without-runtime)), Python scores #r0(without-runtime("python")) and Zig #r0(without-runtime("zig")).
 
 = Discussion <discussion>
 
@@ -331,3 +331,25 @@ The models are fitted by maximum likelihood to Luna's #num(n.data.models.luna.tr
   ),
   caption: [Odds of passing relative to Python for GPT-6 Luna, with task and effort held fixed and standard errors clustered by task and language.],
 ) <tab:odds>
+
+#heading(numbering: none)[Appendix B: The gungnir index by dimension]
+
+@tab:dimensions gives each language's score on the five dimensions of @eq:score, over the three models, and the index of @eq:index that folds them together.
+
+#figure(
+  table(
+    columns: (auto, auto, auto, auto, auto, auto, auto),
+    align: (left, right, right, right, right, right, right),
+    stroke: none,
+    table.hline(stroke: 0.6pt),
+    [*Language*], [*Pass*], [*Tokens*], [*Time*], [*Speed*], [*Simplicity*], [*Index*],
+    table.hline(stroke: 0.4pt),
+    ..by-index("all").map(l => (
+      [#lname.at(l)],
+      ..("correctness", "tokens", "time", "runtime", "complexity").map(d => [#r0(dim(d, l))]),
+      [#r0(idx("all", l).score)],
+    )).flatten(),
+    table.hline(stroke: 0.6pt),
+  ),
+  caption: [The gungnir index and its five dimension scores over the three models, each against the average language for the same task: 100 is average, and higher means more passes, fewer tokens, less time, faster programs or fewer decision points.],
+) <tab:dimensions>
