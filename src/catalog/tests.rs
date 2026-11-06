@@ -78,11 +78,18 @@ fn loads_the_repository_catalog() {
     let zai = catalog.backend(&id("zai")).unwrap();
     assert_eq!(zai.harness().as_str(), "claude-code");
     assert_eq!(zai.endpoint().unwrap().host(), "api.z.ai");
-    let relaying: Vec<&str> = ["anthropic", "openai", "zai", "nvidia"]
-        .into_iter()
-        .filter(|backend| catalog.backend(&id(backend)).unwrap().relays())
-        .collect();
-    assert_eq!(relaying, ["nvidia"]);
+    let relaying: Vec<&str> = [
+        "anthropic",
+        "openai",
+        "zai",
+        "nvidia",
+        "cliproxy",
+        "lmstudio",
+    ]
+    .into_iter()
+    .filter(|backend| catalog.backend(&id(backend)).unwrap().relays())
+    .collect();
+    assert_eq!(relaying, ["nvidia", "cliproxy", "lmstudio"]);
     assert!(
         matches!(zai.credential(), Credential::ApiKey { var, .. } if var == "ANTHROPIC_AUTH_TOKEN")
     );
@@ -149,6 +156,49 @@ fn loads_the_repository_catalog() {
         nemotron.api_model(),
         "nvidia/nemotron-3.5-super-vl-120b-a12b"
     );
+
+    for (backend, host) in [
+        ("cliproxy", "lab.tail4a3ea.ts.net"),
+        ("lmstudio", "192.168.101.190"),
+    ] {
+        let endpoint = catalog.backend(&id(backend)).unwrap().endpoint().unwrap();
+        assert_eq!(endpoint.host(), host);
+    }
+    let gemini = catalog.model(&id("gemini-3.8-flash")).unwrap();
+    let rates = |on: &str| {
+        let rates = gemini.rates(day(on), 1_000_000).unwrap();
+        [rates.input, rates.output, rates.cache_read]
+    };
+    assert_eq!(
+        rates("2026-12-31"),
+        [Rate(750_000), Rate(3_750_000), Rate(75_000)]
+    );
+    assert_eq!(
+        rates("2027-01-01"),
+        [Rate(1_500_000), Rate(7_500_000), Rate(150_000)]
+    );
+    let gemini = catalog
+        .system(
+            &id("gemini-3.8-flash"),
+            &id("cliproxy"),
+            Effort::High,
+            id("0.166.0"),
+        )
+        .unwrap();
+    assert_eq!(
+        gemini.id().to_string(),
+        "codex-0.166.0_cliproxy_gemini-3.8-flash_high"
+    );
+    assert_eq!(gemini.api_model(), "gemini-3.8-flash-high");
+    let ornith = catalog
+        .system(
+            &id("ornith-1.5-35b-a3b"),
+            &id("lmstudio"),
+            Effort::None,
+            id("0.166.0"),
+        )
+        .unwrap();
+    assert_eq!(ornith.api_model(), "ornith-1.5-35b-a3b@q8_0");
 }
 
 #[test]

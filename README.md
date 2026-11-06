@@ -46,6 +46,8 @@ and rate limits are retried until the session ends on its own, and never reach t
 | Codex | OpenAI | GPT-6 Luna, GPT-6.1 Terra, GPT-6.1 Sol, GPT-6 Astra |
 | Codex | NVIDIA (Responses endpoint) | Nemotron 3.5 Super VL |
 | Codex | DeepSeek (Responses endpoint) | DeepSeek V4.1 Flash |
+| Codex | CLIProxyAPI (Responses endpoint) | Gemini 3.8 Flash |
+| Codex | LM Studio on local hardware (Responses endpoint) | Ornith 1.5 35B-A3B |
 
 Every model runs at every effort level it offers. Harness versions are pinned per experiment.
 
@@ -88,7 +90,9 @@ never the whole store, so no hidden case or reference is reachable. Grading and 
 offline. An agent reaches the network only through a host-side CONNECT proxy that tunnels its
 backend's allowlisted hosts on port 443 and logs every connection. For NVIDIA, whose free tier
 refuses bursts of requests, the proxy relays the agent's model requests itself: it adds the API
-key, so the agent holds none, and tries a refused request again for up to 10 minutes.
+key, so the agent holds none, and tries a refused request again for up to 10 minutes. The relay
+also carries the requests of the backends whose endpoints the tunnel cannot reach: CLIProxyAPI
+on port 8317, and LM Studio over plain HTTP on the local network.
 Credentials are staged into an isolated home per attempt and redacted from every stored
 transcript and log.
 
@@ -103,7 +107,10 @@ transcript and log.
   - `~/.config/gungnir/codex/` for OpenAI, a `CODEX_HOME` after `codex login`;
   - `~/.config/gungnir/glm/api_key` for Z.ai;
   - `~/.config/gungnir/nvidia/api_key` for NVIDIA;
-  - `~/.config/gungnir/deepseek/api_key` for DeepSeek.
+  - `~/.config/gungnir/deepseek/api_key` for DeepSeek;
+  - `~/.config/gungnir/cliproxy/api_key` for CLIProxyAPI;
+  - `~/.config/gungnir/lmstudio/api_key` for LM Studio, which checks no key, so any placeholder
+    such as `lm-studio` serves.
 - For measuring, a quiet machine with `kernel.perf_event_paranoid` at 1 or less, ideally
   with isolated cores (`isolcpus`, `nohz_full`), where `measure` runs one lane on the first
   thread of each, and fixed clocks, which `clock_mhz` in an experiment's `[measure]` table
@@ -201,7 +208,8 @@ Results live under `runs/`, which is not tracked.
 
 ## Scope and limits
 
-- Systems run on vendor subscriptions, and on NVIDIA's free API, through vendor harnesses.
+- Systems run on vendor subscriptions, on NVIDIA's free API, behind a CLIProxyAPI instance and
+  on local hardware through LM Studio, through vendor harnesses.
   Results describe a harness, model and effort together; the harness is part of what is
   measured.
 - Costs are list-price equivalents computed from token usage and dated price tables, not bills.
