@@ -965,25 +965,25 @@ z
 " style="fill: #ffffff"/>
    </g>
    <g id="line2d_15">
-    <path d="M 124.884444 111.71129 
-L 124.884444 10.704 
+    <path d="M 124.653857 111.71129 
+L 124.653857 10.704 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke-dasharray: 2.22,0.96; stroke-dashoffset: 0; stroke: #9a9a9a; stroke-width: 0.6"/>
    </g>
    <g id="matplotlib.axis_3">
     <g id="xtick_3">
      <g id="line2d_16">
-      <path d="M 124.884444 111.71129 
-L 124.884444 10.704 
+      <path d="M 124.653857 111.71129 
+L 124.653857 10.704 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke: #e6e6e6; stroke-width: 0.5; stroke-linecap: square"/>
      </g>
      <g id="line2d_17">
       <g>
-       <use xlink:href="#m6cfcbf2ddf" x="124.884444" y="111.71129" style="stroke: #000000; stroke-width: 0.6"/>
+       <use xlink:href="#m6cfcbf2ddf" x="124.653857" y="111.71129" style="stroke: #000000; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_12">
       <!-- 1× -->
-      <g transform="translate(121.160226 123.19229) scale(0.07 -0.07)">
+      <g transform="translate(120.929638 123.19229) scale(0.07 -0.07)">
        <use xlink:href="#TeXGyreTermes-Regular-53"/>
        <use xlink:href="#TeXGyreTermes-Regular-1a8" transform="translate(50 0)"/>
       </g>
@@ -991,18 +991,18 @@ L 124.884444 10.704
     </g>
     <g id="xtick_4">
      <g id="line2d_18">
-      <path d="M 154.833555 111.71129 
-L 154.833555 10.704 
+      <path d="M 155.988692 111.71129 
+L 155.988692 10.704 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke: #e6e6e6; stroke-width: 0.5; stroke-linecap: square"/>
      </g>
      <g id="line2d_19">
       <g>
-       <use xlink:href="#m6cfcbf2ddf" x="154.833555" y="111.71129" style="stroke: #000000; stroke-width: 0.6"/>
+       <use xlink:href="#m6cfcbf2ddf" x="155.988692" y="111.71129" style="stroke: #000000; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_13">
       <!-- 2× -->
-      <g transform="translate(151.109337 123.19229) scale(0.07 -0.07)">
+      <g transform="translate(152.264473 123.19229) scale(0.07 -0.07)">
        <use xlink:href="#TeXGyreTermes-Regular-6c"/>
        <use xlink:href="#TeXGyreTermes-Regular-1a8" transform="translate(50 0)"/>
       </g>
@@ -1036,28 +1036,28 @@ L 154.833555 10.704
     </g>
    </g>
    <g id="LineCollection_2">
-    <path d="M 113.629911 18.094777 
-L 130.927405 18.094777 
+    <path d="M 111.826973 18.094777 
+L 124.363413 18.094777 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke: #222222; stroke-width: 0.8"/>
-    <path d="M 110.917384 30.41274 
-L 122.998291 30.41274 
+    <path d="M 110.966109 30.41274 
+L 121.025012 30.41274 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke: #222222; stroke-width: 0.8"/>
-    <path d="M 110.080278 42.730702 
-L 122.428916 42.730702 
+    <path d="M 111.491462 42.730702 
+L 122.668291 42.730702 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke: #222222; stroke-width: 0.8"/>
-    <path d="M 118.45914 55.048664 
-L 130.207502 55.048664 
+    <path d="M 119.62214 55.048664 
+L 130.425864 55.048664 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke: #222222; stroke-width: 0.8"/>
-    <path d="M 111.707095 67.366626 
-L 122.539978 67.366626 
+    <path d="M 113.677483 67.366626 
+L 125.109572 67.366626 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke: #222222; stroke-width: 0.8"/>
-    <path d="M 111.255322 79.684588 
-L 122.898804 79.684588 
+    <path d="M 110.080278 79.684588 
+L 121.108278 79.684588 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke: #222222; stroke-width: 0.8"/>
-    <path d="M 122.808295 92.00255 
-L 131.783089 92.00255 
+    <path d="M 122.738745 92.00255 
+L 130.455194 92.00255 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke: #222222; stroke-width: 0.8"/>
-    <path d="M 149.500467 104.320513 
+    <path d="M 150.6564 104.320513 
 L 167.828539 104.320513 
 " clip-path="url(#pac014c0bfc)" style="fill: none; stroke: #222222; stroke-width: 0.8"/>
    </g>
@@ -1073,14 +1073,14 @@ L 170.715952 111.71129
    </g>
    <g id="line2d_28">
     <g clip-path="url(#pac014c0bfc)">
-     <use xlink:href="#m0503edc86c" x="121.829782" y="18.094777" style="fill: #222222; stroke: #222222"/>
-     <use xlink:href="#m0503edc86c" x="117.370288" y="30.41274" style="fill: #222222; stroke: #222222"/>
-     <use xlink:href="#m0503edc86c" x="116.251338" y="42.730702" style="fill: #222222; stroke: #222222"/>
-     <use xlink:href="#m0503edc86c" x="123.877913" y="55.048664" style="fill: #222222; stroke: #222222"/>
-     <use xlink:href="#m0503edc86c" x="116.85811" y="67.366626" style="fill: #222222; stroke: #222222"/>
-     <use xlink:href="#m0503edc86c" x="117.046653" y="79.684588" style="fill: #222222; stroke: #222222"/>
-     <use xlink:href="#m0503edc86c" x="127.271688" y="92.00255" style="fill: #222222; stroke: #222222"/>
-     <use xlink:href="#m0503edc86c" x="158.569782" y="104.320513" style="fill: #222222; stroke: #222222"/>
+     <use xlink:href="#m0503edc86c" x="118.123194" y="18.094777" style="fill: #222222; stroke: #222222"/>
+     <use xlink:href="#m0503edc86c" x="116.607357" y="30.41274" style="fill: #222222; stroke: #222222"/>
+     <use xlink:href="#m0503edc86c" x="117.588116" y="42.730702" style="fill: #222222; stroke: #222222"/>
+     <use xlink:href="#m0503edc86c" x="124.546823" y="55.048664" style="fill: #222222; stroke: #222222"/>
+     <use xlink:href="#m0503edc86c" x="119.071183" y="67.366626" style="fill: #222222; stroke: #222222"/>
+     <use xlink:href="#m0503edc86c" x="115.738652" y="79.684588" style="fill: #222222; stroke: #222222"/>
+     <use xlink:href="#m0503edc86c" x="126.549127" y="92.00255" style="fill: #222222; stroke: #222222"/>
+     <use xlink:href="#m0503edc86c" x="159.006403" y="104.320513" style="fill: #222222; stroke: #222222"/>
     </g>
    </g>
    <g id="text_14">
