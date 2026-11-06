@@ -1,5 +1,5 @@
-# The study's DeepSeek arm: every effort level of DeepSeek V4.1 Flash on the full suite, through
-# Codex against DeepSeek's own API.
+# The study's DeepSeek arm: DeepSeek V4.1 Flash at its default effort, high, on the full suite,
+# through Codex against DeepSeek's own API.
 name = "study-deepseek"
 results = "../runs/study-deepseek"
 repetitions = 1
@@ -37,5 +37,5 @@ deepseek = 8
 
 [[systems]]
 model = "deepseek-v4.1-flash"
-efforts = "all"
-repetitions = 5
+efforts = ["high"]
+repetitions = 1
