@@ -183,8 +183,8 @@ prices = [
 ]
 
 # LM Studio serves the model's 8-bit quantization (q8_0) on local hardware, so its tokens cost
-# nothing. Its two efforts stand for reasoning off and on; that LM Studio turns Codex's effort
-# none into reasoning off and high into reasoning on is not checked yet.
+# nothing. Its two efforts are reasoning off and on: LM Studio's Responses API reasons for none
+# not at all and for low or high alike (1,013 and 1,135 reasoning tokens on one prompt, 2026-11-06).
 [[models]]
 id = "ornith-1.5-35b-a3b"
 efforts = ["none", "high"]
