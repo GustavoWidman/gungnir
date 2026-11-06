@@ -1,7 +1,7 @@
 //! The partial-directory commit protocol. A phase builds `<dir>.partial/`, writes
 //! `record.json` last, and renames the whole directory to `<dir>/`, so `<dir>/` is either
-//! complete or absent.
-use super::{parent, read_json, sync_dir, write_json};
+//! complete or absent. A committed record may be rewritten in place, atomically.
+use super::{json, parent, read_json, replace, sync_dir, write_json};
 use eyre::{Result, WrapErr, ensure};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
@@ -73,6 +73,16 @@ pub fn sweep_partial(target: &Path) -> Result<bool> {
 /// The record of the committed directory `dir`, or `None` when `dir` is not committed.
 pub fn read_record<T: DeserializeOwned>(dir: &Path) -> Result<Option<T>> {
     read_json(&dir.join(RECORD))
+}
+
+/// Replaces the record of the committed directory `dir` atomically, so a reader sees the old
+/// record or the new one. Only a record re-derived from what its directory already holds is
+/// rewritten. Fails, writing nothing, when `dir` is not committed, so a directory another phase
+/// withdrew meanwhile is never recreated.
+pub fn rewrite_record(dir: &Path, record: &impl Serialize) -> Result<()> {
+    let path = dir.join(RECORD);
+    ensure!(path.is_file(), "{} is not committed", dir.display());
+    replace(&path, &json(&path, record)?)
 }
 
 fn partial_path(target: &Path) -> PathBuf {
@@ -147,6 +157,29 @@ mod tests {
         let err = PartialDir::begin(&target).unwrap_err();
         assert!(err.to_string().contains("already committed"), "{err}");
         assert_eq!(read_record(&target).unwrap(), Some(Record { exit: 1 }));
+    }
+
+    #[test]
+    fn a_committed_record_is_rewritten_in_place_and_a_missing_one_never_written() {
+        let root = TempDir::new().unwrap();
+        let target = root.path().join("grade");
+        let partial = PartialDir::begin(&target).unwrap();
+        write(partial.path(), "build.log", "built");
+        partial.commit(&Record { exit: 0 }).unwrap();
+
+        rewrite_record(&target, &Record { exit: 1 }).unwrap();
+        assert_eq!(read_record(&target).unwrap(), Some(Record { exit: 1 }));
+        let mut entries: Vec<_> = fs::read_dir(&target)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        entries.sort();
+        assert_eq!(entries, ["build.log", "record.json"]);
+
+        let withdrawn = root.path().join("measure");
+        let err = rewrite_record(&withdrawn, &Record { exit: 1 }).unwrap_err();
+        assert!(err.to_string().contains("not committed"), "{err}");
+        assert!(!withdrawn.exists());
     }
 
     #[test]

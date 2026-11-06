@@ -10,7 +10,7 @@ use super::{
 use crate::{
     harness::Harness,
     provenance::SessionId,
-    store::write_json,
+    store::{rewrite_record, write_json},
     trial::{Phase, ResultsDir, TrialDir},
 };
 use eyre::Result;
@@ -74,7 +74,7 @@ pub(super) fn apply(
 ) -> Result<()> {
     match review {
         Review::Current => Ok(()),
-        Review::Reparsed(updated) => write_json(&dir.record(Phase::Run), updated),
+        Review::Reparsed(updated) => rewrite_record(&dir.phase(Phase::Run), updated),
         Review::Withdrawn {
             reason,
             parser,

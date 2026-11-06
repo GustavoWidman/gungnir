@@ -6,7 +6,7 @@ mod partial;
 
 pub use digest::Digest;
 pub use lock::Lock;
-pub use partial::{PartialDir, read_record, sweep_partial};
+pub use partial::{PartialDir, read_record, rewrite_record, sweep_partial};
 
 use eyre::{Report, Result, WrapErr, eyre};
 use serde::{Serialize, de::DeserializeOwned};
@@ -24,6 +24,12 @@ use tempfile::NamedTempFile;
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     let dir = parent(path);
     fs::create_dir_all(dir).wrap_err_with(|| format!("creating {}", dir.display()))?;
+    replace(path, bytes)
+}
+
+/// Replaces `path` with `bytes` as [`write_atomic`] does, in a directory that must exist.
+fn replace(path: &Path, bytes: &[u8]) -> Result<()> {
+    let dir = parent(path);
     let mut temp = NamedTempFile::new_in(dir)
         .wrap_err_with(|| format!("creating a file in {}", dir.display()))?;
     temp.write_all(bytes)
@@ -36,10 +42,15 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
 
 /// Writes `value` as pretty JSON through [`write_atomic`].
 pub fn write_json(path: &Path, value: &impl Serialize) -> Result<()> {
+    write_atomic(path, &json(path, value)?)
+}
+
+/// `value` as pretty JSON and a final newline, for the file `path`.
+fn json(path: &Path, value: &impl Serialize) -> Result<Vec<u8>> {
     let mut bytes = serde_json::to_vec_pretty(value)
         .wrap_err_with(|| format!("encoding {}", path.display()))?;
     bytes.push(b'\n');
-    write_atomic(path, &bytes)
+    Ok(bytes)
 }
 
 /// Reads a JSON file, or `None` when it does not exist. A file that exists but does not
