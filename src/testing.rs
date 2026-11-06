@@ -3,8 +3,8 @@ use crate::catalog::Catalog;
 use std::{fmt::Debug, fs, path::Path, str::FromStr};
 use tempfile::TempDir;
 
-/// Two harnesses and three backends. `glm` is served by two backends, so an experiment
-/// must choose one.
+/// Two harnesses and four backends, two of them at their own endpoints. `glm` is served by
+/// two backends, so an experiment must choose one.
 pub const CATALOG_TOML: &str = r#"
 [sandbox]
 packages = ["coreutils"]
@@ -37,6 +37,12 @@ endpoint = "https://api.z.ai/api/anthropic"
 credential = { kind = "api-key", var = "KEY", file = "~/key" }
 egress = ["api.z.ai"]
 
+[backends.relay]
+harness = "codex"
+endpoint = "https://api.relay.example/v1"
+credential = { kind = "api-key", var = "RELAY_API_KEY", file = "~/relay-key" }
+egress = ["api.relay.example"]
+
 [[models]]
 id = "opus"
 efforts = ["low", "high", "max"]
@@ -54,6 +60,12 @@ id = "glm"
 efforts = ["low", "high"]
 served-by = { zai = "glm", anthropic = "glm-relay" }
 prices = [{ since = "2026-01-01", input = 1.0, output = 4.0, cache-read = 0.2 }]
+
+[[models]]
+id = "nemo"
+efforts = ["none", "high"]
+served-by = { relay = "vendor/nemo" }
+prices = [{ since = "2026-01-01", input = 0.0, output = 0.0, cache-read = 0.0 }]
 "#;
 
 /// Four systems over two backends, on one scenario in two languages, twice: 16 trials.

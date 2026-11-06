@@ -39,14 +39,17 @@ use tokio::sync::mpsc;
 
 /// The fixture's Claude token.
 pub const TOKEN: &str = "sk-ant-oat01-fixture";
+/// The fixture's API key for the relay endpoint.
+pub const RELAY_KEY: &str = "nvapi-fixture";
 /// The fixture's Codex login.
 pub const LOGIN: &str = r#"{"OPENAI_API_KEY":null,"tokens":{"id_token":"eyJ.id","access_token":"eyJ.access","refresh_token":"rt.refresh","account_id":"acct"},"last_refresh":"2026-11-03T20:04:12Z"}"#;
 
-/// A user home holding the fixture catalog's three credentials.
+/// A user home holding the fixture catalog's four credentials.
 pub fn credentials() -> TempDir {
     let home = TempDir::new().unwrap();
     write(home.path(), "token", format!("{TOKEN}\n"));
     write(home.path(), "key", "glm-key");
+    write(home.path(), "relay-key", format!("{RELAY_KEY}\n"));
     write(home.path(), "codex/auth.json", LOGIN);
     home
 }

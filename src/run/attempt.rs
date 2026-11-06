@@ -487,12 +487,13 @@ mod tests {
         grade::tree,
         run::{
             AgentExit, ProcessExit,
-            fixture::{self, Agent, LOGIN, Play, Repo, TOKEN},
+            fixture::{self, Agent, LOGIN, Play, RELAY_KEY, Repo, TOKEN},
             records::Timeout,
         },
         sandbox,
         secret::Secret,
         store::read_record,
+        testing::write,
         trial::TrialDir,
     };
     use chrono::DateTime;
@@ -510,10 +511,46 @@ mod tests {
         stop: Stop,
     }
 
+    /// Codex at the fixture catalog's relay endpoint, once, on `echo` in Python.
+    const RELAY_TOML: &str = r#"
+name = "relay"
+results = "../runs/relay"
+repetitions = 1
+scenarios = ["echo"]
+languages = ["python"]
+
+[pins]
+codex = "0.166.0"
+
+[budget]
+wall = "40m"
+idle = "10m"
+
+[concurrency]
+relay = 1
+
+[[systems]]
+model = "nemo"
+efforts = ["high"]
+"#;
+
     impl Bench {
         fn new() -> Self {
             let repo = Repo::new();
             let experiment = repo.experiment();
+            Self::of(repo, experiment)
+        }
+
+        /// The fixture repository running [`RELAY_TOML`] instead.
+        fn relay() -> Self {
+            let repo = Repo::new();
+            let path = repo.root.path().join("experiments/relay.toml");
+            write(repo.root.path(), "experiments/relay.toml", RELAY_TOML);
+            let experiment = Experiment::load(&path).unwrap();
+            Self::of(repo, experiment)
+        }
+
+        fn of(repo: Repo, experiment: Experiment) -> Self {
             let home = fixture::credentials();
             let runtime = TempDir::new().unwrap();
             let vault = Vault::open(
@@ -828,6 +865,107 @@ mod tests {
                 }
             };
             assert_eq!(left, expected, "{label}");
+            bench.assert_clean();
+        }
+    }
+
+    #[tokio::test]
+    async fn an_endpoint_backend_commits_a_session_and_discards_what_the_endpoint_cut_short() {
+        let failed = |name: &str| Play {
+            exit: sandbox::Exit::Code(1),
+            ..Play::transcript(&format!("codex/{name}"))
+        };
+        let mut completed = Play::transcript("codex/nemotron-command-success.jsonl");
+        completed.stdout.insert(
+            3,
+            format!(r#"{{"type":"item.updated","text":"{RELAY_KEY}"}}"#),
+        );
+        let cases = [
+            (
+                "completed",
+                completed,
+                Left::Committed(AgentExit::Completed),
+            ),
+            (
+                "429",
+                failed("endpoint-429.jsonl"),
+                Left::Discarded(Reason::RateLimited { resets_at: None }),
+            ),
+            (
+                "server error",
+                failed("endpoint-500.jsonl"),
+                Left::Discarded(Reason::Errored {
+                    message: "We’re currently experiencing high demand, which may cause \
+                              temporary errors."
+                        .to_owned(),
+                }),
+            ),
+            (
+                "dropped stream",
+                failed("endpoint-stream-drop.jsonl"),
+                Left::Discarded(Reason::Errored {
+                    message: "stream disconnected before completion: stream closed before \
+                              response.completed"
+                        .to_owned(),
+                }),
+            ),
+        ];
+        for (label, play, expected) in cases {
+            let bench = Bench::relay();
+            let agent = Agent::new(move |spec| {
+                let home = spec
+                    .mounts
+                    .iter()
+                    .find(|mount| mount.guest == Path::new(HOME))
+                    .unwrap();
+                let config = read(&home.host.join(".codex/config.toml"));
+                assert!(
+                    config.contains(r#"base_url = "https://api.relay.example/v1""#),
+                    "{config}"
+                );
+                assert!(!config.contains(RELAY_KEY), "{config}");
+                play.clone()
+            });
+            let attempt = bench.trial("nemo").attempt(AttemptNo::FIRST);
+            let left = match bench.attempt("nemo", &agent).await {
+                Attempted::Committed(record) => {
+                    let inputs = serde_json::to_value(record.inputs()).unwrap();
+                    assert_eq!(inputs["api_model"], "vendor/nemo", "{label}");
+                    assert_eq!(
+                        inputs["endpoint"], "https://api.relay.example/v1",
+                        "{label}"
+                    );
+                    Left::Committed(record.outcome().exit.clone())
+                }
+                Attempted::Discarded { reason, .. } => {
+                    assert!(attempt.discarded().is_file(), "{label}");
+                    Left::Discarded(reason)
+                }
+            };
+            assert_eq!(left, expected, "{label}");
+            let transcript = read(&attempt.transcript());
+            assert!(!transcript.contains(RELAY_KEY), "{label}");
+
+            let [launched] = agent.launches().try_into().unwrap();
+            assert_eq!(
+                launched.argv[..7],
+                [
+                    "codex",
+                    "exec",
+                    "--json",
+                    "--skip-git-repo-check",
+                    "--dangerously-bypass-approvals-and-sandbox",
+                    "-m",
+                    "vendor/nemo"
+                ]
+            );
+            assert!(
+                launched.spec.env.contains(&(
+                    "RELAY_API_KEY".to_owned(),
+                    EnvValue::Secret(Secret::new(RELAY_KEY.to_owned()))
+                )),
+                "{label}"
+            );
             bench.assert_clean();
         }
     }

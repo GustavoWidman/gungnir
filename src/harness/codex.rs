@@ -1,19 +1,30 @@
 //! Codex, run headless as `codex exec --json` with the prompt on stdin. Its quota is read
-//! afterwards from the session rollout it writes under `CODEX_HOME`.
+//! afterwards from the session rollout it writes under `CODEX_HOME`. It signs in to ChatGPT
+//! for OpenAI's own endpoint, and takes an API key for any other endpoint that serves
+//! OpenAI's Responses API.
 use super::{
     CredentialMaterial, Driver, Event, Granularity, HomeFile, Launch, LaunchRequest, TokenUsage,
     UNPARSABLE, UsageSample, mentions, plain, utf8,
 };
-use crate::id::{Effort, HarnessVersion};
+use crate::{
+    catalog::Endpoint,
+    id::{Effort, HarnessVersion},
+    secret::{EnvValue, Secret},
+};
 use chrono::DateTime;
-use eyre::{Result, bail, eyre};
-use serde::Deserialize;
-use std::path::Path;
+use eyre::{Result, WrapErr, bail, eyre};
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeMap, path::Path};
 
 pub(super) struct Codex;
 
 /// `CODEX_HOME`, relative to the isolated home.
 const CODEX_HOME: &str = ".codex";
+
+/// The id Codex's configuration gives a backend's endpoint. Codex refuses to load a configured
+/// provider under one of its own ids, such as `openai`, so the id is fixed rather than the
+/// backend's.
+const PROVIDER: &str = "gungnir";
 
 /// Features Codex 0.166.0 enables by default that reach services other than the model or
 /// change what the model is offered. The other default features did nothing observable in a
@@ -63,15 +74,29 @@ impl Driver for Codex {
     }
 
     fn launch(&self, req: &LaunchRequest<'_>) -> Result<Launch> {
-        let CredentialMaterial::CodexAuth(auth) = req.credential else {
-            bail!("codex takes its credential from a codex-home auth.json");
-        };
-        if let Some(endpoint) = req.endpoint {
-            bail!(
-                "codex cannot use endpoint {}; it talks to OpenAI only",
+        let codex_home = req.home.join(CODEX_HOME);
+        let mut env = vec![plain("CODEX_HOME", utf8(&codex_home)?)];
+        let files = match (req.credential, req.endpoint) {
+            (CredentialMaterial::CodexAuth(auth), None) => vec![HomeFile {
+                path: Path::new(CODEX_HOME).join("auth.json"),
+                contents: auth.clone(),
+            }],
+            (CredentialMaterial::Env { var, value }, Some(endpoint)) => {
+                let config = provider_config(req.system.backend().as_str(), endpoint, var)?;
+                env.push((var.clone(), EnvValue::Secret(value.clone())));
+                vec![HomeFile {
+                    path: Path::new(CODEX_HOME).join("config.toml"),
+                    contents: Secret::new(config),
+                }]
+            }
+            (CredentialMaterial::CodexAuth(_), Some(endpoint)) => bail!(
+                "codex signs in to ChatGPT only for OpenAI's own endpoint, not {}",
                 endpoint.as_str()
-            );
-        }
+            ),
+            (CredentialMaterial::Env { .. }, None) => {
+                bail!("codex takes an API key only for a backend with an endpoint")
+            }
+        };
         let mut argv: Vec<String> = [
             "codex",
             "exec",
@@ -95,11 +120,8 @@ impl Driver for Codex {
         argv.extend(["-C".to_owned(), utf8(req.workspace)?, "-".to_owned()]);
         Ok(Launch {
             argv,
-            env: vec![plain("CODEX_HOME", utf8(&req.home.join(CODEX_HOME))?)],
-            files: vec![HomeFile {
-                path: Path::new(CODEX_HOME).join("auth.json"),
-                contents: auth.clone(),
-            }],
+            env,
+            files,
             stdin: req.prompt.to_owned(),
         })
     }
@@ -136,6 +158,37 @@ impl Driver for Codex {
             RolloutPayload::Other { .. } => Vec::new(),
         }
     }
+}
+
+/// `config.toml` for a backend with its own endpoint: a model provider that sends the API key
+/// in `env_key` to the endpoint's Responses API. `CODEX_HOME` must exist before Codex starts,
+/// and this file is what creates it.
+#[derive(Serialize)]
+struct ProviderConfig<'a> {
+    model_provider: &'static str,
+    model_providers: BTreeMap<&'static str, Provider<'a>>,
+}
+
+#[derive(Serialize)]
+struct Provider<'a> {
+    name: &'a str,
+    base_url: &'a str,
+    env_key: &'a str,
+    wire_api: &'static str,
+}
+
+fn provider_config(backend: &str, endpoint: &Endpoint, env_key: &str) -> Result<String> {
+    let provider = Provider {
+        name: backend,
+        base_url: endpoint.as_str(),
+        env_key,
+        wire_api: "responses",
+    };
+    toml::to_string(&ProviderConfig {
+        model_provider: PROVIDER,
+        model_providers: BTreeMap::from([(PROVIDER, provider)]),
+    })
+    .wrap_err("writing the codex provider configuration")
 }
 
 /// A line of a kind this parser knows, or failing that, the kind it names.
@@ -389,27 +442,88 @@ mod tests {
         assert_eq!(file.contents.expose(), r#"{"tokens":{}}"#);
     }
 
-    #[test]
-    fn only_a_codex_home_credential_and_the_default_endpoint_launch() {
-        assert!(launch(Effort::Low, Some("zai")).is_err());
-
+    fn launch_relay(effort: Effort, endpoint_of: Option<&str>) -> Result<Launch> {
         let catalog = testing::catalog();
-        let system = catalog
-            .system(&id("luna"), &id("openai"), Effort::Low, id("0.166.0"))
-            .unwrap();
+        let system = catalog.system(&id("nemo"), &id("relay"), effort, id("0.166.0"))?;
         let credential = CredentialMaterial::Env {
-            var: "OPENAI_API_KEY".into(),
-            value: Secret::new("sk-test".into()),
+            var: "RELAY_API_KEY".into(),
+            value: Secret::new("nv-test".into()),
         };
-        let launched = harness().launch(&LaunchRequest {
+        harness().launch(&LaunchRequest {
             system: &system,
-            endpoint: None,
+            endpoint: endpoint_of.and_then(|backend| catalog.backend(&id(backend))?.endpoint()),
             credential: &credential,
             home: Path::new("/home/agent"),
             workspace: Path::new("/work"),
-            prompt: "",
-        });
-        assert!(launched.is_err());
+            prompt: "Reply with the single word ok",
+        })
+    }
+
+    #[test]
+    fn an_endpoint_backend_launches_a_provider_that_sends_its_api_key_there() {
+        let launch = launch_relay(Effort::High, Some("relay")).unwrap();
+        assert_eq!(
+            launch.argv,
+            [
+                "codex",
+                "exec",
+                "--json",
+                "--skip-git-repo-check",
+                "--dangerously-bypass-approvals-and-sandbox",
+                "-m",
+                "vendor/nemo",
+                "-c",
+                "model_reasoning_effort=high",
+                "-c",
+                "web_search=disabled",
+                "-c",
+                "analytics.enabled=false",
+                "--disable",
+                "apps",
+                "--disable",
+                "image_generation",
+                "--disable",
+                "plugins",
+                "-C",
+                "/work",
+                "-",
+            ]
+        );
+        assert_eq!(launch.stdin, "Reply with the single word ok");
+        assert_eq!(
+            launch.env,
+            [
+                (
+                    "CODEX_HOME".to_owned(),
+                    EnvValue::Plain("/home/agent/.codex".into())
+                ),
+                (
+                    "RELAY_API_KEY".to_owned(),
+                    EnvValue::Secret(Secret::new("nv-test".into()))
+                ),
+            ]
+        );
+        let [file] = launch.files.as_slice() else {
+            panic!("expected one file, got {:?}", launch.files);
+        };
+        assert_eq!(file.path, Path::new(".codex/config.toml"));
+        assert_eq!(
+            file.contents.expose(),
+            r#"model_provider = "gungnir"
+
+[model_providers.gungnir]
+name = "relay"
+base_url = "https://api.relay.example/v1"
+env_key = "RELAY_API_KEY"
+wire_api = "responses"
+"#
+        );
+    }
+
+    #[test]
+    fn a_login_launches_only_at_openai_and_an_api_key_only_at_an_endpoint() {
+        assert!(launch(Effort::Low, Some("zai")).is_err());
+        assert!(launch_relay(Effort::High, None).is_err());
     }
 
     #[test]
@@ -453,6 +567,51 @@ mod tests {
         );
         assert_eq!(outcome.usage.len(), 1);
         assert!(outcome.unrecognised.is_empty());
+    }
+
+    #[test]
+    fn a_nemotron_run_at_an_endpoint_keeps_cache_reads_out_of_input() {
+        let outcome = outcome("nemotron-command-success.jsonl");
+        assert_eq!(outcome.exit, Exit::Completed);
+        assert_eq!(
+            outcome.total(),
+            TokenUsage {
+                input: 20784 - 8672,
+                cache_read: 8672,
+                cache_write: 0,
+                cache_write_long: 0,
+                output: 308,
+                reasoning: Some(100),
+            }
+        );
+        assert!(outcome.unrecognised.is_empty());
+    }
+
+    /// Codex against an endpoint that answers every request alike: it gives up on a 429 at
+    /// once, and on a server error or a dropped stream after five reconnects.
+    #[test]
+    fn an_endpoint_that_fails_every_request_ends_the_run_as_a_rate_limit_or_an_error() {
+        let ending = harness()
+            .replay(&transcript("endpoint-429.jsonl"), &[])
+            .finish(ProcessEnd::Exited);
+        assert_eq!(
+            ending,
+            Ending::RateLimited {
+                resets_at: None,
+                usage: vec![]
+            }
+        );
+        for (name, said) in [
+            ("endpoint-500.jsonl", "high demand"),
+            ("endpoint-stream-drop.jsonl", "stream disconnected"),
+        ] {
+            let outcome = outcome(name);
+            let Exit::Errored { message } = &outcome.exit else {
+                panic!("{name}: expected an error, got {:?}", outcome.exit);
+            };
+            assert!(message.contains(said), "{name}: {message}");
+            assert!(outcome.usage.is_empty(), "{name}");
+        }
     }
 
     #[test]
