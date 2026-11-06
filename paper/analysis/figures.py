@@ -44,7 +44,7 @@ def dot_panels(rows, models, values, xlabel, out, name, *, log=False, ref=None, 
                extra=None):
     """One panel per model; values[model][language] = (point, lo, hi)."""
     fig, axes = plt.subplots(1, len(models), sharey=True, layout="constrained",
-                             figsize=(COLUMN, 0.18 * len(rows) + 0.55))
+                             figsize=(COLUMN, 0.165 * len(rows) + 0.5))
     axes = np.atleast_1d(axes)
     y = np.arange(len(rows))[::-1]
     for ax, model in zip(axes, models):
