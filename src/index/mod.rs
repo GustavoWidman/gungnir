@@ -14,11 +14,15 @@
 //! and the index 100 times the exponential of the weighted mean of the dimensions' means over
 //! models. A two-stage bootstrap, scenarios and then sessions within each cell, gives every
 //! score its interval.
+mod read;
 mod score;
 #[cfg(test)]
 mod tests;
+mod write;
 
+pub use read::{Generation, Read, read};
 pub use score::{Bootstrap, Card, Estimate, Sample, Scores, Timing, score};
+pub use write::write;
 
 use eyre::{Report, Result, ensure, eyre};
 use serde::Serialize;

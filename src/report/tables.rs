@@ -43,7 +43,7 @@ impl Trial {
 
     /// The grade, when it is current. The lifecycle compares a grade's inputs only once the run
     /// is current, so beside a stale run it is not known to be.
-    fn current_grade(&self) -> Option<&GradeRecord> {
+    pub fn current_grade(&self) -> Option<&GradeRecord> {
         self.grade
             .as_ref()
             .filter(|_| !matches!(self.stale, Some(Phase::Run | Phase::Grade)))
@@ -51,7 +51,7 @@ impl Trial {
 
     /// The measurement, when it is current. The lifecycle compares a measurement's inputs only
     /// once the run and grade are current, so beside a stale one it is not known to be.
-    fn current_measure(&self) -> Option<&MeasureRecord> {
+    pub fn current_measure(&self) -> Option<&MeasureRecord> {
         self.measure.as_ref().filter(|_| self.stale.is_none())
     }
 }

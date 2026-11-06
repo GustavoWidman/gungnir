@@ -1,6 +1,6 @@
 //! The report: the committed records of one or more experiments folded into tidy CSV tables
 //! for analysis in Python or R, with a manifest naming where every number came from.
-mod csv;
+pub(crate) mod csv;
 mod price;
 mod tables;
 #[cfg(test)]
@@ -23,7 +23,9 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
 };
-use tables::{Tables, Trial};
+use tables::Tables;
+
+pub(crate) use tables::Trial;
 
 /// `manifest.json`: what a report was made from and how.
 #[derive(Debug, Serialize)]
@@ -46,11 +48,11 @@ impl Manifest {
 
 /// One experiment in a report.
 #[derive(Debug, Serialize)]
-struct Reported {
-    name: String,
-    results: PathBuf,
+pub(crate) struct Reported {
+    pub name: String,
+    pub results: PathBuf,
     /// Every session that wrote a record the report read.
-    sessions: BTreeSet<SessionId>,
+    pub sessions: BTreeSet<SessionId>,
 }
 
 /// Reads every trial of `experiments`, prices their tokens at the list prices of `prices`,
@@ -107,7 +109,7 @@ pub fn report(
 /// Every trial of `experiment` whose committed run is a sample, as its records stand now. A
 /// committed run that is no sample, which an older parser or policy committed, is left out
 /// until `run` withdraws it.
-fn read(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<Trial>> {
+pub(crate) fn read(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<Trial>> {
     let mut trials = Vec::new();
     for key in experiment.trials() {
         let dir = experiment.results().trial(&key);

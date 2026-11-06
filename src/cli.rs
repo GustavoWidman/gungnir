@@ -4,6 +4,7 @@ use crate::{
     experiment::Experiment,
     grade::{self, Counting, Graded, Judgement, Outcome, Verdict},
     id::{BackendId, LanguageId, Rep, ScenarioId, WorkloadId},
+    index::{self, Bootstrap, Dimension, Estimate, Scores, Weights},
     language::Language,
     lifecycle::{self, Current, Lifecycle},
     measure::{
@@ -163,6 +164,28 @@ enum Command {
         #[arg(long, value_name = "DATE")]
         prices: Option<NaiveDate>,
     },
+    /// Score each language on the gungnir index from the committed samples of experiments: pass
+    /// rate, tokens, session time, program speed and simplicity against the average language for
+    /// the same model and scenario, where 100 is average and higher is better, with 95%
+    /// bootstrap intervals.
+    Index {
+        /// The experiment files, such as experiments/study-openai.toml.
+        #[arg(required = true)]
+        experiments: Vec<PathBuf>,
+        /// Count a generation, one repetition of one system, only when at least this share of
+        /// its scenario and language cells holds a sample with a current grade.
+        #[arg(long, value_name = "SHARE", default_value_t = 0.95, value_parser = share)]
+        complete: f64,
+        /// Weigh a dimension (pass, tokens, time, speed or simplicity) in every index against
+        /// the others, as DIMENSION=WEIGHT, such as speed=0 to leave it out. Each weighs 1
+        /// unless named.
+        #[arg(long = "weight", value_name = "DIMENSION=WEIGHT", value_parser = weight)]
+        weights: Vec<(Dimension, f64)>,
+        /// Also write the scores as CSV into this directory, replacing it as a whole and
+        /// writing its manifest.json last.
+        #[arg(long, value_name = "DIR")]
+        out: Option<PathBuf>,
+    },
 }
 
 impl Cli {
@@ -223,6 +246,12 @@ impl Cli {
                 out,
                 prices,
             } => write_report(&experiments, &out, prices),
+            Command::Index {
+                experiments,
+                complete,
+                weights,
+                out,
+            } => write_index(&experiments, complete, weights, out.as_deref()),
         }
     }
 }
@@ -244,6 +273,95 @@ fn write_report(paths: &[PathBuf], out: &Path, prices: Option<NaiveDate>) -> Res
     print!("{}", ReportTable(manifest.tables()));
     println!("wrote {} at the list prices of {prices}", out.display());
     Ok(())
+}
+
+/// Scores the languages of `paths` on the gungnir index, prints them, and writes them into `out`
+/// when given.
+fn write_index(
+    paths: &[PathBuf],
+    complete: f64,
+    weights: Vec<(Dimension, f64)>,
+    out: Option<&Path>,
+) -> Result<()> {
+    let weights = Weights::new(weights)?;
+    let experiments = paths
+        .iter()
+        .map(|path| Experiment::load(path))
+        .collect::<Result<Vec<_>>>()?;
+    let runtime = runtime()?;
+    let (toolchains, _) = probed(experiments.iter().flat_map(Experiment::languages), &runtime)?;
+    let read = index::read(&experiments, &toolchains, complete)?;
+    ensure!(
+        !read.samples.is_empty(),
+        "no generation has {:.0}% of its cells graded",
+        complete * 100.0
+    );
+    let bootstrap = Bootstrap::DEFAULT;
+    let scores = index::score(&read.samples, &weights, bootstrap);
+    print!("{}", IndexTable(&scores));
+    let counted = (read.generations.iter())
+        .filter(|generation| generation.is_complete(complete))
+        .count();
+    println!(
+        "{} samples from {counted} generations; {} generations with less than {:.0}% of their cells graded left out",
+        read.samples.len(),
+        read.generations.len() - counted,
+        complete * 100.0,
+    );
+    if let Some(out) = out {
+        let first = paths
+            .first()
+            .ok_or_else(|| eyre!("no experiment to index"))?;
+        let session = Session::start(&repository_of(first)?)?;
+        index::write(out, session, &read, &scores, &weights, bootstrap)?;
+        println!("wrote {}", out.display());
+    }
+    Ok(())
+}
+
+/// One row per language in index order: the index across models with its interval, each
+/// dimension across models, and each model's own index.
+struct IndexTable<'a>(&'a Scores);
+
+impl fmt::Display for IndexTable<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Scores {
+            languages,
+            all,
+            models,
+        } = self.0;
+        let score = |estimate: Option<Estimate>| {
+            estimate.map_or_else(
+                || "-".to_owned(),
+                |estimate| format!("{:.1}", estimate.score),
+            )
+        };
+        let mut header = vec!["language".to_owned(), "index".into(), "95% interval".into()];
+        header.extend(Dimension::ALL.map(|dimension| dimension.to_string()));
+        header.extend(models.keys().map(ToString::to_string));
+        let mut rows = vec![header];
+        for language in languages {
+            let Some(card) = all.get(language) else {
+                continue;
+            };
+            let mut row = vec![
+                language.to_string(),
+                score(card.index),
+                card.index.map_or_else(
+                    || "-".to_owned(),
+                    |index| format!("[{:.1}, {:.1}]", index.low, index.high),
+                ),
+            ];
+            row.extend(Dimension::ALL.map(|dimension| score(card.dimension(dimension))));
+            row.extend(
+                models
+                    .values()
+                    .map(|cards| score(cards.get(language).and_then(|card| card.index))),
+            );
+            rows.push(row);
+        }
+        write_rows(f, &rows)
+    }
 }
 
 /// What a run would do: each committed run it would withdraw and why, then the trials it would
@@ -427,6 +545,29 @@ fn hold(arg: &str) -> Result<(BackendId, f64)> {
         "a quota hold is a fraction in (0, 1], got {fraction}"
     );
     Ok((backend.parse()?, fraction))
+}
+
+/// Parses a share between 0 and 1.
+fn share(arg: &str) -> Result<f64> {
+    let share: f64 = arg
+        .parse()
+        .wrap_err_with(|| format!("{arg:?} is not a number"))?;
+    ensure!(
+        (0.0..=1.0).contains(&share),
+        "a share is a number in [0, 1], got {share}"
+    );
+    Ok(share)
+}
+
+/// Parses `DIMENSION=WEIGHT`.
+fn weight(arg: &str) -> Result<(Dimension, f64)> {
+    let (dimension, weight) = arg
+        .split_once('=')
+        .ok_or_else(|| eyre!("expected DIMENSION=WEIGHT, got {arg:?}"))?;
+    let weight = weight
+        .parse()
+        .wrap_err_with(|| format!("{weight:?} is not a number"))?;
+    Ok((dimension.parse()?, weight))
 }
 
 /// Parses `BACKEND=TIME` with an RFC 3339 time.
@@ -890,13 +1031,21 @@ impl fmt::Display for CheckTable<'_> {
 }
 
 /// Writes `rows` as left-aligned columns two spaces apart.
-fn write_rows<const N: usize>(f: &mut fmt::Formatter<'_>, rows: &[[String; N]]) -> fmt::Result {
-    let widths: [usize; N] =
-        std::array::from_fn(|column| rows.iter().map(|row| row[column].len()).max().unwrap_or(0));
+fn write_rows<R: AsRef<[String]>>(f: &mut fmt::Formatter<'_>, rows: &[R]) -> fmt::Result {
+    let mut widths = Vec::new();
+    for row in rows {
+        for (column, cell) in row.as_ref().iter().enumerate() {
+            match widths.get_mut(column) {
+                Some(width) => *width = cell.len().max(*width),
+                None => widths.push(cell.len()),
+            }
+        }
+    }
     for row in rows {
         let cells: Vec<String> = row
+            .as_ref()
             .iter()
-            .zip(widths)
+            .zip(&widths)
             .map(|(cell, width)| format!("{cell:width$}"))
             .collect();
         writeln!(f, "{}", cells.join("  ").trim_end())?;
@@ -1394,6 +1543,46 @@ mod tests {
             .to_string();
         let default = format!("holds at {} unless named", run::HOLD);
         assert!(help.contains(&default), "{help}");
+    }
+
+    #[test]
+    fn index_weights_and_shares_parse_and_refuse_what_they_cannot_be() {
+        assert_eq!(weight("speed=0").unwrap(), (Dimension::Speed, 0.0));
+        assert_eq!(share("0.5").unwrap(), 0.5);
+        for bad in ["speed", "runtime=1", "speed=fast"] {
+            assert!(weight(bad).is_err(), "{bad}");
+        }
+        for bad in ["-0.1", "1.5", "most"] {
+            assert!(share(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn the_index_table_puts_the_best_language_first_beside_each_model() {
+        let sample = |model: &str, language: &str, passed: bool| index::Sample {
+            model: id(model),
+            scenario: id("ledger"),
+            language: id(language),
+            passed,
+            tokens: 100,
+            wall_s: 60.0,
+            ccn: None,
+            timings: Vec::new(),
+        };
+        let samples = [
+            sample("luna", "python", false),
+            sample("luna", "rust", true),
+            sample("haiku", "rust", true),
+        ];
+        let scores = index::score(&samples, &Weights::default(), Bootstrap::DEFAULT);
+        // Luna's pass rates, 1.5/2 against 0.5/2, lie sqrt 3 either side of their mean. Haiku
+        // ran Rust alone, so its Rust is its average.
+        assert_eq!(
+            IndexTable(&scores).to_string(),
+            "language  index  95% interval    pass   tokens  time   speed  simplicity  haiku  luna\n\
+             rust      109.6  [109.6, 109.6]  131.6  100.0   100.0  -      -           100.0  120.1\n\
+             python    83.3   [83.3, 83.3]    57.7   100.0   100.0  -      -           -      83.3\n"
+        );
     }
 
     #[test]

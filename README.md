@@ -116,6 +116,7 @@ gungnir run experiments/study-openai.toml        # run pending trials until each
 gungnir grade experiments/study-openai.toml      # grade committed runs
 gungnir measure experiments/study-openai.toml    # on the pinned machine
 gungnir report experiments/study-*.toml --out runs/report
+gungnir index experiments/study-openai.toml experiments/study-claude.toml
 ```
 
 | Command | Purpose |
@@ -130,6 +131,13 @@ gungnir report experiments/study-*.toml --out runs/report
 | `machine` | Print this machine's identity as a `[machine]` pin |
 | `status` | Count each system's trials by stage, and the stale ones |
 | `report` | Fold the committed records of experiments into CSV tables |
+| `index` | Score each language on the gungnir index, with 95% bootstrap intervals, and write the scores as CSV with `--out` |
+
+The gungnir index scores each language against the average language for the same model and
+scenario on pass rate, tokens, session time, program speed and simplicity, where 100 is average
+and higher is better. `index` counts a generation only once `--complete` of its cells (95% by
+default) are graded, and `--weight speed=0` reweighs or drops a dimension. `docs/architecture.md`
+states the definition.
 
 `run` takes `--quota-ceiling BACKEND[:WINDOW]=FRACTION` to stop a backend at a share of a
 quota window, `--stop-at BACKEND=TIME`, `--max-errors N`, `--max-attempts N` and `--dry-run`.
