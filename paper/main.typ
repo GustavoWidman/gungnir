@@ -54,6 +54,8 @@
 #let byspeed(m) = langs.filter(l => l in n.speed.at(m)).sorted(key: l => speed(m, l))
 #let absolute(k, l) = n.speed_absolute.at(k).at(l)
 #let idx(k, l) = n.index.at(k).at(l)
+// Text that continues a sentence after a display equation.
+#let cont(body) = { set par(first-line-indent: 0pt); body }
 #let dim(d, l) = n.index.dimensions.at(d).at(l).score
 #let by-index(k) = langs.sorted(key: l => -idx(k, l).score)
 #let lead = by-index("all").first()
@@ -261,29 +263,22 @@ The choice of language still decides the order of magnitude (@fig:absolute). Aga
 
 == The gungnir index
 
-A developer choosing a language weighs all of these at once, so we fold them into one score, the gungnir index. It has five dimensions: the share of sessions whose program passes every hidden test, the tokens and the wall time a session takes, the runtime of a passing program against the fastest reference for each workload, and the total cyclomatic complexity of a passing program as lizard counts it. In every cell of model, task and language we take the logarithm of each dimension, estimating the pass rate as $(k + 1 slash 2) slash (n + 1)$ from $k$ passes in $n$ sessions so that a language that never passed a task stays finite, and subtract its mean over the eight languages of the same model and task, so that a model's own speed and price cancel. A dimension's score is 100 times the exponential of that difference, signed so that higher is better and averaged over tasks and then over models, and the index is the geometric mean of the five scores. An average language scores 100 on each, and one whose programs run in half the average language's time scores 200 on runtime (@tab:index).
+A developer choosing a language weighs all of these at once, so we fold them into one score, the gungnir index. It has five dimensions: the share of sessions whose program passes every hidden test, the tokens and the wall time of a session, the runtime of a passing program against the fastest reference for each workload, and the total cyclomatic complexity of a passing program as lizard counts it. For model $m$, task $t$, language $l$ and dimension $d$, let $x_(m,t,l,d)$ be the geometric mean of the dimension over the cell's sessions, or over its passing programs for runtime and complexity; the pass rate is estimated as $(k + 1 slash 2) slash (n + 1)$ from $k$ passes in $n$ sessions, so that a language that never passed a task stays finite. A language's advantage on a dimension is its distance from the mean of the eight languages for the same model and task, so that a model's own speed and price cancel,
+$ a_(m,t,l,d) = s_d (ln x_(m,t,l,d) - 1/8 sum_(l') ln x_(m,t,l',d)), $ <eq:advantage>
+#cont[its score on the dimension averages that advantage over models and tasks,]
+$ S_(l,d) = 100 dot exp(1 / (|M| |T|) sum_(m in M) sum_(t in T) a_(m,t,l,d)), $ <eq:score>
+#cont[and the index is the geometric mean of its five scores,]
+$ G_l = root(5, product_(d in D) S_(l,d)), $ <eq:index>
+#cont[where $M$ and $T$ are the models and tasks, $D$ the five dimensions, and $s_d$ is $+1$ for the pass rate and $-1$ for the others, so that a higher score is better on every dimension. An average language scores 100, and one whose programs run in half the average language's time scores 200 on runtime. @fig:index shows the five scores and the index, with 95% intervals that resample tasks and then sessions.]
+
+#figure(
+  image("figures/gungnir-index.svg", width: 100%),
+  caption: [The gungnir index (right, on its own axis) and its five dimension scores (on a shared log axis) over the three models, with 95% intervals. 100 is the average language, and higher means more passes, fewer tokens, less time, faster programs or fewer decision points.],
+) <fig:index>
 
 #lname.at(lead) leads the index at #r0(idx("all", lead).score) (#r0(idx("all", lead).lo)–#r0(idx("all", lead).hi))#if same-lead [, and every model puts it first]. Its programs run in #times(100 / dim("runtime", lead)) the average language's time and carry #times(100 / dim("complexity", lead)) its decision points, while a session takes #times(100 / dim("tokens", lead)) the average language's tokens. The dimensions pull the other languages apart. Python and JavaScript are among the cheapest and quickest languages in which to get a correct program, but their programs run #times(100 / dim("runtime", "python")) and #times(100 / dim("runtime", "javascript")) the average language's time, so Python scores #r0(idx("all", "python").score). Zig's programs are fast, but a session takes #times(100 / dim("tokens", "zig")) the tokens and #times(100 / dim("time", "zig")) the time of an average language's, and Zig scores #r0(idx("all", "zig").score). C's programs are fast too, but a C session takes #times(100 / dim("tokens", "c")) the average language's tokens#if langs.all(l => dim("complexity", "c") <= dim("complexity", l)) [, and its programs carry the most decision points of all].
 
-#figure(
-  table(
-    columns: (auto, auto, auto, auto, auto, auto, auto),
-    align: (left, right, right, right, right, right, right),
-    stroke: none,
-    table.hline(stroke: 0.6pt),
-    [*Language*], [*Pass*], [*Tokens*], [*Time*], [*Speed*], [*Simplicity*], [*Index*],
-    table.hline(stroke: 0.4pt),
-    ..by-index("all").map(l => (
-      [#lname.at(l)],
-      ..("correctness", "tokens", "time", "runtime", "complexity").map(d => [#r0(dim(d, l))]),
-      [#r0(idx("all", l).score) (#r0(idx("all", l).lo)–#r0(idx("all", l).hi))],
-    )).flatten(),
-    table.hline(stroke: 0.6pt),
-  ),
-  caption: [The gungnir index, with its 95% interval, and its five dimensions over the three models, each a score against the average language for the same task where 100 is average and higher means more passes, fewer tokens, less time, faster programs or fewer decision points.],
-) <tab:index>
-
-The index weighs its five dimensions equally, which suits compute-bound programs such as these. A developer who cares little how fast the program runs can drop that column of @tab:index: on the other four, #lname.at(lead-without-runtime) comes first at #r0(without-runtime(lead-without-runtime)), Python scores #r0(without-runtime("python")) and Zig #r0(without-runtime("zig")).
+The index weighs its five dimensions equally, which suits compute-bound programs such as these. A developer who cares little how fast the program runs can drop that column of @fig:index: on the other four, #lname.at(lead-without-runtime) comes first at #r0(without-runtime(lead-without-runtime)), Python scores #r0(without-runtime("python")) and Zig #r0(without-runtime("zig")).
 
 = Discussion <discussion>
 
@@ -310,6 +305,7 @@ We asked whether the language a coding agent writes in changes whether its progr
 The strict compiler was a crutch only where the model's knowledge was out of date. The agents seldom tripped Rust's compiler, and in Zig they leaned on it to unlearn a standard library that had changed, at two to three times the cost. The training data showed up as price only at that far end; among the mainstream languages, Rust was as cheap to get right as Python, and on the gungnir index, which adds runtime and code complexity to correctness and cost, #lname.at(lead) comes first. The language an agent writes in decides what a correct program costs and how fast it runs; whether the agent gets it right depends on the agent.
 
 #heading(numbering: none)[Appendix A: Logistic models]
+
 
 #let clear = langs.slice(1).filter(l => {
   let o = n.logistic.odds_vs_python.at(l)
