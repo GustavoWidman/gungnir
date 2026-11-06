@@ -5,3 +5,4 @@
 *.local.toml
 /paper/*.pdf
 /scenarios/*/workloads/
+__pycache__/

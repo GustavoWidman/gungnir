@@ -117,6 +117,12 @@
               pkgs.python3Packages.lizard
               pkgs.jq
               pkgs.typst
+              (pkgs.python3.withPackages (p: [
+                p.matplotlib
+                p.pandas
+                p.scipy
+                p.statsmodels
+              ]))
               pkgs.claude-code
               pkgs.codex
             ];
