@@ -59,7 +59,7 @@
 #let by-index(k) = langs.sorted(key: l => -idx(k, l).score)
 #let lead = by-index("all").first()
 #let trail = by-index("all").slice(6)
-#let without-runtime(l) = 100 * calc.exp(("correctness", "tokens", "time", "complexity").map(d => calc.ln(dim(d, l) / 100)).sum() / 4)
+#let without-runtime(l) = 100 * calc.exp(("pass", "tokens", "time", "simplicity").map(d => calc.ln(dim(d, l) / 100)).sum() / 4)
 #let lead-without-runtime = langs.sorted(key: l => -without-runtime(l)).first()
 #let same-lead = ("luna", "terra", "haiku").all(k => by-index(k).first() == lead)
 #let zig = n.diagnostic_kinds.zig
@@ -257,16 +257,16 @@ Correctness comes at a different price in each language (@fig:tokens). Zig sessi
 
 Measured against a reference in their own language, the agents' programs came closest in Python and fell furthest behind in the compiled languages (@fig:speed). Terra's passing Python programs ran at #times(speed("terra", "python")) the reference's time, against #times(speed("terra", "go")) in Go, #times(speed("terra", "c")) in C and #times(speed("terra", "zig")) in Zig. Luna's ranged from #times(speed("luna", byspeed("luna").first())) in #lname.at(byspeed("luna").first()) to #times(speed("luna", byspeed("luna").last())) in #lname.at(byspeed("luna").last()). In an interpreted language much of the runtime is the interpreter's, so a weaker algorithm costs less in relative terms; a compiled language exposes every extra allocation and copy.
 
+The choice of language still decides the order of magnitude (@fig:absolute). Against the fastest reference for each workload, Terra's Rust programs took #times(absolute("terra", "rust")) its time and its C programs #times(absolute("terra", "c")), while its Python programs took #times(absolute("terra", "python")) and the Python references themselves #times(absolute("reference", "python")). An agent writing Rust or C leaves more on the table than one writing Python, and its program is still an order of magnitude faster. Reasoning effort bought speed as well: Luna's programs went from #times(n.speed.luna.by_effort.none) the reference's time at no reasoning to #times(n.speed.luna.by_effort.max) at the highest setting.
+
 #figure(
   image("figures/speed-absolute.svg", width: 100%),
   caption: [Runtime relative to the fastest reference in any language for the same workload, geometric mean over workloads. Bars mark the references; open markers the agents' passing programs.],
 ) <fig:absolute>
 
-The choice of language still decides the order of magnitude (@fig:absolute). Against the fastest reference for each workload, Terra's Rust programs took #times(absolute("terra", "rust")) its time and its C programs #times(absolute("terra", "c")), while its Python programs took #times(absolute("terra", "python")) and the Python references themselves #times(absolute("reference", "python")). An agent writing Rust or C leaves more on the table than one writing Python, and its program is still an order of magnitude faster. Reasoning effort bought speed as well: Luna's programs went from #times(n.speed.luna.by_effort.none) the reference's time at no reasoning to #times(n.speed.luna.by_effort.max) at the highest setting.
-
 == The gungnir index
 
-A developer choosing a language weighs all of these at once, so we fold them into one score, the gungnir index. It has five dimensions: the share of sessions whose program passes every hidden test, the tokens and the wall time of a session, the runtime of a passing program against the fastest reference for each workload, and the total cyclomatic complexity of a passing program as lizard counts it, top-level code included. For model $m$, task $t$, language $l$ and dimension $d$, let $x_(m,t,l,d)$ be the geometric mean of the dimension over the cell's sessions, or over its passing programs for runtime and complexity, with the pass rate estimated as $(k + 1 slash 2) slash (n + 1)$ from $k$ passes in $n$ sessions so that a language that never passed a task stays finite. The index is then built in three steps:
+A developer choosing a language weighs all of these at once, so we fold them into one score, the gungnir index, which the harness computes from its records. It has five dimensions: the share of sessions whose program passes every hidden test, the tokens and the wall time of a session, the runtime of a passing program against the fastest reference for each workload, and the total cyclomatic complexity of a passing program as lizard counts it, top-level code included. For model $m$, task $t$, language $l$ and dimension $d$, let $x_(m,t,l,d)$ be the geometric mean of the dimension over the cell's sessions, or over its passing programs for runtime and complexity, with the pass rate estimated as $(k + 1 slash 2) slash (n + 1)$ from $k$ passes in $n$ sessions so that a language that never passed a task stays finite. The index is then built in three steps:
 
 $ a_(m,t,l,d) &= s_d (ln x_(m,t,l,d) - 1/8 sum_(l') ln x_(m,t,l',d)) #<eq:advantage> \
   S_(l,d) &= 100 dot exp(1 / (|M| |T|) sum_(m in M, thin t in T) a_(m,t,l,d)) #<eq:score> \
@@ -279,7 +279,7 @@ Equation (@eq:advantage) is a language's advantage on one dimension: its distanc
   caption: [The gungnir index of each language over the three models, with its 95% interval. The dashed line marks the average language at 100; a dark bar's interval lies above it and a light bar's below.],
 ) <fig:index>
 
-#lname.at(lead) leads the index at #r0(idx("all", lead).score) (#r0(idx("all", lead).lo)–#r0(idx("all", lead).hi))#if same-lead [, and every model puts it first]. Its programs run in #times(100 / dim("runtime", lead)) the average language's time and carry #times(100 / dim("complexity", lead)) its decision points, while a session takes #times(100 / dim("tokens", lead)) the average language's tokens. The dimensions pull the other languages apart. Python and JavaScript are among the cheapest and quickest languages in which to get a correct program, but their programs run #times(100 / dim("runtime", "python")) and #times(100 / dim("runtime", "javascript")) the average language's time, so Python scores #r0(idx("all", "python").score). Zig's programs are fast, but a session takes #times(100 / dim("tokens", "zig")) the tokens and #times(100 / dim("time", "zig")) the time of an average language's, and Zig scores #r0(idx("all", "zig").score). C's programs are fast too, but a C session takes #times(100 / dim("tokens", "c")) the average language's tokens#if langs.all(l => dim("complexity", "c") <= dim("complexity", l)) [, and its programs carry the most decision points of all].
+#lname.at(lead) leads the index at #r0(idx("all", lead).score) (#r0(idx("all", lead).lo)–#r0(idx("all", lead).hi))#if same-lead [, and every model puts it first]. Its programs run in #times(100 / dim("speed", lead)) the average language's time and carry #times(100 / dim("simplicity", lead)) its decision points, while a session takes #times(100 / dim("tokens", lead)) the average language's tokens. The dimensions pull the other languages apart. Python and JavaScript are among the cheapest and quickest languages in which to get a correct program, but their programs run #times(100 / dim("speed", "python")) and #times(100 / dim("speed", "javascript")) the average language's time, so Python scores #r0(idx("all", "python").score). Zig's programs are fast, but a session takes #times(100 / dim("tokens", "zig")) the tokens and #times(100 / dim("time", "zig")) the time of an average language's, and Zig scores #r0(idx("all", "zig").score). C's programs are fast too, but a C session takes #times(100 / dim("tokens", "c")) the average language's tokens#if langs.all(l => dim("simplicity", "c") <= dim("simplicity", l)) [, and its programs carry the most decision points of all].
 
 The index weighs its five dimensions equally, which suits compute-bound programs such as these. A developer who cares little how fast the program runs can drop the speed score (@tab:dimensions): on the other four, #lname.at(lead-without-runtime) comes first at #r0(without-runtime(lead-without-runtime)), Python scores #r0(without-runtime("python")) and Zig #r0(without-runtime("zig")).
 
@@ -350,7 +350,7 @@ The models are fitted by maximum likelihood to Luna's #num(n.data.models.luna.tr
     table.hline(stroke: 0.4pt),
     ..by-index("all").map(l => (
       [#lname.at(l)],
-      ..("correctness", "tokens", "time", "runtime", "complexity").map(d => [#r0(dim(d, l))]),
+      ..("pass", "tokens", "time", "speed", "simplicity").map(d => [#r0(dim(d, l))]),
       [#r0(idx("all", l).score)],
     )).flatten(),
     table.hline(stroke: 0.6pt),
