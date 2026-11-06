@@ -1,0 +1,41 @@
+# The study's NVIDIA arm: every effort level of Nemotron 3.5 Super VL, reasoning off and on, on
+# the full suite, through Codex against NVIDIA's free hosted API.
+name = "study-nvidia"
+results = "../runs/study-nvidia"
+repetitions = 1
+scenarios = [
+  "bigint-calc",
+  "exact-cover",
+  "json-path",
+  "ledger",
+  "line-diff",
+  "regex-lite",
+  "route-fuel",
+  "tiny-vm",
+]
+languages = ["python", "rust", "zig", "go", "c", "cpp", "javascript", "typescript"]
+
+[machine]
+cpu = "13th Gen Intel(R) Core(TM) i9-13900K"
+host = "11b301add99fa61a4eb9f0a36eae41f1"
+
+[measure]
+blocks = 6
+runs = 3
+warmup = 0
+clock_mhz = 3000
+
+[pins]
+codex = "0.166.0"
+
+[budget]
+wall = "4h"
+idle = "30m"
+
+[concurrency]
+nvidia = 5
+
+[[systems]]
+model = "nemotron-3.5-super-vl"
+efforts = "all"
+repetitions = 5
