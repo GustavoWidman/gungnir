@@ -68,6 +68,10 @@
 #let sessions-total = n.data.models.values().map(m => m.trials).sum()
 #let zig-tokens = ("luna", "terra", "haiku").map(m => cost(m, "zig", "tokens"))
 #let mainstream = ("luna", "terra", "haiku").map(m => ("python", "javascript", "typescript", "go", "rust", "cpp").map(l => cost(m, l, "tokens"))).flatten().sorted()
+#let odds = n.logistic.odds_vs_python
+#let clear = langs.slice(1).filter(l => odds.at(l).hi < 1 or odds.at(l).lo > 1)
+#let odds-lo = langs.slice(1).sorted(key: l => odds.at(l).or).first()
+#let odds-hi = langs.slice(1).sorted(key: l => odds.at(l).or).last()
 #let floor-pct(x) = str(int(calc.floor(x))) + "%"
 #let more(x) = pct(100 * (x - 1))
 // Rust's tokens over Python's for the weakest model, and over the cheaper of Python and
@@ -161,7 +165,7 @@ Every passing program is timed against a reference implementation of the same ta
 
 == Analysis
 
-The tasks are few and the generations of one task are correlated, so every interval we report is a 95% two-stage bootstrap interval: we resample the eight tasks with replacement, then the trials within each. Comparisons between two languages are paired: each trial in one language is matched with the trial of the same task, system and generation in the other, and an exact McNemar test asks whether one language passes where the other fails more often than the reverse. For GPT-6 Luna, whose pass rates leave room to move, logistic regressions of pass or fail on task, effort and language test the language's main effect and its interactions by likelihood ratio (Appendix A). Costs are compared within a task: each session's tokens and time are divided by the geometric mean of the same task, system and generation across the eight languages, so 1× is an average language. Finally, we parse every transcript and count the commands whose output carried a compiler, type-checker or syntax diagnostic, the distinct diagnostics, and the runs in which the agent's own test crashed.
+The tasks are few and the generations of one task are correlated, so every interval we report is a 95% two-stage bootstrap interval: we resample the eight tasks with replacement, then the trials within each. Comparisons between two languages are paired: each trial in one language is matched with the trial of the same task, system and generation in the other, and an exact McNemar test asks whether one language passes where the other fails more often than the reverse. For GPT-6 Luna, whose pass rates leave room to move, logistic regressions of pass or fail on task, effort and language test the language's main effect and its interactions by likelihood ratio, with standard errors clustered by task and language. Costs are compared within a task: each session's tokens and time are divided by the geometric mean of the same task, system and generation across the eight languages, so 1× is an average language. Finally, we parse every transcript and count the commands whose output carried a compiler, type-checker or syntax diagnostic, the distinct diagnostics, and the runs in which the agent's own test crashed.
 
 = Results <results>
 
@@ -180,7 +184,7 @@ GPT-6 Luna did separate the languages. It passed #pr("luna", "all") of all its t
 
 == The standard library separates the languages; the type checker does not
 
-The differences between languages depend on the task far more than on the language itself (@fig:scenarios). Adding language to a logistic model of Luna's outcomes that already accounts for task and effort improves it (χ² = #r1(n.logistic.language.chi2), #n.logistic.language.df df, #pv(n.logistic.language.p)), but letting the language effect differ by task improves it much more (χ² = #r1(n.logistic.scenario_x_language.chi2), #n.logistic.scenario_x_language.df df, #pv(n.logistic.scenario_x_language.p)). The interaction explains #r1((n.logistic.r2.scenario_x_language - n.logistic.r2.language) / (n.logistic.r2.language - n.logistic.r2.base)) times as much deviance as the main effect.
+The differences between languages depend on the task far more than on the language itself (@fig:scenarios). Adding language to a logistic model of Luna's outcomes that already accounts for task and effort improves it (χ² = #r1(n.logistic.language.chi2), #n.logistic.language.df df, #pv(n.logistic.language.p)), but letting the language effect differ by task improves it much more (χ² = #r1(n.logistic.scenario_x_language.chi2), #n.logistic.scenario_x_language.df df, #pv(n.logistic.scenario_x_language.p)). The interaction explains #r1((n.logistic.r2.scenario_x_language - n.logistic.r2.language) / (n.logistic.r2.language - n.logistic.r2.base)) times as much deviance as the main effect. Once the variation between tasks is allowed for, #if clear.len() == 0 [no language's odds of passing differ from Python's: the odds ratios run from #r2(odds.at(odds-lo).or) for #lname.at(odds-lo) to #r2(odds.at(odds-hi).or) for #lname.at(odds-hi), and every 95% interval includes one.] else [only #clear.map(l => lname.at(l)).join(" and ")'s odds of passing differ from Python's.]
 
 #figure(
   image("figures/luna-scenarios.svg", width: 100%),
@@ -243,32 +247,32 @@ The compiler turns this stale knowledge into working code. #if pass("terra", "zi
   caption: [GPT-6 Luna's pass rate by reasoning effort, one panel per language. Black: the language; dashed: the mean over languages; band: 95% two-stage bootstrap interval.],
 ) <fig:effort>
 
-Luna's spread between languages shrank as its reasoning effort rose (@fig:effort). Without reasoning its languages passed between #pct(calc.min(..langs.map(l => n.effort.at(l).none))) and #pct(calc.max(..langs.map(l => n.effort.at(l).none))) of trials; at the highest setting, between #pct(calc.min(..langs.map(l => n.effort.at(l).max))) and #pct(calc.max(..langs.map(l => n.effort.at(l).max))). Zig was the slowest to come up, at #pct(n.effort.zig.medium) at medium effort against #pct(n.effort.all.medium) for the average language, and caught up only at the two highest settings. Effort, like model strength, buys the agent out of most of what the language costs it.
+Luna's spread between languages shrank as its reasoning effort rose (@fig:effort), and letting the language effect differ by effort improves the logistic model (χ² = #r1(n.logistic.effort_x_language.chi2), #n.logistic.effort_x_language.df df, #pv(n.logistic.effort_x_language.p)). Without reasoning its languages passed between #pct(calc.min(..langs.map(l => n.effort.at(l).none))) and #pct(calc.max(..langs.map(l => n.effort.at(l).none))) of trials; at the highest setting, between #pct(calc.min(..langs.map(l => n.effort.at(l).max))) and #pct(calc.max(..langs.map(l => n.effort.at(l).max))). Zig was the slowest to come up, at #pct(n.effort.zig.medium) at medium effort against #pct(n.effort.all.medium) for the average language, and caught up only at the two highest settings. Effort, like model strength, buys the agent out of most of what the language costs it.
 
 == The least familiar language costs two to three times as much
-
-Correctness comes at a different price in each language (@fig:tokens). Zig sessions used #times(cost("luna", "zig", "tokens")), #times(cost("terra", "zig", "tokens")) and #times(cost("haiku", "zig", "tokens")) the tokens of an average language for Luna, Terra and Haiku, and took #times(calc.min(..("luna", "terra", "haiku").map(m => cost(m, "zig", "wall_s")))) to #times(calc.max(..("luna", "terra", "haiku").map(m => cost(m, "zig", "wall_s")))) the time. C was the next most expensive, at #times(calc.min(..("luna", "terra", "haiku").map(m => cost(m, "c", "tokens")))) to #times(calc.max(..("luna", "terra", "haiku").map(m => cost(m, "c", "tokens")))) the tokens. The other six languages sat between #times(mainstream.first()) and #times(mainstream.last()). Python and JavaScript were the cheapest for Luna, at #times(cost("luna", "python", "tokens")) and #times(cost("luna", "javascript", "tokens")), and Luna's Rust sessions took #more(rust-luna) more tokens than its Python ones. For the stronger models the six overlap within their intervals, and Rust cost at most #more(rust-strong) more than Python or JavaScript. The training-data argument holds at the far end, where the least familiar language costs two to three times as much, and only faintly among the languages a developer is likely to weigh against each other.
 
 #figure(
   image("figures/tokens-by-language.svg", width: 100%),
   caption: [Tokens per session relative to the geometric mean of the same task, system and generation across the eight languages (1×, dashed): geometric mean with 95% two-stage bootstrap interval.],
 ) <fig:tokens>
 
+Correctness comes at a different price in each language (@fig:tokens). Zig sessions used #times(cost("luna", "zig", "tokens")), #times(cost("terra", "zig", "tokens")) and #times(cost("haiku", "zig", "tokens")) the tokens of an average language for Luna, Terra and Haiku, and took #times(calc.min(..("luna", "terra", "haiku").map(m => cost(m, "zig", "wall_s")))) to #times(calc.max(..("luna", "terra", "haiku").map(m => cost(m, "zig", "wall_s")))) the time. C was the next most expensive, at #times(calc.min(..("luna", "terra", "haiku").map(m => cost(m, "c", "tokens")))) to #times(calc.max(..("luna", "terra", "haiku").map(m => cost(m, "c", "tokens")))) the tokens. The other six languages sat between #times(mainstream.first()) and #times(mainstream.last()). Python and JavaScript were the cheapest for Luna, at #times(cost("luna", "python", "tokens")) and #times(cost("luna", "javascript", "tokens")), and Luna's Rust sessions took #more(rust-luna) more tokens than its Python ones. For the stronger models the six overlap within their intervals, and Rust cost at most #more(rust-strong) more than Python or JavaScript.
+
 == Agents leave the most speed behind in the fastest languages
+
+Measured against a reference in their own language, the agents' programs came closest in Python and tended to fall further behind in the compiled languages (@fig:speed). Terra's passing Python programs ran at #times(speed("terra", "python")) the reference's time, against #times(speed("terra", "rust")) in Rust, #times(speed("terra", "go")) in Go, #times(speed("terra", "c")) in C and #times(speed("terra", "zig")) in Zig. Luna's ranged from #times(speed("luna", byspeed("luna").first())) in #lname.at(byspeed("luna").first()) to #times(speed("luna", byspeed("luna").last())) in #lname.at(byspeed("luna").last()). In an interpreted language much of the runtime is the interpreter's, so a weaker algorithm costs less in relative terms; a compiled language exposes every extra allocation and copy.
+
+The choice of language still decides the order of magnitude (@fig:absolute). Against the fastest reference for each workload, Terra's Rust programs took #times(absolute("terra", "rust")) its time and its C programs #times(absolute("terra", "c")), while its Python programs took #times(absolute("terra", "python")) and the Python references themselves #times(absolute("reference", "python")). An agent writing Rust or C leaves more on the table than one writing Python, and its program is still an order of magnitude faster. Reasoning effort bought speed as well: Luna's programs went from #times(n.speed.luna.by_effort.none) the reference's time at no reasoning to #times(n.speed.luna.by_effort.max) at the highest setting.
 
 #figure(
   image("figures/speed.svg", width: 100%),
   caption: [Runtime of each passing program relative to the same-language reference, on a log scale. Grey: one program, geometric mean over the task's workloads; bar: geometric mean over programs; dashed: parity.],
 ) <fig:speed>
 
-Measured against a reference in their own language, the agents' programs came closest in Python and tended to fall further behind in the compiled languages (@fig:speed). Terra's passing Python programs ran at #times(speed("terra", "python")) the reference's time, against #times(speed("terra", "rust")) in Rust, #times(speed("terra", "go")) in Go, #times(speed("terra", "c")) in C and #times(speed("terra", "zig")) in Zig. Luna's ranged from #times(speed("luna", byspeed("luna").first())) in #lname.at(byspeed("luna").first()) to #times(speed("luna", byspeed("luna").last())) in #lname.at(byspeed("luna").last()). In an interpreted language much of the runtime is the interpreter's, so a weaker algorithm costs less in relative terms; a compiled language exposes every extra allocation and copy.
-
 #figure(
   image("figures/speed-absolute.svg", width: 100%),
   caption: [Runtime relative to the fastest reference in any language for the same workload, geometric mean over workloads. Bars mark the references; open markers the agents' passing programs.],
 ) <fig:absolute>
-
-The choice of language still decides the order of magnitude (@fig:absolute). Against the fastest reference for each workload, Terra's Rust programs took #times(absolute("terra", "rust")) its time and its C programs #times(absolute("terra", "c")), while its Python programs took #times(absolute("terra", "python")) and the Python references themselves #times(absolute("reference", "python")). An agent writing Rust or C leaves more on the table than one writing Python, and its program is still an order of magnitude faster. Reasoning effort bought speed as well: Luna's programs went from #times(n.speed.luna.by_effort.none) the reference's time at no reasoning to #times(n.speed.luna.by_effort.max) at the highest setting.
 
 == The gungnir index
 
@@ -278,7 +282,7 @@ $ a_(m,t,l,d) &= s_d (ln x_(m,t,l,d) - 1/8 sum_(l') ln x_(m,t,l',d)) #<eq:advant
   S_(l,d) &= 100 dot exp(1 / (|M| |T|) sum_(m in M, thin t in T) a_(m,t,l,d)) #<eq:score> \
   G_l &= root(5, product_(d in D) S_(l,d)) #<eq:index> $
 
-Equation (@eq:advantage) is a language's advantage on one dimension: its distance from the mean of the eight languages for the same model and task, so that a model's own speed and price cancel, with $s_d$ equal to $+1$ for the pass rate and $-1$ for the others so that higher is better on every dimension. Equation (@eq:score) averages that advantage over the models $M$ and tasks $T$ into a score, and (@eq:index) takes the geometric mean of the five scores over the dimensions $D$. An average language scores 100 on each, and one whose programs run in half the average language's time scores 200 on runtime. @fig:index shows the index, and @tab:dimensions in Appendix B the five scores behind it.
+Equation (@eq:advantage) is a language's advantage on one dimension: its distance from the mean of the eight languages for the same model and task, so that a model's own speed and price cancel, with $s_d$ equal to $+1$ for the pass rate and $-1$ for the others so that higher is better on every dimension. Equation (@eq:score) averages that advantage over the models $M$ and tasks $T$ into a score, and (@eq:index) takes the geometric mean of the five scores over the dimensions $D$. An average language scores 100 on each, and one whose programs run in half the average language's time scores 200 on runtime. @fig:index shows the index, and `gungnir index` prints the five scores behind it.
 
 #figure(
   image("figures/gungnir-index.svg", width: 100%),
@@ -287,7 +291,7 @@ Equation (@eq:advantage) is a language's advantage on one dimension: its distanc
 
 #lname.at(lead) leads the index at #r0(idx("all", lead).score) (#r0(idx("all", lead).lo)–#r0(idx("all", lead).hi))#if same-lead [, and every model puts it first]. Its programs run in #times(100 / dim("speed", lead)) the average language's time and carry #times(100 / dim("simplicity", lead)) its decision points, while a session takes #times(100 / dim("tokens", lead)) the average language's tokens. The dimensions pull the other languages apart. Python and JavaScript are among the cheapest and quickest languages in which to get a correct program, but their programs run #times(100 / dim("speed", "python")) and #times(100 / dim("speed", "javascript")) the average language's time, so Python scores #r0(idx("all", "python").score). Zig's programs are fast, but a session takes #times(100 / dim("tokens", "zig")) the tokens and #times(100 / dim("time", "zig")) the time of an average language's, and Zig scores #r0(idx("all", "zig").score). C's programs are fast too, but a C session takes #times(100 / dim("tokens", "c")) the average language's tokens#if langs.all(l => dim("simplicity", "c") <= dim("simplicity", l)) [, and its programs carry the most decision points of all].
 
-The index weighs its five dimensions equally, which suits compute-bound programs such as these. A developer who cares little how fast the program runs can drop the speed score (@tab:dimensions): on the other four, #lname.at(lead-without-runtime) comes first at #r0(without-runtime(lead-without-runtime)), Python scores #r0(without-runtime("python")) and Zig #r0(without-runtime("zig")).
+The index weighs its five dimensions equally, which suits compute-bound programs such as these. A developer who cares little how fast the program runs can drop the speed score: on the other four, #lname.at(lead-without-runtime) comes first at #r0(without-runtime(lead-without-runtime)), Python scores #r0(without-runtime("python")) and Zig #r0(without-runtime("zig")).
 
 = Discussion <discussion>
 
@@ -312,54 +316,3 @@ The harness itself matters: the same model scores differently in different agent
 We asked whether the language a coding agent writes in changes whether its program is correct, what it costs and how fast it runs, and whether a strict compiler or a large body of training data explains the differences. For the two stronger models in our study, correctness did not depend on the language: both passed every hidden test in nearly all trials in all eight languages. For the weakest, the differences followed the standard library and the runtime, not the type system: pairs of languages that differ only in their checking passed equally often, and Python, the most familiar language, trailed JavaScript because its runtime's limits crashed many of its programs.
 
 The strict compiler was a crutch only where the model's knowledge was out of date. The agents seldom tripped Rust's compiler, and in Zig they leaned on it to unlearn a standard library that had changed, at two to three times the cost. The training data showed up as price mostly at that far end; among the mainstream languages, Rust cost the stronger models at most #more(rust-strong) more than Python or JavaScript, and #lname.at(lead) comes first on the gungnir index. The language an agent writes in decides what a correct program costs and how fast it runs; whether the agent gets it right depends on the agent.
-
-#heading(numbering: none)[Appendix A: Logistic models]
-
-
-#let clear = langs.slice(1).filter(l => {
-  let o = n.logistic.odds_vs_python.at(l)
-  o.hi < 1 or o.lo > 1
-})
-
-#figure(
-  table(
-    columns: (auto, auto, auto, auto),
-    align: (left, right, right, right),
-    stroke: none,
-    table.hline(stroke: 0.6pt),
-    [*Language*], [*Odds ratio*], [*95% interval*], [*_p_*],
-    table.hline(stroke: 0.4pt),
-    [Python], [1], [reference], [],
-    ..langs.slice(1).map(l => {
-      let o = n.logistic.odds_vs_python.at(l)
-      ([#lname.at(l)], [#r2(o.or)], [#r2(o.lo)–#r2(o.hi)], [#r2(o.p)])
-    }).flatten(),
-    table.hline(stroke: 0.6pt),
-  ),
-  caption: [Odds of passing relative to Python for GPT-6 Luna, with task and effort held fixed and standard errors clustered by task and language.],
-) <tab:odds>
-
-The models are fitted by maximum likelihood to Luna's #num(n.data.models.luna.trials) trials. The base model has a term for each task and each effort; adding language gives χ² = #r1(n.logistic.language.chi2) on #n.logistic.language.df degrees of freedom (#pv(n.logistic.language.p)), adding the interaction of language with task gives χ² = #r1(n.logistic.scenario_x_language.chi2) on #n.logistic.scenario_x_language.df (#pv(n.logistic.scenario_x_language.p)), and adding the interaction of language with effort instead gives χ² = #r1(n.logistic.effort_x_language.chi2) on #n.logistic.effort_x_language.df (#pv(n.logistic.effort_x_language.p)). McFadden's pseudo-R² is #r2(n.logistic.r2.base) for the base model, #r2(n.logistic.r2.language) with language and #r2(n.logistic.r2.scenario_x_language) with its interaction with task. @tab:odds gives the odds ratios of the model with language. Once the variation between tasks is allowed for, #if clear.len() == 0 [no language's interval stays clear of one.] else [only the interval of #clear.map(l => lname.at(l)).join(" and ") stays clear of one.]
-
-#heading(numbering: none)[Appendix B: The gungnir index by dimension]
-
-
-@tab:dimensions breaks the index of (@eq:index) into the five scores of (@eq:score).
-
-#figure(
-  table(
-    columns: (auto, auto, auto, auto, auto, auto, auto),
-    align: (left, right, right, right, right, right, right),
-    stroke: none,
-    table.hline(stroke: 0.6pt),
-    [*Language*], [*Pass*], [*Tokens*], [*Time*], [*Speed*], [*Simplicity*], [*Index*],
-    table.hline(stroke: 0.4pt),
-    ..by-index("all").map(l => (
-      [#lname.at(l)],
-      ..("pass", "tokens", "time", "speed", "simplicity").map(d => [#r0(dim(d, l))]),
-      [#r0(idx("all", l).score)],
-    )).flatten(),
-    table.hline(stroke: 0.6pt),
-  ),
-  caption: [The gungnir index and its five dimension scores over the three models, each against the average language for the same task: 100 is average, and higher means more passes, fewer tokens, less time, faster programs or fewer decision points.],
-) <tab:dimensions>
