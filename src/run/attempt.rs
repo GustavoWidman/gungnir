@@ -93,8 +93,8 @@ impl Rig<'_> {
         let key = self.vault.key(system.backend())?;
         let launch = harness.launch(&LaunchRequest {
             system,
-            endpoint: key.endpoint(),
-            credential: key.material(),
+            endpoint: key.launch_endpoint(),
+            credential: key.launch_credential(),
             home: Path::new(HOME),
             workspace: Path::new(WORK),
             prompt: &prompt,
@@ -111,7 +111,7 @@ impl Rig<'_> {
         let proxy = Proxy::start(
             &home.socket(),
             Allowlist::new(task.backend.egress()),
-            None,
+            key.relay()?,
             &attempt.egress(),
         )
         .await?;
@@ -488,7 +488,7 @@ mod tests {
         grade::tree,
         run::{
             AgentExit, ProcessExit,
-            fixture::{self, Agent, LOGIN, Play, RELAY_KEY, Repo, TOKEN},
+            fixture::{self, Agent, HOSTED_KEY, LOGIN, Play, Repo, THROTTLED_KEY, TOKEN},
             records::Timeout,
         },
         sandbox,
@@ -512,10 +512,12 @@ mod tests {
         stop: Stop,
     }
 
-    /// Codex at the fixture catalog's relay endpoint, once, on `echo` in Python.
-    const RELAY_TOML: &str = r#"
-name = "relay"
-results = "../runs/relay"
+    /// Codex on `model` at `backend`'s own endpoint, once, on `echo` in Python.
+    fn endpoint_experiment(model: &str, backend: &str) -> String {
+        format!(
+            r#"
+name = "{backend}"
+results = "../runs/{backend}"
 repetitions = 1
 scenarios = ["echo"]
 languages = ["python"]
@@ -528,12 +530,14 @@ wall = "40m"
 idle = "10m"
 
 [concurrency]
-relay = 1
+{backend} = 1
 
 [[systems]]
-model = "nemo"
+model = "{model}"
 efforts = ["high"]
-"#;
+"#
+        )
+    }
 
     impl Bench {
         fn new() -> Self {
@@ -542,12 +546,12 @@ efforts = ["high"]
             Self::of(repo, experiment)
         }
 
-        /// The fixture repository running [`RELAY_TOML`] instead.
-        fn relay() -> Self {
+        /// The fixture repository running [`endpoint_experiment`] instead.
+        fn at(model: &str, backend: &str) -> Self {
             let repo = Repo::new();
-            let path = repo.root.path().join("experiments/relay.toml");
-            write(repo.root.path(), "experiments/relay.toml", RELAY_TOML);
-            let experiment = Experiment::load(&path).unwrap();
+            let rel = format!("experiments/{backend}.toml");
+            write(repo.root.path(), &rel, endpoint_experiment(model, backend));
+            let experiment = Experiment::load(&repo.root.path().join(rel)).unwrap();
             Self::of(repo, experiment)
         }
 
@@ -879,7 +883,7 @@ efforts = ["high"]
         let mut completed = Play::transcript("codex/nemotron-command-success.jsonl");
         completed.stdout.insert(
             3,
-            format!(r#"{{"type":"item.updated","text":"{RELAY_KEY}"}}"#),
+            format!(r#"{{"type":"item.updated","text":"{HOSTED_KEY}"}}"#),
         );
         let cases = [
             (
@@ -912,7 +916,7 @@ efforts = ["high"]
             ),
         ];
         for (label, play, expected) in cases {
-            let bench = Bench::relay();
+            let bench = Bench::at("nemo", "hosted");
             let agent = Agent::new(move |spec| {
                 let home = spec
                     .mounts
@@ -921,10 +925,10 @@ efforts = ["high"]
                     .unwrap();
                 let config = read(&home.host.join(".codex/config.toml"));
                 assert!(
-                    config.contains(r#"base_url = "https://api.relay.example/v1""#),
+                    config.contains(r#"base_url = "https://api.hosted.example/v1""#),
                     "{config}"
                 );
-                assert!(!config.contains(RELAY_KEY), "{config}");
+                assert!(!config.contains(HOSTED_KEY), "{config}");
                 play.clone()
             });
             let attempt = bench.trial("nemo").attempt(AttemptNo::FIRST);
@@ -933,7 +937,7 @@ efforts = ["high"]
                     let inputs = serde_json::to_value(record.inputs()).unwrap();
                     assert_eq!(inputs["api_model"], "vendor/nemo", "{label}");
                     assert_eq!(
-                        inputs["endpoint"], "https://api.relay.example/v1",
+                        inputs["endpoint"], "https://api.hosted.example/v1",
                         "{label}"
                     );
                     Left::Committed(record.outcome().exit.clone())
@@ -945,7 +949,7 @@ efforts = ["high"]
             };
             assert_eq!(left, expected, "{label}");
             let transcript = read(&attempt.transcript());
-            assert!(!transcript.contains(RELAY_KEY), "{label}");
+            assert!(!transcript.contains(HOSTED_KEY), "{label}");
 
             let [launched] = agent.launches().try_into().unwrap();
             assert_eq!(
@@ -962,13 +966,63 @@ efforts = ["high"]
             );
             assert!(
                 launched.spec.env.contains(&(
-                    "RELAY_API_KEY".to_owned(),
-                    EnvValue::Secret(Secret::new(RELAY_KEY.to_owned()))
+                    "HOSTED_API_KEY".to_owned(),
+                    EnvValue::Secret(Secret::new(HOSTED_KEY.to_owned()))
                 )),
                 "{label}"
             );
             bench.assert_clean();
         }
+    }
+
+    #[tokio::test]
+    async fn a_relayed_backend_keeps_its_key_out_of_the_sandbox_and_records_its_endpoint() {
+        let bench = Bench::at("tron", "throttled");
+        let agent = Agent::new(|spec| {
+            for (name, value) in &spec.env {
+                let EnvValue::Plain(value) = value else {
+                    panic!("{name} is a secret");
+                };
+                assert!(!value.contains(THROTTLED_KEY), "{name}");
+            }
+            assert!(matches!(spec.network, Network::Egress(_)));
+            for mount in &spec.mounts {
+                for file in files(&mount.host) {
+                    let text = read(&mount.host.join(&file));
+                    assert!(!text.contains(THROTTLED_KEY), "{}", file.display());
+                }
+            }
+            let home = spec
+                .mounts
+                .iter()
+                .find(|mount| mount.guest == Path::new(HOME))
+                .unwrap();
+            let config = read(&home.host.join(".codex/config.toml"));
+            assert!(
+                config.contains(r#"base_url = "http://relay.invalid""#),
+                "{config}"
+            );
+            assert!(!config.contains("env_key"), "{config}");
+            Play::transcript("codex/nemotron-command-success.jsonl")
+        });
+        let Attempted::Committed(record) = bench.attempt("tron", &agent).await else {
+            panic!("expected a committed run");
+        };
+        let inputs = serde_json::to_value(record.inputs()).unwrap();
+        assert_eq!(inputs["api_model"], "vendor/tron");
+        assert_eq!(inputs["endpoint"], "https://api.throttled.example/v1");
+        assert_eq!(record.outcome().exit, AgentExit::Completed);
+
+        let [launched] = agent.launches().try_into().unwrap();
+        assert_eq!(launched.argv[5..7], ["-m", "vendor/tron"]);
+        assert!(
+            !launched
+                .spec
+                .env
+                .iter()
+                .any(|(name, _)| name == "THROTTLED_API_KEY")
+        );
+        bench.assert_clean();
     }
 
     #[test]

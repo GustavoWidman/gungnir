@@ -41,13 +41,17 @@ egress = ["api.z.ai"]
 # Claude Code reports no quota for Z.ai, so gungnir reads the plan's own meter between attempts.
 quota = { kind = "zai-monitor", url = "https://api.z.ai/api/monitor/usage/quota/limit" }
 
-# NVIDIA's hosted API through Codex, which sends the key to the endpoint's Responses API. NVIDIA
-# reports no quota anywhere: no rate-limit headers, and a busy endpoint queues requests.
+# NVIDIA's hosted API through Codex, which speaks the endpoint's Responses API. NVIDIA reports no
+# quota anywhere: no rate-limit headers, and a busy endpoint queues requests. Its free tier
+# refuses bursts of requests with a 429 that names no retry-after, on which Codex ends the
+# session at once, so the agent's requests go through gungnir's relay, which holds the key and
+# tries a refused request again.
 [backends.nvidia]
 harness = "codex"
 endpoint = "https://integrate.api.nvidia.com/v1"
 credential = { kind = "api-key", var = "NVIDIA_API_KEY", file = "~/.config/gungnir/nvidia/api_key" }
 egress = ["integrate.api.nvidia.com"]
+relay = true
 
 [[models]]
 id = "claude-fable-5-1"

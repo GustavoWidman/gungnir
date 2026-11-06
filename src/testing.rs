@@ -3,8 +3,8 @@ use crate::catalog::Catalog;
 use std::{fmt::Debug, fs, path::Path, str::FromStr};
 use tempfile::TempDir;
 
-/// Two harnesses and four backends, two of them at their own endpoints. `glm` is served by
-/// two backends, so an experiment must choose one.
+/// Two harnesses and five backends, three of them at their own endpoints and one of those
+/// behind gungnir's relay. `glm` is served by two backends, so an experiment must choose one.
 pub const CATALOG_TOML: &str = r#"
 [sandbox]
 packages = ["coreutils"]
@@ -37,11 +37,18 @@ endpoint = "https://api.z.ai/api/anthropic"
 credential = { kind = "api-key", var = "KEY", file = "~/key" }
 egress = ["api.z.ai"]
 
-[backends.relay]
+[backends.hosted]
 harness = "codex"
-endpoint = "https://api.relay.example/v1"
-credential = { kind = "api-key", var = "RELAY_API_KEY", file = "~/relay-key" }
-egress = ["api.relay.example"]
+endpoint = "https://api.hosted.example/v1"
+credential = { kind = "api-key", var = "HOSTED_API_KEY", file = "~/hosted-key" }
+egress = ["api.hosted.example"]
+
+[backends.throttled]
+harness = "codex"
+endpoint = "https://api.throttled.example/v1"
+credential = { kind = "api-key", var = "THROTTLED_API_KEY", file = "~/throttled-key" }
+egress = ["api.throttled.example"]
+relay = true
 
 [[models]]
 id = "opus"
@@ -64,7 +71,13 @@ prices = [{ since = "2026-01-01", input = 1.0, output = 4.0, cache-read = 0.2 }]
 [[models]]
 id = "nemo"
 efforts = ["none", "high"]
-served-by = { relay = "vendor/nemo" }
+served-by = { hosted = "vendor/nemo" }
+prices = [{ since = "2026-01-01", input = 0.0, output = 0.0, cache-read = 0.0 }]
+
+[[models]]
+id = "tron"
+efforts = ["none", "high"]
+served-by = { throttled = "vendor/tron" }
 prices = [{ since = "2026-01-01", input = 0.0, output = 0.0, cache-read = 0.0 }]
 "#;
 

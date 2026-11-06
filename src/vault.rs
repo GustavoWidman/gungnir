@@ -1,16 +1,17 @@
 //! Credentials. Each backend's credential is read from the file `gungnir.toml` names, handed
 //! to one attempt with the exact strings to redact, and staged into an isolated home that is
-//! removed after the attempt. A Codex login the CLI refreshed during an attempt is written
-//! back to its master copy.
+//! removed after the attempt, or held by the attempt's relay for a backend that relays. A
+//! Codex login the CLI refreshed during an attempt is written back to its master copy.
 use crate::{
     catalog::{Catalog, Credential, Endpoint},
+    egress::Relay,
     harness::{CredentialMaterial, HomeFile},
     id::BackendId,
     secret::Secret,
     store::write_atomic,
 };
 use chrono::{DateTime, TimeDelta, Utc};
-use eyre::{Result, WrapErr, ensure, eyre};
+use eyre::{Result, WrapErr, bail, ensure, eyre};
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use std::{
@@ -41,6 +42,7 @@ pub struct Vault {
 struct Entry {
     source: Source,
     endpoint: Option<Endpoint>,
+    relay: bool,
 }
 
 /// Where a backend's credential is read from, with `~` expanded.
@@ -57,13 +59,15 @@ enum Source {
 pub struct Key {
     material: CredentialMaterial,
     endpoint: Option<Endpoint>,
+    /// Whether the backend relays, so that the agent gets no part of `material`.
+    relay: bool,
     secrets: Vec<Secret<String>>,
     /// The Codex master login `material` was read from.
     master: Option<PathBuf>,
 }
 
 impl Key {
-    /// What the harness launches with.
+    /// The credential as its file holds it.
     pub fn material(&self) -> &CredentialMaterial {
         &self.material
     }
@@ -71,6 +75,36 @@ impl Key {
     /// The backend's API base URL, always set for an `api-key` credential.
     pub fn endpoint(&self) -> Option<&Endpoint> {
         self.endpoint.as_ref()
+    }
+
+    /// What the agent launches with: nothing for a backend that relays, whose relay adds the
+    /// key to each request, and otherwise the credential.
+    pub fn launch_credential(&self) -> Option<&CredentialMaterial> {
+        (!self.relay).then_some(&self.material)
+    }
+
+    /// The API base URL the agent sends its model requests to, when it is not its vendor's
+    /// default: the relay's for a backend that relays, and otherwise the endpoint.
+    pub fn launch_endpoint(&self) -> Option<&str> {
+        if self.relay {
+            Some(Relay::URL)
+        } else {
+            self.endpoint.as_ref().map(Endpoint::as_str)
+        }
+    }
+
+    /// For a backend that relays, the relay that carries the agent's model requests to the
+    /// endpoint with the key.
+    pub fn relay(&self) -> Result<Option<Relay>> {
+        if !self.relay {
+            return Ok(None);
+        }
+        let (Some(endpoint), CredentialMaterial::Env { value, .. }) =
+            (&self.endpoint, &self.material)
+        else {
+            bail!("a relay needs an endpoint and an API key");
+        };
+        Relay::new(endpoint.as_str(), value).map(Some)
     }
 
     /// Every string that must never reach a file gungnir keeps. For a Codex login, each token
@@ -107,8 +141,12 @@ impl Vault {
                     login: dir.expand(home).join(CODEX_LOGIN),
                 },
             };
-            let endpoint = backend.endpoint().cloned();
-            entries.insert(id.clone(), Entry { source, endpoint });
+            let entry = Entry {
+                source,
+                endpoint: backend.endpoint().cloned(),
+                relay: backend.relays(),
+            };
+            entries.insert(id.clone(), entry);
         }
         let vault = Self {
             backends: entries,
@@ -136,6 +174,7 @@ impl Vault {
             .get(backend)
             .ok_or_else(|| eyre!("the vault holds no credential for backend {backend}"))?;
         let endpoint = entry.endpoint.clone();
+        let relay = entry.relay;
         Ok(match &entry.source {
             Source::Token { var, file } => {
                 let value = read_token(file)?;
@@ -145,6 +184,7 @@ impl Vault {
                         value: value.clone(),
                     },
                     endpoint,
+                    relay,
                     secrets: vec![value],
                     master: None,
                 }
@@ -154,6 +194,7 @@ impl Vault {
                 Key {
                     material: CredentialMaterial::CodexAuth(text),
                     endpoint,
+                    relay,
                     secrets: tokens,
                     master: Some(login.clone()),
                 }
@@ -470,6 +511,47 @@ mod tests {
             zai.endpoint().map(Endpoint::as_str),
             Some("https://api.z.ai/api/anthropic")
         );
+    }
+
+    #[test]
+    fn the_agent_launches_with_its_credential_except_behind_a_relay() {
+        let fixture = fixture();
+        write(fixture.home.path(), "throttled-key", "nvapi-throttled\n");
+        let backends: Vec<BackendId> = ["anthropic", "openai", "zai", "throttled"]
+            .map(id::<BackendId>)
+            .into();
+        let vault = Vault::open(
+            &testing::catalog(),
+            &backends,
+            fixture.home.path(),
+            fixture.root(),
+        )
+        .unwrap();
+
+        for (backend, endpoint) in [
+            ("anthropic", None),
+            ("openai", None),
+            ("zai", Some("https://api.z.ai/api/anthropic")),
+        ] {
+            let key = vault.key(&id(backend)).unwrap();
+            assert_eq!(key.launch_endpoint(), endpoint, "{backend}");
+            assert!(
+                key.launch_credential()
+                    .is_some_and(|credential| std::ptr::eq(credential, key.material())),
+                "{backend}"
+            );
+            assert!(key.relay().unwrap().is_none(), "{backend}");
+        }
+
+        let throttled = vault.key(&id("throttled")).unwrap();
+        assert_eq!(throttled.launch_endpoint(), Some(Relay::URL));
+        assert!(throttled.launch_credential().is_none());
+        assert!(throttled.relay().unwrap().is_some());
+        assert_eq!(
+            throttled.endpoint().map(Endpoint::as_str),
+            Some("https://api.throttled.example/v1")
+        );
+        assert_eq!(exposed(throttled.secrets()), ["nvapi-throttled"]);
     }
 
     #[test]

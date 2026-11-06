@@ -108,6 +108,7 @@ pub struct Backend {
     credential: Credential,
     egress: Vec<String>,
     quota: Option<QuotaSource>,
+    relay: bool,
 }
 
 impl Backend {
@@ -133,6 +134,12 @@ impl Backend {
     /// anywhere but in the agent's transcript.
     pub fn quota(&self) -> Option<&QuotaSource> {
         self.quota.as_ref()
+    }
+
+    /// Whether the agent's model requests go through gungnir's relay, which adds the API key
+    /// and retries the endpoint's refusals, rather than straight to the endpoint.
+    pub fn relays(&self) -> bool {
+        self.relay
     }
 }
 
@@ -381,6 +388,8 @@ struct RawBackend {
     credential: RawCredential,
     egress: Vec<String>,
     quota: Option<RawQuotaSource>,
+    #[serde(default)]
+    relay: bool,
 }
 
 #[derive(Deserialize)]
@@ -521,6 +530,18 @@ impl RawBackend {
             .quota
             .map(|raw| raw.resolve(&credential, endpoint.as_ref()))
             .transpose()?;
+        if self.relay {
+            ensure!(
+                matches!(credential, Credential::ApiKey { .. }),
+                "relay = true sends the backend's API key to its endpoint, so it needs an \
+                 api-key credential"
+            );
+            ensure!(
+                driver.relays(),
+                "relay = true, but harness {} cannot send its requests through the relay",
+                self.harness
+            );
+        }
         Ok(Backend {
             harness: self.harness,
             driver,
@@ -528,6 +549,7 @@ impl RawBackend {
             credential,
             egress: self.egress,
             quota,
+            relay: self.relay,
         })
     }
 }

@@ -8,7 +8,7 @@ mod fold;
 pub use fold::{AgentOutcome, Ending, Exit, Fold, ProcessEnd, QuotaSpan};
 
 use crate::{
-    catalog::{Endpoint, System},
+    catalog::System,
     id::{Effort, HarnessName, HarnessVersion},
     secret::{EnvValue, Secret},
 };
@@ -31,6 +31,9 @@ trait Driver: Sync {
     fn granularity(&self) -> Granularity;
     fn accepts(&self, effort: Effort) -> bool;
     fn parse_version(&self, stdout: &str) -> Result<HarnessVersion>;
+    fn relays(&self) -> bool {
+        false
+    }
     fn launch(&self, req: &LaunchRequest<'_>) -> Result<Launch>;
     fn decode(&self, line: &str) -> Vec<Event>;
     fn diagnose_exit(&self, _stderr_tail: &str) -> Option<Event> {
@@ -81,6 +84,12 @@ impl Harness {
     /// The version in what the CLI printed for `--version`.
     pub fn parse_version(self, stdout: &str) -> Result<HarnessVersion> {
         self.0.parse_version(stdout)
+    }
+
+    /// Whether the CLI can launch with no credential at a plain HTTP base URL, as it does
+    /// behind the relay of a backend that relays.
+    pub fn relays(self) -> bool {
+        self.0.relays()
     }
 
     pub fn launch(self, req: &LaunchRequest<'_>) -> Result<Launch> {
@@ -255,9 +264,11 @@ impl Sum for TokenUsage {
 #[derive(Debug)]
 pub struct LaunchRequest<'a> {
     pub system: &'a System,
-    /// The backend's API base URL, when it is not the vendor's default.
-    pub endpoint: Option<&'a Endpoint>,
-    pub credential: &'a CredentialMaterial,
+    /// The API base URL the agent sends its model requests to, when it is not the vendor's
+    /// default: the backend's endpoint, or the relay that stands in for it.
+    pub endpoint: Option<&'a str>,
+    /// What the agent proves its access with, `None` behind a relay, which adds the key.
+    pub credential: Option<&'a CredentialMaterial>,
     /// The isolated home, as the agent sees it.
     pub home: &'a Path,
     /// The workspace, as the agent sees it.

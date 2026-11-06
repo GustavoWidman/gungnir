@@ -50,7 +50,7 @@ impl Driver for ClaudeCode {
     }
 
     fn launch(&self, req: &LaunchRequest<'_>) -> Result<Launch> {
-        let CredentialMaterial::Env { var, value } = req.credential else {
+        let Some(CredentialMaterial::Env { var, value }) = req.credential else {
             bail!("claude-code takes its credential from an environment variable");
         };
         let api_model = req.system.api_model();
@@ -63,7 +63,7 @@ impl Driver for ClaudeCode {
             (var.clone(), EnvValue::Secret(value.clone())),
         ];
         if let Some(endpoint) = req.endpoint {
-            env.push(plain("ANTHROPIC_BASE_URL", endpoint.as_str()));
+            env.push(plain("ANTHROPIC_BASE_URL", endpoint));
             // Claude Code sends side requests to Claude models by family, which an endpoint
             // serving one model would reject.
             for family in ["OPUS", "SONNET", "HAIKU"] {
@@ -367,6 +367,7 @@ fn timestamp(seconds: i64) -> Option<DateTime<Utc>> {
 mod tests {
     use super::*;
     use crate::{
+        catalog::Endpoint,
         harness::{AgentOutcome, Ending, Exit, Fold, Harness, ProcessEnd},
         secret::Secret,
         testing::{self, id},
@@ -412,8 +413,12 @@ mod tests {
         };
         harness().launch(&LaunchRequest {
             system: &system,
-            endpoint: catalog.backend(&id(backend)).unwrap().endpoint(),
-            credential: &credential,
+            endpoint: catalog
+                .backend(&id(backend))
+                .unwrap()
+                .endpoint()
+                .map(Endpoint::as_str),
+            credential: Some(&credential),
             home: Path::new("/home/agent"),
             workspace: Path::new("/work"),
             prompt: "Reply with the single word ok",
@@ -491,21 +496,27 @@ mod tests {
     }
 
     #[test]
-    fn a_codex_home_credential_cannot_launch_claude_code() {
+    fn a_codex_home_credential_or_none_cannot_launch_claude_code() {
         let catalog = testing::catalog();
         let system = catalog
             .system(&id("opus"), &id("anthropic"), Effort::Low, id("2.1.316"))
             .unwrap();
         let credential = CredentialMaterial::CodexAuth(Secret::new("{}".into()));
-        let launched = harness().launch(&LaunchRequest {
-            system: &system,
-            endpoint: None,
-            credential: &credential,
-            home: Path::new("/home/agent"),
-            workspace: Path::new("/work"),
-            prompt: "",
-        });
-        assert!(launched.is_err());
+        for (endpoint, credential) in [
+            (None, Some(&credential)),
+            (Some("http://relay.invalid"), None),
+        ] {
+            let launched = harness().launch(&LaunchRequest {
+                system: &system,
+                endpoint,
+                credential,
+                home: Path::new("/home/agent"),
+                workspace: Path::new("/work"),
+                prompt: "",
+            });
+            assert!(launched.is_err(), "{endpoint:?}");
+        }
+        assert!(!harness().relays());
     }
 
     #[test]

@@ -339,8 +339,8 @@ async fn probe_versions(
         let key = vault.key(system.backend())?;
         let launch = harness.launch(&LaunchRequest {
             system,
-            endpoint: key.endpoint(),
-            credential: key.material(),
+            endpoint: key.launch_endpoint(),
+            credential: key.launch_credential(),
             home: Path::new(HOME),
             workspace: Path::new(WORK),
             prompt: "",

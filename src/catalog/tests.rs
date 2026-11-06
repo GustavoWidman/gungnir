@@ -78,6 +78,11 @@ fn loads_the_repository_catalog() {
     let zai = catalog.backend(&id("zai")).unwrap();
     assert_eq!(zai.harness().as_str(), "claude-code");
     assert_eq!(zai.endpoint().unwrap().host(), "api.z.ai");
+    let relaying: Vec<&str> = ["anthropic", "openai", "zai", "nvidia"]
+        .into_iter()
+        .filter(|backend| catalog.backend(&id(backend)).unwrap().relays())
+        .collect();
+    assert_eq!(relaying, ["nvidia"]);
     assert!(
         matches!(zai.credential(), Credential::ApiKey { var, .. } if var == "ANTHROPIC_AUTH_TOKEN")
     );
@@ -366,6 +371,31 @@ fn a_quota_source_sends_the_api_key_only_to_its_endpoint_host() {
         "uri = \"https://api.example.com/monitor/quota\"",
         &["uri"],
     );
+}
+
+#[test]
+fn a_backend_relays_only_an_api_key_through_a_harness_that_can() {
+    rejects(
+        "egress = [\"api.anthropic.com\"]",
+        "egress = [\"api.anthropic.com\"]\nrelay = true",
+        &["[backends.anthropic]", "relay", "api-key"],
+    );
+    rejects(
+        "egress = [\"api.example.com\"]",
+        "egress = [\"api.example.com\"]\nrelay = true",
+        &["[backends.proxy]", "relay", "claude-code"],
+    );
+    rejects(
+        "egress = [\"api.example.com\"]",
+        "egress = [\"api.example.com\"]\nrelay = \"yes\"",
+        &["relay"],
+    );
+    let catalog = load(&CATALOG.replace(
+        "egress = [\"api.example.com\"]",
+        "egress = [\"api.example.com\"]\nrelay = false",
+    ))
+    .unwrap();
+    assert!(!catalog.backend(&id("proxy")).unwrap().relays());
 }
 
 #[test]

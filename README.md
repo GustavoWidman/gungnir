@@ -85,8 +85,11 @@ Every agent and every program under test runs in bubblewrap inside a transient s
 with memory, task and time limits. A sandbox binds only the Nix closures of its toolchains,
 never the whole store, so no hidden case or reference is reachable. Grading and measuring run
 offline. An agent reaches the network only through a host-side CONNECT proxy that tunnels its
-backend's allowlisted hosts on port 443 and logs every connection. Credentials are staged into
-an isolated home per attempt and redacted from every stored transcript and log.
+backend's allowlisted hosts on port 443 and logs every connection. For NVIDIA, whose free tier
+refuses bursts of requests, the proxy relays the agent's model requests itself: it adds the API
+key, so the agent holds none, and tries a refused request again for up to 10 minutes.
+Credentials are staged into an isolated home per attempt and redacted from every stored
+transcript and log.
 
 ## Requirements
 
@@ -200,6 +203,8 @@ Results live under `runs/`, which is not tracked.
   Results describe a harness, model and effort together; the harness is part of what is
   measured.
 - Costs are list-price equivalents computed from token usage and dated price tables, not bills.
+- An NVIDIA session's wall time includes the relay's waits on the free tier's throttling, which
+  each attempt's `egress.jsonl` records.
 - Token categories are not comparable across vendors as reported: only Anthropic reports cache
   writes, while OpenAI, Z.ai and NVIDIA count them as plain input. Compare new input (uncached
   input plus cache writes), cache reads and output separately.
