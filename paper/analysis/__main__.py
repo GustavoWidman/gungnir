@@ -152,8 +152,13 @@ def main(report, runs, out):
     figures.absolute_speed({"reference": absolute["reference"]} | {m: absolute[SHORT[m]] for m in speed_models},
                            order, speed_models, out / "figures", "speed-absolute")
 
-    # One number per language: tokens per correct program against the task's average language.
-    index = stats.language_index(trials, models, LANGUAGES)
+    # The gungnir index: every dimension against the task's average language, folded into one score.
+    runtime = w.assign(log_runtime=np.log(w.candidate_median_s / w.best)).groupby(
+        ["system", "scenario", "language", "rep"]).log_runtime.mean()
+    scored = trials.join(runtime, on=["system", "scenario", "language", "rep"]).assign(
+        log_tokens=np.log(trials.tokens), log_wall=np.log(trials.wall_s),
+        log_ccn=np.log(trials.ccn_total.clip(lower=1)))
+    index = stats.language_index(scored, models, LANGUAGES)
     n["index"] = {(SHORT[k] if k in SHORT else k): v for k, v in index.items()}
 
     n["order"] = order
