@@ -77,3 +77,54 @@ def logistic(trials):
             "r2": {"base": base.prsquared, "language": main.prsquared,
                    "scenario_x_language": by_scenario.prsquared},
             "odds_vs_python": odds}
+
+
+def language_index(trials, models, languages, seed=0, level=0.95):
+    """The tokens an agent spends per correct program in each language, relative to the average
+    language for the same model and task, as an index where the average language scores 100 and a
+    higher score is cheaper.
+
+    In one cell (model, task, language) a session passes with probability p and spends c tokens
+    (the geometric mean over its sessions), so an agent that retries until a program passes
+    spends c / p tokens per correct program. p is smoothed as (k + 1/2) / (n + 1), so a cell that
+    never passed costs a finite multiple. A model's index for a language is 100 over the
+    geometric mean, across tasks, of that cost relative to the task's average language; the
+    overall index weighs every model equally. Intervals resample tasks, then sessions in a cell.
+    """
+    scenarios = sorted(trials.scenario.unique())
+    cells = {}
+    for (m, s, lang), d in trials.groupby(["model", "scenario", "language"]):
+        cells[m, s, lang] = (d.passed.to_numpy(float), np.log(d.tokens.to_numpy(float)))
+
+    def log_cost(pick_scenarios, rng):
+        # log relative cost per model and language, averaged over the picked tasks.
+        out = np.zeros((len(models), len(languages)))
+        for s in pick_scenarios:
+            for i, m in enumerate(models):
+                row = np.empty(len(languages))
+                for j, lang in enumerate(languages):
+                    passed, logc = cells[m, s, lang]
+                    if rng is not None:
+                        take = rng.integers(len(passed), size=len(passed))
+                        passed, logc = passed[take], logc[take]
+                    p = (passed.sum() + 0.5) / (len(passed) + 1)
+                    row[j] = logc.mean() - np.log(p)
+                out[i] += row - row.mean()
+        return out / len(pick_scenarios)
+
+    point = log_cost(scenarios, None)
+    rng = np.random.default_rng(seed)
+    draws = np.empty((RESAMPLES, len(models) + 1, len(languages)))
+    for r in range(RESAMPLES):
+        pick = [scenarios[k] for k in rng.integers(len(scenarios), size=len(scenarios))]
+        sample = log_cost(pick, rng)
+        draws[r, :-1] = sample
+        draws[r, -1] = sample.mean(axis=0)
+    point = np.vstack([point, point.mean(axis=0)])
+    tail = (1 - level) / 2
+    lo, hi = np.quantile(draws, 1 - tail, axis=0), np.quantile(draws, tail, axis=0)
+    score = lambda x: 100 * np.exp(-x)
+    keys = list(models) + ["all"]
+    return {k: {lang: {"score": float(score(point[i, j])), "lo": float(score(lo[i, j])),
+                       "hi": float(score(hi[i, j]))} for j, lang in enumerate(languages)}
+            for i, k in enumerate(keys)}

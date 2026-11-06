@@ -152,6 +152,10 @@ def main(report, runs, out):
     figures.absolute_speed({"reference": absolute["reference"]} | {m: absolute[SHORT[m]] for m in speed_models},
                            order, speed_models, out / "figures", "speed-absolute")
 
+    # One number per language: tokens per correct program against the task's average language.
+    index = stats.language_index(trials, models, LANGUAGES)
+    n["index"] = {(SHORT[k] if k in SHORT else k): v for k, v in index.items()}
+
     n["order"] = order
     (out / "data" / "numbers.json").write_text(json.dumps(n, indent=1, default=float) + "\n")
 
