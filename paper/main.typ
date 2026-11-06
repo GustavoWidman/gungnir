@@ -271,7 +271,7 @@ A developer choosing a language weighs all of these at once, so we fold them int
     align: (left, right, right, right, right, right, right),
     stroke: none,
     table.hline(stroke: 0.6pt),
-    [*Language*], [*Pass*], [*Tokens*], [*Time*], [*Runtime*], [*CCN*], [*Index*],
+    [*Language*], [*Pass*], [*Tokens*], [*Time*], [*Speed*], [*Simplicity*], [*Index*],
     table.hline(stroke: 0.4pt),
     ..by-index("all").map(l => (
       [#lname.at(l)],
@@ -280,7 +280,7 @@ A developer choosing a language weighs all of these at once, so we fold them int
     )).flatten(),
     table.hline(stroke: 0.6pt),
   ),
-  caption: [The gungnir index, with its 95% interval, and its five dimensions over the three models, each against the average language for the same task: 100 is average and higher is better. CCN: total cyclomatic complexity.],
+  caption: [The gungnir index, with its 95% interval, and its five dimensions over the three models, each a score against the average language for the same task where 100 is average and higher means more passes, fewer tokens, less time, faster programs or fewer decision points.],
 ) <tab:index>
 
 The index weighs its five dimensions equally, which suits compute-bound programs such as these. A developer who cares little how fast the program runs can drop that column of @tab:index: on the other four, #lname.at(lead-without-runtime) comes first at #r0(without-runtime(lead-without-runtime)), Python scores #r0(without-runtime("python")) and Zig #r0(without-runtime("zig")).
