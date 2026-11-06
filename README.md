@@ -44,6 +44,7 @@ and rate limits are retried until the session ends on its own, and never reach t
 | Claude Code | Anthropic | Claude Haiku 5.5, Sonnet 5.5, Opus 5.5, Fable 5.1 |
 | Claude Code | Z.ai (Anthropic-compatible endpoint) | GLM-5.3, GLM-5.3-Flash |
 | Codex | OpenAI | GPT-6 Luna, GPT-6.1 Terra, GPT-6.1 Sol, GPT-6 Astra |
+| Codex | NVIDIA (Responses endpoint) | Nemotron 3.5 Super VL |
 
 Every model runs at every effort level it offers. Harness versions are pinned per experiment.
 
@@ -93,10 +94,11 @@ an isolated home per attempt and redacted from every stored transcript and log.
   `pids` controllers, and unprivileged user namespaces for bubblewrap.
 - Nix with flakes. The dev shell provides the Rust toolchain, Typst and the
   `GUNGNIR_TOOLCHAINS` set of sandbox environments.
-- A subscription login per backend, in the files `gungnir.toml` names:
+- A login or API key per backend, in the files `gungnir.toml` names:
   - `~/.config/gungnir/claude/oauth_token` for Anthropic, from `claude setup-token`;
   - `~/.config/gungnir/codex/` for OpenAI, a `CODEX_HOME` after `codex login`;
-  - `~/.config/gungnir/glm/api_key` for Z.ai.
+  - `~/.config/gungnir/glm/api_key` for Z.ai;
+  - `~/.config/gungnir/nvidia/api_key` for NVIDIA.
 - For measuring, a quiet machine with `kernel.perf_event_paranoid` at 1 or less, ideally
   with isolated cores (`isolcpus`, `nohz_full`), where `measure` runs one lane on the first
   thread of each, and fixed clocks, which `clock_mhz` in an experiment's `[measure]` table
@@ -194,12 +196,13 @@ Results live under `runs/`, which is not tracked.
 
 ## Scope and limits
 
-- Systems run on vendor subscriptions through their native harnesses. Results describe a
-  harness, model and effort together; the harness is part of what is measured.
+- Systems run on vendor subscriptions, and on NVIDIA's free API, through vendor harnesses.
+  Results describe a harness, model and effort together; the harness is part of what is
+  measured.
 - Costs are list-price equivalents computed from token usage and dated price tables, not bills.
 - Token categories are not comparable across vendors as reported: only Anthropic reports cache
-  writes, while OpenAI and Z.ai count them as plain input. Compare new input (uncached input plus
-  cache writes), cache reads and output separately.
+  writes, while OpenAI, Z.ai and NVIDIA count them as plain input. Compare new input (uncached
+  input plus cache writes), cache reads and output separately.
 - Pass rates near 100% stop separating systems, which is why the study scenarios are harder
   than the pilot's. Systems that still pass nearly everything differ in program speed, tokens
   and cost.

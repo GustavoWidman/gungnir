@@ -110,6 +110,40 @@ fn loads_the_repository_catalog() {
         .unwrap();
     assert_eq!(glm.id().to_string(), "claude-code-2.1.316_zai_glm-5.3_high");
     assert_eq!(glm.api_model(), "glm-5.3");
+
+    let nvidia = catalog.backend(&id("nvidia")).unwrap();
+    assert_eq!(nvidia.harness().as_str(), "codex");
+    assert_eq!(
+        nvidia.endpoint().unwrap().as_str(),
+        "https://integrate.api.nvidia.com/v1"
+    );
+    assert!(
+        matches!(nvidia.credential(), Credential::ApiKey { var, .. } if var == "NVIDIA_API_KEY")
+    );
+    assert_eq!(nvidia.quota(), None);
+    let nemotron = catalog.model(&id("nemotron-3.5-super-vl")).unwrap();
+    let free = nemotron.rates(day("2026-11-06"), 1_000_000).unwrap();
+    assert_eq!(
+        [free.input, free.output, free.cache_read],
+        [Rate(0), Rate(0), Rate(0)]
+    );
+    assert_eq!(free.cache_write, Some(Rate(0)));
+    let nemotron = catalog
+        .system(
+            &id("nemotron-3.5-super-vl"),
+            &id("nvidia"),
+            Effort::None,
+            id("0.166.0"),
+        )
+        .unwrap();
+    assert_eq!(
+        nemotron.id().to_string(),
+        "codex-0.166.0_nvidia_nemotron-3.5-super-vl_none"
+    );
+    assert_eq!(
+        nemotron.api_model(),
+        "nvidia/nemotron-3.5-super-vl-120b-a12b"
+    );
 }
 
 #[test]

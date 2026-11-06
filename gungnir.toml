@@ -41,6 +41,14 @@ egress = ["api.z.ai"]
 # Claude Code reports no quota for Z.ai, so gungnir reads the plan's own meter between attempts.
 quota = { kind = "zai-monitor", url = "https://api.z.ai/api/monitor/usage/quota/limit" }
 
+# NVIDIA's hosted API through Codex, which sends the key to the endpoint's Responses API. NVIDIA
+# reports no quota anywhere: no rate-limit headers, and a busy endpoint queues requests.
+[backends.nvidia]
+harness = "codex"
+endpoint = "https://integrate.api.nvidia.com/v1"
+credential = { kind = "api-key", var = "NVIDIA_API_KEY", file = "~/.config/gungnir/nvidia/api_key" }
+egress = ["integrate.api.nvidia.com"]
+
 [[models]]
 id = "claude-fable-5-1"
 efforts = ["low", "medium", "high", "xhigh", "max"]
@@ -106,3 +114,12 @@ id = "glm-5.3-flash"
 efforts = ["low", "high", "max"]
 served-by = { zai = "glm-5.3-flash" }
 prices = [{ since = "2026-11-03", input = 0.15, output = 0.5, cache-read = 0.03 }]
+
+# The endpoint takes every effort from none to xhigh, and max as xhigh, but only none (reasoning
+# off) changed the model's behaviour in probes on 2026-11-06 (paper/notes/probes.md), so it
+# offers none and one reasoning level. NVIDIA serves it free of charge.
+[[models]]
+id = "nemotron-3.5-super-vl"
+efforts = ["none", "high"]
+served-by = { nvidia = "nvidia/nemotron-3.5-super-vl-120b-a12b" }
+prices = [{ since = "2026-11-06", input = 0.0, output = 0.0, cache-read = 0.0, cache-write = 0.0 }]
