@@ -1,9 +1,12 @@
 //! The host-side egress proxy. Agents have no network of their own: each attempt gets an HTTP
 //! CONNECT proxy on its own Unix socket that tunnels TLS, uninspected, to the backend's
-//! allowlisted hosts and logs every connection the agent attempted.
+//! allowlisted hosts and logs every connection the agent attempted. For a backend that
+//! relays, the proxy also serves the agent's plain model requests to [`Relay::URL`] itself.
 
 mod allowlist;
+mod relay;
 mod request;
+mod retry;
 mod tunnel;
 
 use std::{
@@ -25,22 +28,31 @@ use tokio::{
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 pub use allowlist::Allowlist;
+pub use relay::{Relay, Relayed};
 
 /// Pause after a failed accept (such as running out of descriptors) instead of spinning.
 const ACCEPT_BACKOFF: Duration = Duration::from_millis(50);
 
-/// One line of the egress log: a connection the agent attempted and what became of it.
+/// One line of the egress log: a connection the agent attempted and what became of it, or one
+/// try the relay made of an agent's request.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Record {
-    /// The host the client named, absent when its request named none.
+    /// The host the client named, absent when its request named none. For a relayed try, the
+    /// endpoint's host.
     pub host: Option<String>,
     pub port: Option<u16>,
     pub verdict: Verdict,
-    /// Bytes the client sent through the tunnel, after the request head.
+    /// Bytes the client sent through the tunnel, after the request head. For a relayed try,
+    /// the request body sent to the endpoint.
     pub bytes_up: u64,
+    /// Bytes that came back through the tunnel. For a relayed try, the response body the
+    /// agent got, which is none for a try the relay retried.
     pub bytes_down: u64,
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
+    /// What the relay did, for a relayed try.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relay: Option<Relayed>,
 }
 
 impl Record {
@@ -53,6 +65,7 @@ impl Record {
             bytes_down: 0,
             start,
             end: start,
+            relay: None,
         }
     }
 }
@@ -66,6 +79,8 @@ pub enum Verdict {
     Denied,
     /// Allowlisted, but the host could not be reached; answered with 502.
     Unreachable,
+    /// A try of a request to the relay, which forwarded it to its endpoint.
+    Relayed,
 }
 
 /// Access to a running proxy, handed to a sandbox as its only route out.
@@ -96,8 +111,14 @@ pub struct Proxy {
 }
 
 impl Proxy {
-    /// Listens on `socket` and appends one JSON line per connection to `log`.
-    pub async fn start(socket: &Path, allowlist: Allowlist, log: &Path) -> Result<Self> {
+    /// Listens on `socket` and appends one JSON line per connection, and per relayed try, to
+    /// `log`. With a `relay`, requests to [`Relay::URL`] go to its endpoint.
+    pub async fn start(
+        socket: &Path,
+        allowlist: Allowlist,
+        relay: Option<Relay>,
+        log: &Path,
+    ) -> Result<Self> {
         let listener = UnixListener::bind(socket)
             .wrap_err_with(|| format!("binding egress socket {}", socket.display()))?;
         let file = OpenOptions::new()
@@ -112,6 +133,7 @@ impl Proxy {
         tasks.spawn(accept(
             listener,
             Arc::new(allowlist),
+            relay.map(Arc::new),
             records,
             closing.clone(),
             tasks.clone(),
@@ -154,6 +176,7 @@ impl Drop for Proxy {
 async fn accept(
     listener: UnixListener,
     allowlist: Arc<Allowlist>,
+    relay: Option<Arc<Relay>>,
     records: mpsc::UnboundedSender<Record>,
     closing: CancellationToken,
     tasks: TaskTracker,
@@ -169,9 +192,11 @@ async fn accept(
                 }
             },
         };
-        let (allowlist, records, closing) = (allowlist.clone(), records.clone(), closing.clone());
+        let (allowlist, relay) = (allowlist.clone(), relay.clone());
+        let (records, closing) = (records.clone(), closing.clone());
         tasks.spawn(async move {
-            let record = tunnel::serve(client, &allowlist, &closing).await;
+            let record =
+                tunnel::serve(client, &allowlist, relay.as_deref(), &records, &closing).await;
             // The writer only stops early on a write error, which `close` reports.
             let _ = records.send(record);
         });
@@ -255,7 +280,7 @@ mod tests {
         let fixture = Fixture::new()?;
         let port = echo_server().await?;
         let allowlist = Allowlist::new(["127.0.0.1"]).on_port(port);
-        let proxy = Proxy::start(&fixture.socket, allowlist, &fixture.log).await?;
+        let proxy = Proxy::start(&fixture.socket, allowlist, None, &fixture.log).await?;
 
         let (status, mut tunnel) = ask(
             &proxy.grant().socket,
@@ -287,12 +312,13 @@ mod tests {
         let fixture = Fixture::new()?;
         let port = echo_server().await?;
         let allowlist = Allowlist::new(["127.0.0.1", "api.z.ai"]).on_port(port);
-        let proxy = Proxy::start(&fixture.socket, allowlist, &fixture.log).await?;
+        let proxy = Proxy::start(&fixture.socket, allowlist, None, &fixture.log).await?;
 
         for request in [
             "CONNECT example.com:443 HTTP/1.1\r\n\r\n".to_owned(),
             format!("GET http://127.0.0.1:{port}/ HTTP/1.1\r\n\r\n"),
             "CONNECT api.z.ai:22 HTTP/1.1\r\n\r\n".to_owned(),
+            "POST http://relay.invalid/responses HTTP/1.1\r\n\r\n".to_owned(),
             "not http\r\n\r\n".to_owned(),
         ] {
             let (status, _) = ask(&fixture.socket, &request).await?;
@@ -316,6 +342,7 @@ mod tests {
                 (Some("example.com".to_owned()), Some(443)),
                 (Some("127.0.0.1".to_owned()), Some(port)),
                 (Some("api.z.ai".to_owned()), Some(22)),
+                (Some("relay.invalid".to_owned()), Some(80)),
                 (None, None),
             ]
         );
@@ -327,7 +354,7 @@ mod tests {
         let fixture = Fixture::new()?;
         let closed = TcpListener::bind("127.0.0.1:0").await?.local_addr()?.port();
         let allowlist = Allowlist::new(["127.0.0.1"]).on_port(closed);
-        let proxy = Proxy::start(&fixture.socket, allowlist, &fixture.log).await?;
+        let proxy = Proxy::start(&fixture.socket, allowlist, None, &fixture.log).await?;
 
         let (status, _) = ask(
             &fixture.socket,
@@ -348,7 +375,7 @@ mod tests {
         let fixture = Fixture::new()?;
         let port = echo_server().await?;
         let allowlist = Allowlist::new(["127.0.0.1"]).on_port(port);
-        let proxy = Proxy::start(&fixture.socket, allowlist, &fixture.log).await?;
+        let proxy = Proxy::start(&fixture.socket, allowlist, None, &fixture.log).await?;
 
         let (_, mut tunnel) = ask(
             &fixture.socket,

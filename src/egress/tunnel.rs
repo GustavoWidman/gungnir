@@ -1,4 +1,5 @@
-//! One client connection: read its request, refuse it or open the tunnel, count the bytes.
+//! One client connection: read its request, refuse it, open the tunnel or hand it to the
+//! relay, and count the bytes.
 
 use std::{io, time::Duration};
 
@@ -6,14 +7,15 @@ use chrono::Utc;
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     net::{TcpStream, UnixStream},
+    sync::mpsc,
     time::timeout,
 };
 use tokio_util::sync::CancellationToken;
 
 use super::{
-    Record, Verdict,
+    Record, Relay, Verdict,
     allowlist::Allowlist,
-    request::{self, MAX_HEAD},
+    request::{self, Kind, MAX_HEAD, Request},
 };
 
 const HEAD_TIMEOUT: Duration = Duration::from_secs(30);
@@ -22,19 +24,22 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 const ESTABLISHED: &[u8] = b"HTTP/1.1 200 Connection Established\r\n\r\n";
 const FORBIDDEN: &[u8] =
     b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-const BAD_GATEWAY: &[u8] =
+pub(super) const BAD_GATEWAY: &[u8] =
     b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
 
-/// Serves one connection to its end, or until the proxy closes, and returns its log record.
+/// Serves one connection to its end, or until the proxy closes, and returns its last log
+/// record. A relayed request sends its earlier tries' records through `records` as they end.
 pub(super) async fn serve(
     mut client: UnixStream,
     allowlist: &Allowlist,
+    relay: Option<&Relay>,
+    records: &mpsc::UnboundedSender<Record>,
     closing: &CancellationToken,
 ) -> Record {
     let mut record = Record::opened(Utc::now());
     tokio::select! {
         // An I/O error only ends the connection; the record already holds what happened.
-        _ = handle(&mut client, allowlist, &mut record) => {}
+        _ = handle(&mut client, allowlist, relay, records, &mut record) => {}
         () = closing.cancelled() => {}
     }
     record.end = Utc::now();
@@ -46,29 +51,40 @@ pub(super) async fn serve(
 async fn handle(
     client: &mut UnixStream,
     allowlist: &Allowlist,
+    relay: Option<&Relay>,
+    records: &mpsc::UnboundedSender<Record>,
     record: &mut Record,
 ) -> io::Result<()> {
     let Ok(Ok(Some((head, early)))) = timeout(HEAD_TIMEOUT, read_head(client)).await else {
         return client.write_all(FORBIDDEN).await;
     };
-    let request = request::parse(&head);
-    if let Some(request) = &request {
-        record.host = Some(request.host.as_str().to_owned());
-        record.port = Some(request.port);
-    }
-    let Some(request) =
-        request.filter(|request| request.tunnel && allowlist.allows(&request.host, request.port))
-    else {
+    let Some(Request { kind, host, port }) = request::parse(&head) else {
         return client.write_all(FORBIDDEN).await;
     };
-    let target = (request.host.as_str(), request.port);
+    record.host = Some(host.as_str().to_owned());
+    record.port = Some(port);
+    match kind {
+        Kind::Tunnel if allowlist.allows(&host, port) => {}
+        Kind::Forward(forward) => {
+            return match relay.filter(|relay| relay.serves(&host, port, &forward)) {
+                Some(relay) => {
+                    relay
+                        .serve(client, &forward, &head, early, record, records)
+                        .await
+                }
+                None => client.write_all(FORBIDDEN).await,
+            };
+        }
+        Kind::Tunnel => return client.write_all(FORBIDDEN).await,
+    }
+    let target = (host.as_str(), port);
     let Ok(Ok(upstream)) = timeout(CONNECT_TIMEOUT, TcpStream::connect(target)).await else {
         record.verdict = Verdict::Unreachable;
         return client.write_all(BAD_GATEWAY).await;
     };
     record.verdict = Verdict::Allowed;
     client.write_all(ESTABLISHED).await?;
-    relay(client, upstream, &early, record).await
+    splice(client, upstream, &early, record).await
 }
 
 /// Reads up to the end of the request head. Returns the head and any bytes the client sent
@@ -92,7 +108,7 @@ async fn read_head(client: &mut UnixStream) -> io::Result<Option<(Vec<u8>, Vec<u
     }
 }
 
-async fn relay(
+async fn splice(
     client: &mut UnixStream,
     mut upstream: TcpStream,
     early: &[u8],

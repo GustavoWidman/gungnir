@@ -111,6 +111,7 @@ impl Rig<'_> {
         let proxy = Proxy::start(
             &home.socket(),
             Allowlist::new(task.backend.egress()),
+            None,
             &attempt.egress(),
         )
         .await?;

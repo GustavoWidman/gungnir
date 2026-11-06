@@ -426,6 +426,7 @@ async fn egress_reaches_allowlisted_hosts_and_refuses_others() -> Result<()> {
     let proxy = Proxy::start(
         &dir.path().join("egress.sock"),
         Allowlist::new(["api.z.ai"]),
+        None,
         &log,
     )
     .await?;
