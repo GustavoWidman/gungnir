@@ -8,6 +8,7 @@ pub mod experiment;
 pub mod grade;
 pub mod harness;
 pub mod id;
+pub mod index;
 pub mod language;
 pub mod lifecycle;
 pub mod measure;

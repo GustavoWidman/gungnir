@@ -438,6 +438,8 @@ dependencies = [
  "globset",
  "humantime",
  "nix",
+ "rand",
+ "rand_pcg",
  "reqwest",
  "serde",
  "serde_json",
