@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt,
+    net::Ipv4Addr,
     path::{Path, PathBuf},
 };
 
@@ -143,7 +144,11 @@ impl Backend {
     }
 }
 
-/// An `https://` URL whose host is one of its backend's egress hosts.
+/// A URL whose host, without its port, is one of its backend's egress hosts. The agent of a
+/// backend that does not relay reaches its endpoint through the egress proxy, which tunnels
+/// only to port 443, so that endpoint is `https://` with a DNS host and no port. The relay
+/// reaches its backend's endpoint from the host, so a relayed endpoint may also be plain
+/// `http://`, name an IPv4 address and add a port.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Endpoint {
     url: String,
@@ -151,12 +156,41 @@ pub struct Endpoint {
 }
 
 impl Endpoint {
+    /// An `https://` URL with a DNS host and no port.
     fn parse(key: &str, url: String) -> Result<Self> {
         let host = url
             .strip_prefix("https://")
             .map(|rest| rest.split_once('/').map_or(rest, |(host, _)| host))
             .filter(|host| is_hostname(host))
-            .ok_or_else(|| eyre!("{key} = {url:?} is not an https:// URL with a DNS host"))?
+            .ok_or_else(|| {
+                eyre!("{key} = {url:?} is not an https:// URL with a DNS host and no port")
+            })?
+            .to_owned();
+        Ok(Self { url, host })
+    }
+
+    /// An `http://` or `https://` URL with a DNS host or an IPv4 address, an optional port,
+    /// and no query or fragment, as the relay forwards to.
+    fn parse_relayed(key: &str, url: String) -> Result<Self> {
+        let host = url
+            .strip_prefix("https://")
+            .or_else(|| url.strip_prefix("http://"))
+            .filter(|rest| !rest.contains(['?', '#']))
+            .map(|rest| {
+                rest.split_once('/')
+                    .map_or(rest, |(authority, _)| authority)
+            })
+            .and_then(|authority| match authority.rsplit_once(':') {
+                Some((host, port)) => is_port(port).then_some(host),
+                None => Some(authority),
+            })
+            .filter(|host| is_ipv4(host) || is_dns_name(host))
+            .ok_or_else(|| {
+                eyre!(
+                    "{key} = {url:?} is not an http:// or https:// URL with a DNS host or an \
+                     IPv4 address, an optional port and no query"
+                )
+            })?
             .to_owned();
         Ok(Self { url, host })
     }
@@ -165,6 +199,7 @@ impl Endpoint {
         &self.url
     }
 
+    /// The host the URL names, without its port.
     pub fn host(&self) -> &str {
         &self.host
     }
@@ -349,6 +384,27 @@ fn is_hostname(host: &str) -> bool {
         })
 }
 
+/// A host name whose last label is no number, which a URL reads as part of an IPv4 address.
+fn is_dns_name(host: &str) -> bool {
+    is_hostname(host)
+        && !host
+            .rsplit('.')
+            .next()
+            .is_some_and(|last| last.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// An IPv4 address in dotted-decimal form, without leading zeros.
+fn is_ipv4(host: &str) -> bool {
+    host.parse::<Ipv4Addr>().is_ok()
+}
+
+/// A TCP port in decimal, other than 0.
+fn is_port(port: &str) -> bool {
+    !port.is_empty()
+        && port.bytes().all(|b| b.is_ascii_digit())
+        && port.parse::<u16>().is_ok_and(|port| port != 0)
+}
+
 fn is_env_var(name: &str) -> bool {
     !name.is_empty()
         && !name.starts_with(|c: char| c.is_ascii_digit())
@@ -509,7 +565,13 @@ impl RawBackend {
         }
         let endpoint = self
             .endpoint
-            .map(|url| Endpoint::parse("endpoint", url))
+            .map(|url| {
+                if self.relay {
+                    Endpoint::parse_relayed("endpoint", url)
+                } else {
+                    Endpoint::parse("endpoint", url)
+                }
+            })
             .transpose()?;
         if let Some(endpoint) = &endpoint {
             ensure!(

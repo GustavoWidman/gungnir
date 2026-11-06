@@ -338,10 +338,72 @@ fn endpoints_must_be_https_hosts_the_egress_allows() {
         &["[backends.proxy]", "http://api.example.com/anthropic"],
     );
     rejects(
+        "https://api.example.com/anthropic",
+        "https://api.example.com:8443/anthropic",
+        &["[backends.proxy]", "https://api.example.com:8443/anthropic"],
+    );
+    rejects(
         "endpoint = \"https://api.example.com/anthropic\"\n",
         "",
         &["[backends.proxy]", "api-key", "endpoint"],
     );
+}
+
+/// `CATALOG` with a Codex backend `local` that relays to `endpoint` and allows `egress`.
+fn relaying(endpoint: &str, egress: &str) -> Result<Catalog> {
+    load(&format!(
+        "{CATALOG}\n[backends.local]\nharness = \"codex\"\nendpoint = \"{endpoint}\"\n\
+         credential = {{ kind = \"api-key\", var = \"KEY\", file = \"/etc/gungnir/key\" }}\n\
+         egress = [\"{egress}\"]\nrelay = true\n"
+    ))
+}
+
+#[test]
+fn a_relayed_endpoint_may_be_plain_http_name_an_ipv4_address_and_add_a_port() {
+    for (endpoint, host) in [
+        ("http://192.168.1.20:1234/v1", "192.168.1.20"),
+        ("https://lab.example.net:8317/v1", "lab.example.net"),
+        ("http://lab.example.net/v1", "lab.example.net"),
+        ("https://api.example.org", "api.example.org"),
+    ] {
+        let catalog = relaying(endpoint, host).unwrap();
+        let parsed = catalog.backend(&id("local")).unwrap().endpoint().unwrap();
+        assert_eq!((parsed.as_str(), parsed.host()), (endpoint, host));
+    }
+
+    let err = relaying("http://192.168.1.20:1234/v1", "192.168.1.21").unwrap_err();
+    let message = format!("{err:#}");
+    for needle in ["[backends.local]", "has host 192.168.1.20", "egress"] {
+        assert!(
+            message.contains(needle),
+            "{needle:?} missing from: {message}"
+        );
+    }
+
+    for endpoint in [
+        "ftp://lab.example.net/v1",
+        "lab.example.net:8317/v1",
+        "http://lab.example.net:0/v1",
+        "http://lab.example.net:65536/v1",
+        "http://lab.example.net:/v1",
+        "http://lab.example.net:https/v1",
+        "http://[::1]:1234/v1",
+        "http://1.2.3/v1",
+        "http://192.168.001.20/v1",
+        "http://Lab.example.net/v1",
+        "http://key@lab.example.net/v1",
+        "http://lab.example.net/v1?key=1",
+        "http://lab.example.net/v1#top",
+    ] {
+        let err = relaying(endpoint, "lab.example.net").unwrap_err();
+        let message = format!("{err:#}");
+        for needle in ["[backends.local]", endpoint] {
+            assert!(
+                message.contains(needle),
+                "{needle:?} missing from: {message}"
+            );
+        }
+    }
 }
 
 #[test]
