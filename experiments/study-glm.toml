@@ -1,4 +1,4 @@
-# The study's GLM arm: every effort level of both GLM models on the full suite, through Claude Code.
+# The study's GLM arm: every effort level of GLM-5.3-Flash on the full suite, through Claude Code.
 name = "study-glm"
 results = "../runs/study-glm"
 repetitions = 5
@@ -32,11 +32,7 @@ wall = "4h"
 idle = "30m"
 
 [concurrency]
-zai = 6
-
-[[systems]]
-model = "glm-5.3"
-efforts = "all"
+zai = 4
 
 [[systems]]
 model = "glm-5.3-flash"
