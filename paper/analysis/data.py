@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from . import complexity, sessions
+from . import sessions
 
 LANGUAGES = ["python", "javascript", "typescript", "go", "rust", "zig", "c", "cpp"]
 LANGUAGE_NAMES = {"python": "Python", "javascript": "JavaScript", "typescript": "TypeScript",
@@ -38,8 +38,6 @@ def load(report, runs):
     trials["outcome"] = trials.failure.fillna("pass")
     trials = trials.merge(pd.DataFrame(sessions.sessions(runs, trials)),
                           on=["system", "scenario", "language", "rep"])
-    trials = trials.merge(pd.DataFrame(complexity.totals(runs, trials)),
-                          on=["system", "scenario", "language", "rep"], how="left")
 
     workloads = pd.read_csv(f"{report}/workloads.csv")
     workloads = workloads[workloads.outcome == "timed"].merge(

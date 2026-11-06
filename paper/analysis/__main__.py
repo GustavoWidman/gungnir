@@ -1,10 +1,10 @@
 """Writes the paper's figures and the numbers its text cites.
 
-    python -m analysis REPORT RUNS OUT
+    python -m analysis REPORT INDEX RUNS OUT
 
-REPORT is a `gungnir report` directory for the study experiments, RUNS the results directory
-those experiments write to, and OUT the paper directory, which receives `figures/*.svg` and
-`data/numbers.json`.
+REPORT is a `gungnir report` directory for the study experiments, INDEX a `gungnir index`
+directory for the same experiments, RUNS the results directory those experiments write to, and
+OUT the paper directory, which receives `figures/*.svg` and `data/numbers.json`.
 """
 
 import json
@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from . import data, figures, stats
 from .data import EFFORTS, LANGUAGES, MODELS, SHORT
@@ -26,7 +27,7 @@ def pass_rate(d):
     return {"rate": 100 * rate, "lo": 100 * lo, "hi": 100 * hi, "k": int(d.passed.sum()), "n": len(d)}
 
 
-def main(report, runs, out):
+def main(report, index_dir, runs, out):
     out = Path(out)
     (out / "figures").mkdir(parents=True, exist_ok=True)
     (out / "data").mkdir(parents=True, exist_ok=True)
@@ -152,14 +153,15 @@ def main(report, runs, out):
     figures.absolute_speed({"reference": absolute["reference"]} | {m: absolute[SHORT[m]] for m in speed_models},
                            order, speed_models, out / "figures", "speed-absolute")
 
-    # The gungnir index: every dimension against the task's average language, folded into one score.
-    runtime = w.assign(log_runtime=np.log(w.candidate_median_s / w.best)).groupby(
-        ["system", "scenario", "language", "rep"]).log_runtime.mean()
-    scored = trials.join(runtime, on=["system", "scenario", "language", "rep"]).assign(
-        log_tokens=np.log(trials.tokens), log_wall=np.log(trials.wall_s),
-        log_ccn=np.log(trials.ccn_all.clip(lower=1)))
-    index = stats.language_index(scored, models, LANGUAGES)
-    n["index"] = {(SHORT[k] if k in SHORT else k): v for k, v in index.items()}
+    # The gungnir index, as `gungnir index` scores it.
+    scores = pd.read_csv(Path(index_dir) / "scores.csv")
+    entry = lambda r: {"score": float(r.score), "lo": float(r.low), "hi": float(r.high)}
+    index = {(SHORT.get(scope, scope)): {r.language: entry(r) for r in g[g.dimension == "index"].itertuples()}
+             for scope, g in scores.groupby("scope")}
+    overall = scores[scores.scope == "all"]
+    index["dimensions"] = {d: {r.language: entry(r) for r in g.itertuples()}
+                           for d, g in overall[overall.dimension != "index"].groupby("dimension")}
+    n["index"] = index
     by_index = sorted(LANGUAGES, key=lambda lang: -index["all"][lang]["score"])
     figures.index_bars(by_index, {lang: (v["score"], v["lo"], v["hi"]) for lang, v in index["all"].items()},
                        out / "figures", "gungnir-index")
@@ -169,4 +171,4 @@ def main(report, runs, out):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:4])
+    main(*sys.argv[1:5])
