@@ -639,6 +639,21 @@ mod tests {
     }
 
     #[test]
+    fn the_inputs_of_a_backend_at_its_vendors_endpoint_keep_their_stored_form() {
+        let stored = r#"{"system":"codex-0.166.0_openai_gpt-6.1-terra_high","api_model":"gpt-6.1-terra","endpoint":null,"prompt":"e16a921f1ebc8a9900692d18fee1b71c4a1ebe2d5b72d5f662ae8d6323ef6dbe","workspace":"8f0afac15ce1e597476b66d3cbaa3560528b0c91bf05312f7b23d3442e061c26","toolchains":{"base":"/nix/store/9n09h64ihkgb3bn80hpyrdviz5qxrl7c-gungnir-base","language":"/nix/store/3vjfd762ak1sk996ssdyxxrkkjngk8y5-gungnir-language-cpp","harness":"/nix/store/46s3jghp9ji7vbq842zgnfdg8q6d98fy-gungnir-harness-codex"},"wall":"4h","idle":"30m"}"#;
+        let inputs: RunInputs = serde_json::from_str(stored).unwrap();
+        assert_eq!(serde_json::to_string(&inputs).unwrap(), stored);
+
+        let repo = Repo::new();
+        let experiment = repo.experiment();
+        let trial = fixture::trial(&experiment, "luna");
+        let task = Task::of(&experiment, &trial).unwrap();
+        let current = RunInputs::current(&task, &repo.toolchains, experiment.budget()).unwrap();
+        let json = serde_json::to_value(current).unwrap();
+        assert_eq!(json["endpoint"], serde_json::Value::Null);
+    }
+
+    #[test]
     fn the_budgets_a_run_ran_under_stay_on_its_record() {
         let repo = Repo::new();
         let json = serde_json::to_value(current(&repo)).unwrap();
