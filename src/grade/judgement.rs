@@ -41,6 +41,11 @@ impl Judgement {
         self.complexity.as_ref()
     }
 
+    /// The same judgement with `complexity`, measured again from the same workspace.
+    pub(super) fn recounted(self, complexity: Option<Complexity>) -> Self {
+        Self { complexity, ..self }
+    }
+
     /// Pass when the build succeeded and every case passed. Otherwise the failure with the
     /// most blame among the build and the cases.
     pub fn verdict(&self) -> Verdict {

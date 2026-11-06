@@ -110,7 +110,9 @@ enum Command {
         dry_run: bool,
     },
     /// Grade each committed run that has no current grade, building and running it offline
-    /// on the hidden cases. Safe to run while `run` is still going.
+    /// on the hidden cases, and measure again the complexity of each current grade that this
+    /// version or the lizard on PATH would count otherwise, rewriting it in place. Safe to run
+    /// while `run` is still going.
     Grade {
         /// The experiment file, such as experiments/smoke.toml.
         experiment: PathBuf,
@@ -432,8 +434,8 @@ fn deadline(arg: &str) -> Result<(BackendId, DateTime<Utc>)> {
     Ok((backend.parse()?, time.with_timezone(&Utc)))
 }
 
-/// Grades an experiment's committed runs, logging each verdict to stderr. Fails while any
-/// committed run is left ungraded.
+/// Grades an experiment's committed runs and recounts the complexity of current grades counted
+/// otherwise, logging each verdict and recount to stderr. Fails while any of them is left.
 fn grade_trials(path: &Path, jobs: NonZeroUsize) -> Result<()> {
     log_progress();
     let experiment = Experiment::load(path)?;
@@ -447,16 +449,20 @@ fn grade_trials(path: &Path, jobs: NonZeroUsize) -> Result<()> {
     let Graded {
         passed,
         failed,
+        recounted,
         faulted,
         errors,
         unstarted,
     } = graded;
     println!(
-        "passed {passed}, failed {failed}, environment faults {faulted}, errors {errors}, not \
-         started {unstarted}"
+        "passed {passed}, failed {failed}, complexity recounted {recounted}, environment faults \
+         {faulted}, errors {errors}, not started {unstarted}"
     );
     let left = faulted + errors + unstarted;
-    ensure!(left == 0, "{left} runs are still ungraded; grade again");
+    ensure!(
+        left == 0,
+        "{left} trials are still to grade or recount; grade again"
+    );
     Ok(())
 }
 

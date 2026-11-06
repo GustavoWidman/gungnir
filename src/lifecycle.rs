@@ -103,6 +103,17 @@ impl Lifecycle {
             }
         }
     }
+
+    /// The committed grade, when neither it nor the run it judged is stale.
+    pub fn current_grade(&self) -> Option<&GradeRecord> {
+        if matches!(self.stale, Some(Phase::Run | Phase::Grade)) {
+            return None;
+        }
+        match &self.stage {
+            Stage::Pending | Stage::Ran { .. } => None,
+            Stage::Graded { grade, .. } | Stage::Measured { grade, .. } => Some(grade),
+        }
+    }
 }
 
 /// What each phase would use for one trial now. A measurement is current only when made under

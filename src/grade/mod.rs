@@ -70,10 +70,7 @@ pub async fn judge(
     stop: &Stop,
     evidence: &Path,
 ) -> Result<Judgement> {
-    let scratch = tempfile::Builder::new()
-        .prefix("gungnir-judge-")
-        .tempdir()
-        .wrap_err("creating grading scratch")?;
+    let scratch = scratch()?;
     let work = scratch.path().join("work");
     tree::copy(workspace, &work, language.ignore())?;
     let complexity = complexity::measure(language, &work).await?;
@@ -86,6 +83,22 @@ pub async fn judge(
         BuildOutcome::Failed { .. } | BuildOutcome::Fault { .. } => BTreeMap::new(),
     };
     Ok(Judgement::new(build, cases, complexity))
+}
+
+/// Measures the complexity of `workspace` as [`judge`] does, on a scratch copy of it, and
+/// builds and runs nothing.
+async fn recount(language: &Language, workspace: &Path) -> Result<Option<Complexity>> {
+    let scratch = scratch()?;
+    let work = scratch.path().join("work");
+    tree::copy(workspace, &work, language.ignore())?;
+    complexity::measure(language, &work).await
+}
+
+fn scratch() -> Result<tempfile::TempDir> {
+    tempfile::Builder::new()
+        .prefix("gungnir-judge-")
+        .tempdir()
+        .wrap_err("creating grading scratch")
 }
 
 /// Runs commands in offline sandboxes over one scratch copy of a workspace, with the

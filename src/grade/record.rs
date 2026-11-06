@@ -1,6 +1,9 @@
 //! A committed grade and the inputs it was made from, so a later phase can tell a stale grade
 //! by comparing the stored inputs with the current ones.
-use super::judgement::{Judgement, duration};
+use super::{
+    complexity::Complexity,
+    judgement::{Judgement, duration},
+};
 use crate::{
     language::Language,
     provenance::SessionId,
@@ -49,6 +52,14 @@ impl GradeRecord {
 
     pub fn judgement(&self) -> &Judgement {
         &self.judgement
+    }
+
+    /// The same grade with `complexity`, measured again from the workspace it judged.
+    pub(super) fn recounted(self, complexity: Option<Complexity>) -> Self {
+        Self {
+            judgement: self.judgement.recounted(complexity),
+            ..self
+        }
     }
 }
 
