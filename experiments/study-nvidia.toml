@@ -33,7 +33,7 @@ wall = "4h"
 idle = "30m"
 
 [concurrency]
-nvidia = 5
+nvidia = 3
 
 [[systems]]
 model = "nemotron-3.5-super-vl"
