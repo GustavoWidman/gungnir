@@ -206,6 +206,11 @@ pub struct TokenUsage {
 }
 
 impl TokenUsage {
+    /// Every token once, in every bucket: `reasoning` is part of `output`.
+    pub fn count(&self) -> u64 {
+        self.input + self.cache_read + self.cache_write + self.cache_write_long + self.output
+    }
+
     /// Each bucket of `self` less the same bucket of `other`, floored at zero.
     fn saturating_sub(self, other: Self) -> Self {
         Self {

@@ -1,7 +1,7 @@
 //! List prices of the tokens agents spent, from the catalog's dated price table.
 use crate::{
     catalog::{Catalog, Rate, System},
-    harness::{Granularity, Harness},
+    harness::{Granularity, Harness, TokenUsage},
     run::{Sample, Tokens},
 };
 use chrono::NaiveDate;
@@ -112,7 +112,7 @@ impl<'a> PriceList<'a> {
         let api_model = sample.model.as_deref().unwrap_or(system.api_model());
         let Some(model) = self.catalog.served(system.backend(), api_model) else {
             return Ok(Cost {
-                unpriced: total(&tokens),
+                unpriced: TokenUsage::from(tokens).count(),
                 ..Cost::default()
             });
         };
@@ -179,11 +179,6 @@ impl Prompt {
             Some(Granularity::Request) | None => Self::Unknown,
         }
     }
-}
-
-/// Every token once: `reasoning` is part of `output`.
-fn total(tokens: &Tokens) -> u64 {
-    tokens.input + tokens.cache_read + tokens.cache_write + tokens.cache_write_long + tokens.output
 }
 
 #[cfg(test)]
