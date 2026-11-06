@@ -2,7 +2,7 @@
 use crate::{
     catalog::SystemId,
     experiment::Experiment,
-    grade::{self, Graded, Judgement, Outcome, Verdict},
+    grade::{self, Counting, Graded, Judgement, Outcome, Verdict},
     id::{BackendId, LanguageId, Rep, ScenarioId, WorkloadId},
     language::Language,
     lifecycle::{self, Current, Lifecycle},
@@ -143,7 +143,8 @@ enum Command {
         #[arg(long, value_name = "ID")]
         workload: Option<WorkloadId>,
     },
-    /// Count each system's trials by stage, and the stale ones.
+    /// Count each system's trials by stage, the stale ones, and those whose current grade has a
+    /// complexity that grade would recount.
     Status {
         /// The experiment file, such as experiments/smoke.toml.
         experiment: PathBuf,
@@ -210,7 +211,11 @@ impl Cli {
                 let experiment = Experiment::load(&experiment)?;
                 let runtime = runtime()?;
                 let (toolchains, _) = probed(experiment.languages(), &runtime)?;
-                print!("{}", StatusTable(&status(&experiment, &toolchains)?));
+                let counting = runtime.block_on(Counting::probe(experiment.languages()))?;
+                print!(
+                    "{}",
+                    StatusTable(&status(&experiment, &toolchains, &counting)?)
+                );
                 Ok(())
             }
             Command::Report {
@@ -1022,6 +1027,9 @@ struct Counts {
     measured: usize,
     /// Trials with a committed record made from other inputs than the current ones.
     stale: usize,
+    /// Trials whose grade is current but whose complexity was counted otherwise than measuring
+    /// would count it now, which `grade` recounts.
+    recount: usize,
 }
 
 impl Add for Counts {
@@ -1035,12 +1043,18 @@ impl Add for Counts {
             failed: self.failed + other.failed,
             measured: self.measured + other.measured,
             stale: self.stale + other.stale,
+            recount: self.recount + other.recount,
         }
     }
 }
 
-/// Counts each system's trials, in the order the experiment lists the systems.
-fn status(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<(SystemId, Counts)>> {
+/// Counts each system's trials, in the order the experiment lists the systems, judging each
+/// complexity against `counting`.
+fn status(
+    experiment: &Experiment,
+    toolchains: &Toolchains,
+    counting: &Counting,
+) -> Result<Vec<(SystemId, Counts)>> {
     let mut systems: Vec<(SystemId, Counts)> = experiment
         .systems()
         .iter()
@@ -1070,6 +1084,9 @@ fn status(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<(Syste
             }
         }
         counts.stale += usize::from(lifecycle.stale.is_some());
+        counts.recount += usize::from(lifecycle.current_grade().is_some_and(|grade| {
+            !counting.is_current(current.language(), grade.judgement().complexity())
+        }));
     }
     Ok(systems)
 }
@@ -1080,7 +1097,7 @@ struct StatusTable<'a>(&'a [(SystemId, Counts)]);
 impl fmt::Display for StatusTable<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let header = [
-            "system", "pending", "ran", "pass", "fail", "measured", "stale",
+            "system", "pending", "ran", "pass", "fail", "measured", "stale", "recount",
         ];
         let total = self
             .0
@@ -1096,6 +1113,7 @@ impl fmt::Display for StatusTable<'_> {
                 failed,
                 measured,
                 stale,
+                recount,
             } = counts;
             let n = |count: usize| count.to_string();
             rows.push([
@@ -1106,6 +1124,7 @@ impl fmt::Display for StatusTable<'_> {
                 n(failed),
                 n(measured),
                 n(stale),
+                n(recount),
             ]);
         }
         write_rows(f, &rows)
@@ -1712,7 +1731,8 @@ mod tests {
         );
         write(repo.root.path(), "scenarios/echo/hidden/edge.out", "x\n");
 
-        let rows = status(&repo.experiment(), &repo.toolchains).unwrap();
+        let counting = Counting::with_lizard("1.24.1");
+        let rows = status(&repo.experiment(), &repo.toolchains, &counting).unwrap();
         let counts: Vec<(String, Counts)> = rows
             .iter()
             .map(|(system, counts)| (system.to_string(), *counts))
@@ -1742,11 +1762,11 @@ mod tests {
         assert_eq!(
             header,
             [
-                "system", "pending", "ran", "pass", "fail", "measured", "stale"
+                "system", "pending", "ran", "pass", "fail", "measured", "stale", "recount"
             ]
         );
         let total: Vec<&str> = table.lines().last().unwrap().split_whitespace().collect();
-        assert_eq!(total, ["total", "1", "0", "1", "0", "0", "1"]);
+        assert_eq!(total, ["total", "1", "0", "1", "0", "0", "1", "0"]);
     }
 
     #[tokio::test]
@@ -1759,7 +1779,8 @@ mod tests {
         fixture::commit_grade(&repo, &opus).await;
         fixture::commit_measure(&repo, &opus, Protocol::DEFAULT);
         let measured_and_stale = |repo: &fixture::Repo| {
-            let rows = status(&repo.experiment(), &repo.toolchains).unwrap();
+            let counting = Counting::with_lizard("1.24.1");
+            let rows = status(&repo.experiment(), &repo.toolchains, &counting).unwrap();
             let total = rows.iter().fold(Counts::default(), |sum, (_, c)| sum + *c);
             (total.measured, total.stale)
         };
@@ -1771,5 +1792,45 @@ mod tests {
         };
         fixture::declare_protocol(&repo, longer);
         assert_eq!(measured_and_stale(&repo), (1, 1));
+    }
+
+    #[tokio::test]
+    async fn status_counts_a_current_grade_whose_complexity_grade_would_recount() {
+        use crate::{run::fixture, store::read_record, trial::Phase};
+        let repo = fixture::Repo::new();
+        let experiment = repo.experiment();
+        let opus = fixture::trial(&experiment, "opus");
+        fixture::commit_run(&repo, &opus, &[("main.py", "print(input())\n")]);
+        fixture::commit_grade(&repo, &opus).await;
+        let root = repo.root.path();
+        write(
+            root,
+            "languages/python/language.toml",
+            testing::LANGUAGE_TOML,
+        );
+        let counted = |lizard: &str| {
+            let rows = status(
+                &repo.experiment(),
+                &repo.toolchains,
+                &Counting::with_lizard(lizard),
+            );
+            let total = rows
+                .unwrap()
+                .iter()
+                .fold(Counts::default(), |sum, (_, c)| sum + *c);
+            (total.passed, total.stale, total.recount)
+        };
+        assert_eq!(counted("1.24.1"), (1, 0, 1));
+
+        let grade = experiment.results().trial(&opus).phase(Phase::Grade);
+        let mut stored: serde_json::Value = read_record(&grade).unwrap().unwrap();
+        stored["judgement"]["complexity"] =
+            serde_json::json!({ "version": 2, "lizard": "1.24.1", "files": {} });
+        write(&grade, "record.json", stored.to_string());
+        assert_eq!(counted("1.24.1"), (1, 0, 0));
+        assert_eq!(counted("1.25.0"), (1, 0, 1));
+
+        write(root, "scenarios/echo/hidden/edge.out", "x\n");
+        assert_eq!(counted("1.25.0"), (1, 1, 0));
     }
 }
