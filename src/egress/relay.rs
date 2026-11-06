@@ -1,7 +1,8 @@
 //! The relay: the one kind of plain HTTP request the proxy serves. An agent whose backend
 //! relays sends its model requests to [`Relay::URL`] and holds no key. The relay forwards each
-//! request over TLS to the backend's endpoint with the key, tries again while the endpoint
-//! refuses it before sending any body, and then streams the answer back unbuffered.
+//! request from the host to the backend's endpoint, over TLS for an `https://` one, with the
+//! key, tries again while the endpoint refuses it before sending any body, and then streams
+//! the answer back unbuffered.
 
 use std::{
     error::Error,
@@ -127,10 +128,7 @@ impl Relay {
         let mut authorization = HeaderValue::from_str(&format!("Bearer {}", key.expose()))
             .map_err(|_| eyre!("the key for {endpoint} is not a valid header value"))?;
         authorization.set_sensitive(true);
-        let client = reqwest::Client::builder()
-            .connect_timeout(CONNECT_TIMEOUT)
-            .redirect(redirect::Policy::none())
-            .no_proxy()
+        let client = client_builder()
             .build()
             .wrap_err("building the relay's HTTP client")?;
         let seed = SystemTime::now()
@@ -152,6 +150,13 @@ impl Relay {
     #[cfg(test)]
     pub(super) fn with_backoff(self, backoff: Backoff) -> Self {
         Self { backoff, ..self }
+    }
+
+    /// Also trusts `root`, so that a test can reach an endpoint on loopback over TLS.
+    #[cfg(test)]
+    pub(super) fn trusting(self, root: reqwest::Certificate) -> Self {
+        let client = client_builder().add_root_certificate(root).build().unwrap();
+        Self { client, ..self }
     }
 
     /// Whether a request in absolute form is addressed to the relay.
@@ -324,6 +329,14 @@ impl Relay {
     }
 }
 
+/// How every relay's client connects: never through a proxy, and never following a redirect.
+fn client_builder() -> reqwest::ClientBuilder {
+    reqwest::Client::builder()
+        .connect_timeout(CONNECT_TIMEOUT)
+        .redirect(redirect::Policy::none())
+        .no_proxy()
+}
+
 /// A request body, or the answer that refuses the request instead.
 enum Body {
     Read(Vec<u8>),
@@ -469,9 +482,16 @@ mod tests {
     };
 
     use tokio::{
-        io::{AsyncBufReadExt, BufReader},
-        net::{TcpListener, TcpStream},
+        io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, BufReader},
+        net::TcpListener,
         sync::Notify,
+    };
+    use tokio_rustls::{
+        TlsAcceptor,
+        rustls::{
+            ServerConfig,
+            pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer},
+        },
     };
 
     use super::*;
@@ -520,15 +540,41 @@ mod tests {
         }
     }
 
-    /// A plain HTTP endpoint on loopback that answers the n-th request with `script[n]`, and
-    /// the last answer for every request after the script.
+    /// An HTTP endpoint on a loopback port that answers the n-th request with `script[n]`,
+    /// and the last answer for every request after the script.
     struct Upstream {
         port: u16,
         seen: Arc<Mutex<Vec<Seen>>>,
+        /// The certificate the endpoint serves TLS with for `localhost`, when it serves TLS.
+        tls: Option<reqwest::Certificate>,
     }
 
     impl Upstream {
+        /// A plain HTTP endpoint, reached by its IPv4 address.
         async fn start(script: Vec<Answer>) -> Self {
+            Self::serve(script, None).await
+        }
+
+        /// An endpoint that serves TLS for `localhost` with a self-signed certificate.
+        async fn start_tls(script: Vec<Answer>) -> Self {
+            let certified = rcgen::generate_simple_self_signed(["localhost".to_owned()]).unwrap();
+            let key = PrivatePkcs8KeyDer::from(certified.signing_key.serialize_der());
+            let config = ServerConfig::builder()
+                .with_no_client_auth()
+                .with_single_cert(
+                    vec![certified.cert.der().clone()],
+                    PrivateKeyDer::Pkcs8(key),
+                )
+                .unwrap();
+            let root = reqwest::Certificate::from_der(certified.cert.der()).unwrap();
+            let acceptor = TlsAcceptor::from(Arc::new(config));
+            Self {
+                tls: Some(root),
+                ..Self::serve(script, Some(acceptor)).await
+            }
+        }
+
+        async fn serve(script: Vec<Answer>, acceptor: Option<TlsAcceptor>) -> Self {
             let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
             let port = listener.local_addr().unwrap().port();
             let seen = Arc::new(Mutex::new(Vec::new()));
@@ -542,20 +588,43 @@ mod tests {
                         let count = log.lock().unwrap().len();
                         script[count.min(script.len() - 1)].clone()
                     };
-                    let log = log.clone();
+                    let (log, acceptor) = (log.clone(), acceptor.clone());
                     tokio::spawn(async move {
-                        let mut reader = BufReader::new(stream);
-                        let request = read_request(&mut reader).await;
-                        log.lock().unwrap().push(request);
-                        answer.write(reader.get_mut()).await;
+                        match acceptor {
+                            Some(acceptor) => {
+                                let Ok(stream) = acceptor.accept(stream).await else {
+                                    return;
+                                };
+                                respond(stream, answer, &log).await;
+                            }
+                            None => respond(stream, answer, &log).await,
+                        }
                     });
                 }
             });
-            Self { port, seen }
+            Self {
+                port,
+                seen,
+                tls: None,
+            }
         }
 
         fn endpoint(&self) -> String {
-            format!("http://127.0.0.1:{}/v1", self.port)
+            match self.tls {
+                Some(_) => format!("https://localhost:{}/v1", self.port),
+                None => format!("http://127.0.0.1:{}/v1", self.port),
+            }
+        }
+
+        /// The relay a proxy holds for this endpoint.
+        fn relay(&self, backoff: Backoff) -> Relay {
+            let relay = Relay::new(&self.endpoint(), &Secret::new(KEY.to_owned()))
+                .unwrap()
+                .with_backoff(backoff);
+            match &self.tls {
+                Some(root) => relay.trusting(root.clone()),
+                None => relay,
+            }
         }
 
         fn seen(&self) -> std::sync::MutexGuard<'_, Vec<Seen>> {
@@ -563,7 +632,19 @@ mod tests {
         }
     }
 
-    async fn read_request(reader: &mut BufReader<TcpStream>) -> Seen {
+    /// Reads one request from `stream`, logs it and writes `answer`.
+    async fn respond(
+        stream: impl AsyncRead + AsyncWrite + Unpin,
+        answer: Answer,
+        log: &Mutex<Vec<Seen>>,
+    ) {
+        let mut reader = BufReader::new(stream);
+        let request = read_request(&mut reader).await;
+        log.lock().unwrap().push(request);
+        answer.write(reader.get_mut()).await;
+    }
+
+    async fn read_request(reader: &mut (impl AsyncBufRead + Unpin)) -> Seen {
         let mut line = String::new();
         reader.read_line(&mut line).await.unwrap();
         let mut fields = Vec::new();
@@ -598,7 +679,7 @@ mod tests {
                                transfer-encoding: chunked\r\nconnection: close\r\n\r\n";
 
     impl Answer {
-        async fn write(self, stream: &mut TcpStream) {
+        async fn write(self, stream: &mut (impl AsyncWrite + Unpin)) {
             match self {
                 Self::Whole(status, fields, body) => {
                     let head = format!(
@@ -635,14 +716,18 @@ mod tests {
 
     impl Fixture {
         async fn new(endpoint: &str, backoff: Backoff) -> Self {
+            let relay = Relay::new(endpoint, &Secret::new(KEY.to_owned()))
+                .unwrap()
+                .with_backoff(backoff);
+            Self::serving(relay).await
+        }
+
+        async fn serving(relay: Relay) -> Self {
             let dir = tempfile::tempdir().unwrap();
             let (socket, log) = (
                 dir.path().join("egress.sock"),
                 dir.path().join("egress.jsonl"),
             );
-            let relay = Relay::new(endpoint, &Secret::new(KEY.to_owned()))
-                .unwrap()
-                .with_backoff(backoff);
             let proxy = Proxy::start(&socket, Allowlist::new(["example.com"]), Some(relay), &log)
                 .await
                 .unwrap();
@@ -841,6 +926,58 @@ mod tests {
                 <= chrono::TimeDelta::from_std(budget).unwrap()
                     + chrono::TimeDelta::milliseconds(200)
         );
+    }
+
+    #[tokio::test]
+    async fn relays_to_an_endpoint_on_its_own_port_over_plain_http_or_tls() {
+        let script = || {
+            vec![
+                Answer::Whole(429, "", REFUSAL),
+                Answer::Whole(200, "", "{}"),
+            ]
+        };
+        for upstream in [
+            Upstream::start(script()).await,
+            Upstream::start_tls(script()).await,
+        ] {
+            let endpoint = upstream.endpoint();
+            let fixture = Fixture::serving(upstream.relay(QUICK)).await;
+
+            let (head, mut body) = fixture.ask(&post("/responses")).await;
+            assert_eq!(head[0], "HTTP/1.1 200 OK", "{endpoint}");
+            assert_eq!(next_chunk(&mut body).await.as_deref(), Some("{}"));
+            assert_eq!(next_chunk(&mut body).await, None);
+            drop(body);
+
+            let host = match upstream.tls {
+                Some(_) => "localhost",
+                None => "127.0.0.1",
+            };
+            {
+                let seen = upstream.seen();
+                assert_eq!(seen.len(), 2, "{endpoint}");
+                for request in seen.iter() {
+                    assert_eq!(request.line, "POST /v1/responses HTTP/1.1");
+                    assert_eq!(request.body, BODY);
+                    assert_eq!(
+                        request.field("authorization"),
+                        Some("Bearer nvapi-relay-test")
+                    );
+                    let authority = format!("{host}:{}", upstream.port);
+                    assert_eq!(request.field("host"), Some(authority.as_str()));
+                }
+            }
+            let records = fixture.records().await;
+            assert_eq!(
+                summary(&records),
+                [(1, 1, Some(429), true), (1, 2, Some(200), false)],
+                "{endpoint}"
+            );
+            for record in &records {
+                assert_eq!(record.host.as_deref(), Some(host));
+                assert_eq!(record.port, Some(upstream.port));
+            }
+        }
     }
 
     #[tokio::test]
