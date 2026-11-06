@@ -157,7 +157,7 @@ def main(report, runs, out):
         ["system", "scenario", "language", "rep"]).log_runtime.mean()
     scored = trials.join(runtime, on=["system", "scenario", "language", "rep"]).assign(
         log_tokens=np.log(trials.tokens), log_wall=np.log(trials.wall_s),
-        log_ccn=np.log(trials.ccn_total.clip(lower=1)))
+        log_ccn=np.log(trials.ccn_all.clip(lower=1)))
     index = stats.language_index(scored, models, LANGUAGES)
     n["index"] = {(SHORT[k] if k in SHORT else k): v for k, v in index.items()}
     by_index = sorted(LANGUAGES, key=lambda lang: -index["all"][lang]["score"])
