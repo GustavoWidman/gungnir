@@ -1,12 +1,14 @@
-//! Files on disk: content digests, crash-safe writes, directory commits and locks, and the
-//! readers every loader shares.
+//! Files on disk: content digests, crash-safe writes, directory commits and replacements,
+//! locks, and the readers every loader shares.
 mod digest;
 mod lock;
 mod partial;
+mod replace;
 
 pub use digest::Digest;
 pub use lock::Lock;
 pub use partial::{PartialDir, read_record, rewrite_record, sweep_partial};
+pub use replace::{MANIFEST, replace_dir};
 
 use eyre::{Report, Result, WrapErr, eyre};
 use serde::{Serialize, de::DeserializeOwned};

@@ -13,22 +13,17 @@ use crate::{
     lifecycle::{Current, Lifecycle, Stage},
     provenance::{Session, SessionId},
     run::Reason,
-    store::{write_atomic, write_json},
+    store::replace_dir,
     toolchains::Toolchains,
 };
 use chrono::{DateTime, NaiveDate, Utc};
-use eyre::{Result, WrapErr, ensure, eyre};
+use eyre::{Result, WrapErr, ensure};
 use serde::Serialize;
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fs,
-    io::ErrorKind,
     path::{Path, PathBuf},
 };
 use tables::{Tables, Trial};
-
-/// Written last, so a directory holding it is a whole report.
-const MANIFEST: &str = "manifest.json";
 
 /// `manifest.json`: what a report was made from and how.
 #[derive(Debug, Serialize)]
@@ -101,7 +96,11 @@ pub fn report(
         experiments: reported,
         tables: files.iter().map(|(name, rows, _)| (*name, *rows)).collect(),
     };
-    publish(out, &files, &manifest)?;
+    let texts: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(name, _, text)| (*name, text.as_str()))
+        .collect();
+    replace_dir(out, "report", &texts, &manifest)?;
     Ok(manifest)
 }
 
@@ -151,55 +150,4 @@ fn read(experiment: &Experiment, toolchains: &Toolchains) -> Result<Vec<Trial>> 
         trials.push(trial);
     }
     Ok(trials)
-}
-
-/// Builds the report in `<out>.partial`, its manifest last, then swaps it in for `out`. A crash
-/// leaves the old report or the new one at `out`, or neither, with the leftovers beside it
-/// swept by the next report.
-fn publish(out: &Path, files: &[(&'static str, usize, String)], manifest: &Manifest) -> Result<()> {
-    let name = out
-        .file_name()
-        .ok_or_else(|| eyre!("{} does not name a directory", out.display()))?;
-    let beside = |suffix: &str| {
-        let mut sibling = name.to_owned();
-        sibling.push(suffix);
-        out.with_file_name(sibling)
-    };
-    let (partial, old) = (beside(".partial"), beside(".old"));
-    ensure!(
-        is_report_or_empty(out)?,
-        "{} is not a report; refusing to replace it",
-        out.display()
-    );
-    remove(&partial)?;
-    remove(&old)?;
-    for (file, _, text) in files {
-        write_atomic(&partial.join(file), text.as_bytes())?;
-    }
-    write_json(&partial.join(MANIFEST), manifest)?;
-    match fs::rename(out, &old) {
-        Err(err) if err.kind() == ErrorKind::NotFound => {}
-        renamed => renamed.wrap_err_with(|| format!("moving {} aside", out.display()))?,
-    }
-    fs::rename(&partial, out)
-        .wrap_err_with(|| format!("renaming {} to {}", partial.display(), out.display()))?;
-    remove(&old)
-}
-
-/// Whether `dir` is missing, empty or a whole report.
-fn is_report_or_empty(dir: &Path) -> Result<bool> {
-    match fs::read_dir(dir) {
-        Ok(mut entries) => Ok(entries.next().is_none() || dir.join(MANIFEST).is_file()),
-        Err(err) if err.kind() == ErrorKind::NotFound => Ok(true),
-        Err(err) => Err(err).wrap_err_with(|| format!("listing {}", dir.display())),
-    }
-}
-
-fn remove(dir: &Path) -> Result<()> {
-    match fs::remove_dir_all(dir) {
-        Err(err) if err.kind() != ErrorKind::NotFound => {
-            Err(err).wrap_err_with(|| format!("removing {}", dir.display()))
-        }
-        _ => Ok(()),
-    }
 }

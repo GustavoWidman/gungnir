@@ -35,7 +35,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `src/scenario.rs` loads `scenarios/` into `Scenario` values, with digests of the brief, the hidden suite, the workloads and each reference.
 - `src/experiment.rs` loads an experiment against the repository that holds it, with its harness pins, optional `[machine]` pin and optional `[measure]` timing protocol, which `Experiment::protocol` serves (`Protocol::DEFAULT` without one), validates it, and expands it into `TrialKey` values with `Experiment::trials`. A `[[systems]]` entry may set its own `repetitions`, which `Experiment::repetitions_of` serves.
 - `src/trial.rs` defines `Phase`, `TrialKey`, `ResultsDir`, `TrialDir` and `AttemptDir`. Paths under `results/<experiment>/` are named there and nowhere else. `ResultsDir::retract` withdraws a committed directory through the phase's scratch, so a crash never leaves one half deleted.
-- `src/store.rs` and `src/store/` hold the file mechanics: `Digest`, atomic writes, `read_json`, the `PartialDir` commit protocol with `rewrite_record`, which replaces a committed record in place, and the `Lock` used for phase locks.
+- `src/store.rs` and `src/store/` hold the file mechanics: `Digest`, atomic writes, `read_json`, the `PartialDir` commit protocol with `rewrite_record`, which replaces a committed record in place, `replace_dir`, which swaps an output directory in for the old one with its `manifest.json` written last, and the `Lock` used for phase locks.
 - `src/provenance.rs` records one `Session` per invocation in `sessions/<id>.json`, with the harness versions it probed and the store paths of the toolchains it used.
 - `src/quota.rs` reads a backend's `QuotaSource` from the host with the backend's `Key`, through `reqwest` over rustls, into quota `Window`s named by their length (`5h`). The parse of Z.ai's monitor is a pure function over the response bytes, tested on a captured response in `tests/fixtures/quota/`, and every error quotes the body redacted.
 - `src/secret.rs` holds `Secret<T>`, whose `Debug` prints nothing, `EnvValue` for sandbox environments, and redaction of secret values from bytes and files.
@@ -79,7 +79,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 1. `cli` loads every experiment and starts a `Session` for the report's own provenance. `report::report` refuses an experiment given twice.
 2. `read` derives each trial's `Lifecycle` and keeps the trials whose committed run is a sample.
 3. `Tables::add` folds each trial into rows, pricing every usage sample with the experiment's catalog at the report's price date.
-4. `publish` writes the tables into `<out>.partial`, writes `manifest.json` last, and swaps the directory in for `<out>`.
+4. `store::replace_dir` writes the tables into `<out>.partial`, writes `manifest.json` last, and swaps the directory in for `<out>`.
 
 ## Toolchain sets
 

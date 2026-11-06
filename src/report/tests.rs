@@ -6,12 +6,12 @@ use crate::{
         Protocol, Timed,
     },
     run::fixture::{self, Repo},
-    store::{Digest, PartialDir, read_record},
+    store::{Digest, MANIFEST, PartialDir, read_record},
     testing::{self, write},
     trial::{FINAL, Phase, TrialKey},
 };
 use serde_json::{Value, json};
-use std::path::Path;
+use std::{fs, path::Path};
 use tempfile::TempDir;
 
 const DISCARDING_SESSION: &str = "20261103T110000Z-7";
