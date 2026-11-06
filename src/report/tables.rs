@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     catalog::System,
-    grade::{Abnormal, Crash, GradeRecord, Outcome as CaseOutcome, Verdict},
+    grade::{Abnormal, Complexity, Crash, GradeRecord, Outcome as CaseOutcome, Verdict},
     harness::TokenUsage,
     id::WorkloadId,
     measure::{self, MeasureRecord, Side},
@@ -137,10 +137,18 @@ row! {
         pub cases_passed: Option<usize>,
         pub cases_total: Option<usize>,
         pub build_s: Option<f64>,
+        /// The functions lizard found, with each file's top-level code as one more from
+        /// complexity version 2.
         pub functions: Option<usize>,
+        /// The sum of their cyclomatic complexities.
         pub ccn_total: Option<u64>,
         pub ccn_max: Option<u32>,
         pub nloc: Option<u64>,
+        /// The version of the counting that measured the complexity. Version 1 counted only
+        /// the code inside functions.
+        pub complexity_version: Option<u32>,
+        /// The version of the lizard that measured it, empty before version 2.
+        pub lizard_version: Option<String>,
         pub measure_session: Option<String>,
         /// The one-minute load average when timing started and when it ended. Measuring
         /// refuses to start at 1.0 or more unless told the machine may be busy.
@@ -522,6 +530,8 @@ impl TrialRow {
             ccn_total: complexity.map(|_| functions().map(|f| u64::from(f.ccn)).sum()),
             ccn_max: functions().map(|function| function.ccn).max(),
             nloc: complexity.map(|c| c.files.values().map(|file| u64::from(file.nloc)).sum()),
+            complexity_version: complexity.map(Complexity::version),
+            lizard_version: complexity.and_then(Complexity::lizard).map(str::to_owned),
             measure_session: measure
                 .as_ref()
                 .map(|measure| measure.session().to_string()),

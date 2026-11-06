@@ -6,7 +6,7 @@ use crate::{
         Protocol, Timed,
     },
     run::fixture::{self, Repo},
-    store::{Digest, PartialDir},
+    store::{Digest, PartialDir, read_record},
     testing::{self, write},
     trial::{FINAL, Phase, TrialKey},
 };
@@ -527,4 +527,52 @@ async fn only_a_current_grade_is_tabled() {
     let cases = table(out.path(), "cases.csv");
     assert!(!cases.is_empty());
     assert!(cases.iter().all(|row| row["system"] == opus_id));
+}
+
+#[tokio::test]
+async fn each_trial_names_how_its_complexity_was_counted() {
+    let repo = Repo::new();
+    let experiment = repo.experiment();
+    let function = |name: &str, line: u32, ccn: u32| json!({ "name": name, "line": line, "ccn": ccn, "nloc": 3, "tokens": 20, "params": 0 });
+    let older =
+        json!({ "files": { "main.py": { "nloc": 4, "functions": [function("f", 1, 2)] } } });
+    let counted = json!({
+        "version": 2,
+        "lizard": "1.24.1",
+        "files": { "main.py": { "nloc": 4, "functions": [function("f", 1, 2), function("*global*", 0, 5)] } },
+    });
+    for (model, complexity) in [("opus", older), ("luna", counted)] {
+        let trial = fixture::trial(&experiment, model);
+        fixture::commit_run(&repo, &trial, &[("main.py", "print(input())\n")]);
+        fixture::commit_grade(&repo, &trial).await;
+        let grade = experiment.results().trial(&trial).phase(Phase::Grade);
+        let mut stored: Value = read_record(&grade).unwrap().unwrap();
+        stored["judgement"]["complexity"] = complexity;
+        write(&grade, "record.json", stored.to_string());
+    }
+    let out = TempDir::new().unwrap();
+
+    write_report(&repo, out.path()).unwrap();
+
+    let trials = table(out.path(), "trials.csv");
+    let columns = [
+        "model",
+        "functions",
+        "ccn_total",
+        "ccn_max",
+        "complexity_version",
+        "lizard_version",
+    ];
+    assert_eq!(
+        cells(&trials, &columns),
+        [
+            ["opus", "1", "2", "2", "1", ""],
+            ["luna", "2", "7", "5", "2", "1.24.1"]
+        ]
+    );
+    let functions = table(out.path(), "functions.csv");
+    assert_eq!(
+        cells(&functions, &["function", "line", "ccn"]),
+        [["f", "1", "2"], ["f", "1", "2"], ["*global*", "0", "5"]]
+    );
 }
