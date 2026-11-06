@@ -10,7 +10,10 @@ use crate::{
     },
     id::AttemptNo,
     lifecycle::Current,
-    measure::{Identity, MeasureInputs, Protocol},
+    measure::{
+        self, Block, Comparison, Identity, Load, Machine, MeasureInputs, MeasureRecord, PeakMemory,
+        Protocol, Timed,
+    },
     provenance::SessionId,
     sandbox::{
         Backend, BoxFuture, Collected, Exit, Fault, Finished, HOME, Input, Io, Output, Spec, WORK,
@@ -401,6 +404,80 @@ pub fn commit_measure_on(
         },
         "workloads": {},
     });
+    let partial = PartialDir::begin(&dir.phase(Phase::Measure)).unwrap();
+    partial.commit(&record).unwrap();
+}
+
+/// Commits a measurement of `trial` made under `protocol` on this machine: on `large` the
+/// candidate took twice as long as the reference, 1s against 0.5s, and on `small` it printed the
+/// wrong output.
+pub fn commit_timed(repo: &Repo, trial: &TrialKey, protocol: Protocol) {
+    let experiment = repo.experiment();
+    let dir = experiment.results().trial(trial);
+    let current = Current::of(&experiment, trial, &repo.toolchains).unwrap();
+    let inputs = MeasureInputs::new(
+        current.language(),
+        &repo.toolchains,
+        current.scenario(),
+        &dir.final_workspace(),
+        &protocol,
+    )
+    .unwrap();
+    let runs = |walls: &[f64]| -> Vec<measure::Sample> {
+        walls
+            .iter()
+            .map(|&wall| measure::Sample {
+                wall,
+                user: wall,
+                system: 0.0,
+                peak_memory: 3 << 20,
+                instructions: None,
+            })
+            .collect()
+    };
+    let large = Timed {
+        blocks: vec![
+            Block {
+                reference: runs(&[0.5, 0.5]),
+                candidate: runs(&[1.0, 1.0]),
+            },
+            Block {
+                candidate: runs(&[1.0, 1.0]),
+                reference: runs(&[0.5, 0.5]),
+            },
+        ],
+        peak_memory: PeakMemory {
+            reference: Some(1 << 20),
+            candidate: Some(2 << 20),
+        },
+    };
+    let here = Identity::here().unwrap();
+    let comparison = Comparison {
+        machine: Machine {
+            cpu: here.cpu.clone(),
+            host: here.host.clone(),
+            cpus: 1,
+            core: 0,
+            isolated: false,
+            governor: None,
+            clock: None,
+            turbo: None,
+            kernel: "7.3.0".into(),
+            perf_event_paranoid: Some(3),
+            load: Load {
+                start: [0.5, 0.25, 0.25],
+                end: [0.75, 0.25, 0.25],
+            },
+        },
+        workloads: BTreeMap::from([
+            (testing::id("large"), measure::Outcome::Timed(large)),
+            (
+                testing::id("small"),
+                measure::Outcome::CandidateFailed(measure::Failure::WrongOutput),
+            ),
+        ]),
+    };
+    let record = MeasureRecord::new(session(), inputs, comparison);
     let partial = PartialDir::begin(&dir.phase(Phase::Measure)).unwrap();
     partial.commit(&record).unwrap();
 }
