@@ -81,7 +81,7 @@ def main(report, runs, out):
         n["logistic"] = stats.logistic(luna)
 
     pairs = [("javascript", "typescript"), ("python", "rust"), ("c", "cpp"), ("python", "go"),
-             ("rust", "go"), ("python", "typescript")]
+             ("rust", "go"), ("python", "typescript"), ("python", "javascript")]
     n["paired"] = {SHORT[m]: {f"{a}-{b}": stats.paired(d, a, b) for a, b in pairs}
                    for m, d in per.items()}
 

@@ -32,7 +32,12 @@ def replay(bwrap, trial_dir, case_in):
     except subprocess.TimeoutExpired:
         return "Timeout"
     lines = done.stderr.decode(errors="replace").strip().splitlines()
-    return re.split(r"[:(]", lines[-1], maxsplit=1)[0].strip() if lines else "None"
+    if not lines:
+        return "None"
+    # Python refuses to convert an integer of more than 4,300 digits to text by default.
+    if "integer string conversion" in lines[-1]:
+        return "IntDigitLimit"
+    return re.split(r"[:(]", lines[-1], maxsplit=1)[0].strip()
 
 
 def main(report, runs, scenarios, out):
