@@ -53,6 +53,11 @@
 #let speed(m, l) = n.speed.at(m).at(l).ratio
 #let byspeed(m) = langs.filter(l => l in n.speed.at(m)).sorted(key: l => speed(m, l))
 #let absolute(k, l) = n.speed_absolute.at(k).at(l)
+#let idx(k, l) = n.index.at(k).at(l)
+#let six = ("python", "javascript", "typescript", "go", "rust", "cpp")
+#let by-index(k) = langs.sorted(key: l => -idx(k, l).score)
+#let six-overlap(k) = calc.max(..six.map(l => idx(k, l).lo)) <= calc.min(..six.map(l => idx(k, l).hi))
+#let zig-c-last = ("luna", "terra", "haiku").all(k => by-index(k).slice(6) == ("c", "zig"))
 #let zig = n.diagnostic_kinds.zig
 #let rust = n.diagnostic_kinds.rust
 #let ts = n.diagnostic_kinds.typescript
@@ -71,7 +76,7 @@
       location: [São Paulo, Brazil]),
   ),
   abstract: [
-    Developers now hand whole programs to coding agents, and they still choose the language the agent writes. Two arguments compete over that choice: a strict compiler such as Rust's should catch an agent's mistakes before they ship, while Python and JavaScript dominate the code the models learned from. We tested both. Three models, GPT-6 Luna, GPT-6.1 Terra and Claude Haiku 5.5, driven through their vendors' command-line agents across reasoning-effort settings, wrote #num(n.data.trials) programs for eight specification-only tasks in eight languages. We graded each program against hidden tests, timed it against a reference implementation on isolated cores, and read every session's transcript for the compiler errors the agent saw. The two stronger models passed every hidden test in at least #pct(calc.min(lowest("terra"), lowest("haiku"))) of trials in every language. For the weakest, the language mattered mostly through the task: a big-integer type in the standard library moved pass rates more than any type system, and JavaScript and TypeScript, which differ only by the type checker, passed equally often. Python, the language the models have seen most, trailed JavaScript, TypeScript and Go, because #pct(outcome("luna", "python", "crash")) of its programs crashed, mostly at its runtime's limits on recursion depth and on printing large integers. Agents rarely tripped the Rust compiler. The compiler earned its keep in Zig, where every model wrote an older version of the language and spent #times(calc.min(..zig-tokens))–#times(calc.max(..zig-tokens)) the tokens of an average language to recover. Among the mainstream languages, Rust cost no more than Python. The language decides what a correct program costs and how fast it runs, far more than whether the agent gets it right.
+    Developers now hand whole programs to coding agents, and they still choose the language the agent writes. Two arguments compete over that choice: a strict compiler such as Rust's should catch an agent's mistakes before they ship, while Python and JavaScript dominate the code the models learned from. We tested both. Three models, GPT-6 Luna, GPT-6.1 Terra and Claude Haiku 5.5, driven through their vendors' command-line agents across reasoning-effort settings, wrote #num(n.data.trials) programs for eight specification-only tasks in eight languages. We graded each program against hidden tests, timed it against a reference implementation on isolated cores, and read every session's transcript for the compiler errors the agent saw. The two stronger models passed every hidden test in at least #pct(calc.min(lowest("terra"), lowest("haiku"))) of trials in every language. For the weakest, the language mattered mostly through the task: a big-integer type in the standard library moved pass rates more than any type system, and JavaScript and TypeScript, which differ only by the type checker, passed equally often. Python, the language the models have seen most, trailed JavaScript, TypeScript and Go, because #pct(outcome("luna", "python", "crash")) of its programs crashed, mostly at its runtime's limits on recursion depth and on printing large integers. Agents rarely tripped the Rust compiler. The compiler earned its keep in Zig, where every model wrote an older version of the language and spent #times(calc.min(..zig-tokens))–#times(calc.max(..zig-tokens)) the tokens of an average language to recover. On an index that folds correctness and cost into the tokens an agent spends per correct program, where an average language scores 100, six languages share the top, C scores #r0(idx("all", "c").score) and Zig #r0(idx("all", "zig").score). The language decides what a correct program costs and how fast it runs, far more than whether the agent gets it right.
   ],
   index-terms: ([coding agents], [programming languages], [type systems], [benchmarking], [large language models]),
   bibliography: bibliography("refs.bib", style: "ieee"),
@@ -93,13 +98,13 @@ The evidence for either view in the agent setting is thin. Function-level benchm
 
 To answer them we gave three models, GPT-6 Luna and GPT-6.1 Terra through the Codex CLI and Claude Haiku 5.5 through Claude Code, eight tasks specified only in prose: a big-integer calculator, an exact-cover solver, JSON path queries, an event-sourced ledger, a line diff, a small regular-expression engine, a fuel-constrained route planner and a stack virtual machine. Each task was posed in Python, JavaScript, TypeScript, Go, Rust, Zig, C and C++, at every reasoning-effort setting the models offer, and repeated over independent generations because none of the models can be seeded. Every program was graded against 73 to 120 hidden test cases per task and timed against a reference implementation in the same language on isolated, clock-pinned cores. We also parsed every session's transcript to count the compiler and type errors the agent met on the way. Three pairs of languages act as natural experiments. JavaScript and TypeScript share a runtime and a standard library and differ only by the type checker; Python and JavaScript are both dynamically typed and both among the most common languages in public code, but run on different runtimes; and Python and Rust sit at opposite ends of both arguments.
 
-The answer to the first question is no for correctness and yes for everything else. GPT-6.1 Terra passed every hidden test in #pct(lowest("terra"))–#pct(highest("terra")) of its trials in each language, and Claude Haiku 5.5 in #pct(lowest("haiku"))–#pct(highest("haiku")). GPT-6 Luna, the weakest model, passed #pr("luna", "all") overall and separated the languages, but mostly through the task: where the standard library offers arbitrary-precision integers, Luna's big-integer calculator passed in #pct(n.scenario_grid.at("bigint-calc").go) of Go trials, against #pct(n.scenario_grid.at("bigint-calc").rust) in Rust. JavaScript and TypeScript passed equally often, as did Python and Rust. Python, the most familiar language of all, trailed JavaScript, TypeScript and Go, and not for want of types: #pct(outcome("luna", "python", "crash")) of its programs crashed on a hidden test, against #pct(outcome("luna", "javascript", "crash")) in JavaScript, mostly at limits of Python's runtime on recursion depth and on printing large integers. The second question has a sharper answer than either argument expected. The agents seldom needed the Rust compiler, which stopped a build #r1(sess("luna", "rust", "failed_builds")) times per session for Luna and only #rust.borrow times in #rust.sessions sessions for an ownership or borrowing error. The compiler mattered in Zig, the least common language in the study and the one whose standard library changed most recently. Every model wrote Zig as it was a few releases ago and relied on the compiler to find out, at #times(calc.min(..zig-tokens)) to #times(calc.max(..zig-tokens)) the tokens of an average language for the same task. Training data showed up as price only at that far end: among the mainstream languages, Rust cost no more than Python or JavaScript.
+The answer to the first question is no for correctness and yes for everything else. GPT-6.1 Terra passed every hidden test in #pct(lowest("terra"))–#pct(highest("terra")) of its trials in each language, and Claude Haiku 5.5 in #pct(lowest("haiku"))–#pct(highest("haiku")). GPT-6 Luna, the weakest model, passed #pr("luna", "all") overall and separated the languages, but mostly through the task: where the standard library offers arbitrary-precision integers, Luna's big-integer calculator passed in #pct(n.scenario_grid.at("bigint-calc").go) of Go trials, against #pct(n.scenario_grid.at("bigint-calc").rust) in Rust. JavaScript and TypeScript passed equally often, as did Python and Rust. Python, the most familiar language of all, trailed JavaScript, TypeScript and Go, and not for want of types: #pct(outcome("luna", "python", "crash")) of its programs crashed on a hidden test, against #pct(outcome("luna", "javascript", "crash")) in JavaScript, mostly at limits of Python's runtime on recursion depth and on printing large integers. The second question has a sharper answer than either argument expected. The agents seldom needed the Rust compiler, which stopped a build #r1(sess("luna", "rust", "failed_builds")) times per session for Luna and only #rust.borrow times in #rust.sessions sessions for an ownership or borrowing error. The compiler mattered in Zig, the least common language in the study and the one whose standard library changed most recently. Every model wrote Zig as it was a few releases ago and relied on the compiler to find out, at #times(calc.min(..zig-tokens)) to #times(calc.max(..zig-tokens)) the tokens of an average language for the same task. Training data showed up as price only at that far end: among the mainstream languages, Rust cost no more than Python or JavaScript, and on an index of the tokens spent per correct program six of the eight languages share the top.
 
 = Study design <design>
 
-== Tasks
+We ran the study with gungnir, a harness we built for it. It drives each vendor's command-line agent headless in a sandbox, grades and times the program the agent leaves, and keeps every transcript. The harness, the tasks, the references and every record behind this paper are available at #link("https://github.com/GustavoWidman/gungnir")[github.com/GustavoWidman/gungnir].
 
-Each task is a specification written in English, a handful of visible examples, a hidden test suite and a set of timing workloads (@tab:tasks). A program reads its input from standard input and writes its answer to standard output, and the specification fixes the output byte for byte, including the order of results and the wording of every error. Standard libraries differ in what they offer these tasks, and we left the differences in place, since a developer who chooses a language chooses its library too. The largest is in the big-integer calculator: Python, JavaScript (`BigInt`), Go (`math/big`) and Zig (`std.math.big`) provide arbitrary-precision integers, and Rust, C and C++ do not. Elsewhere the specifications define their own semantics closely enough that a library rarely fits as is; JSON path queries, for instance, fix strings as sequences of UTF-16 code units and numbers as 64-bit integers, which no standard JSON parser implements. The hidden suites target the edges the specifications define: empty inputs, the largest values the input admits, deep nesting and pathological backtracking. No hidden case is visible to the agent.
+== Tasks
 
 #figure(
   table(
@@ -122,6 +127,8 @@ Each task is a specification written in English, a handful of visible examples, 
   caption: [The eight tasks, with the number of hidden test cases and timing workloads of each.],
 ) <tab:tasks>
 
+Each task is a specification written in English, a handful of visible examples, a hidden test suite and a set of timing workloads (@tab:tasks). A program reads its input from standard input and writes its answer to standard output, and the specification fixes the output byte for byte, including the order of results and the wording of every error. Standard libraries differ in what they offer these tasks, and we left the differences in place, since a developer who chooses a language chooses its library too. The largest is in the big-integer calculator: Python, JavaScript (`BigInt`), Go (`math/big`) and Zig (`std.math.big`) provide arbitrary-precision integers, and Rust, C and C++ do not. Elsewhere the specifications define their own semantics closely enough that a library rarely fits as is; JSON path queries, for instance, fix strings as sequences of UTF-16 code units and numbers as 64-bit integers, which no standard JSON parser implements. The hidden suites target the edges the specifications define: empty inputs, the largest values the input admits, deep nesting and pathological backtracking. No hidden case is visible to the agent.
+
 == Languages
 
 The eight languages span the two arguments. Python and JavaScript are dynamically typed and the most common in public code. TypeScript adds a static type checker to JavaScript, and we build it with `tsc --noEmit` under `strict`, so a type error fails the build exactly as a compile error does in Go, Rust, Zig, C or C++. C and C++ are compiled with warnings on, Rust as a release build, and Zig in `ReleaseFast` mode. We used the newest release of every toolchain: Python 3.15, JavaScript on Bun 1.4, TypeScript 7.0 on the same Bun, Go 1.27, Rust 1.101 nightly (edition 2024), Zig 0.17, and Clang 23 for C23 and C++23. The prompt states the version, so an agent that writes for an older release does so knowing which one it is building with. Only the standard library is available, there is no network, and the prompt forbids other languages, which closes the route of generating the target program from a Python script.
@@ -136,7 +143,7 @@ Every session runs in a bubblewrap sandbox with a private file system, no networ
 
 A program passes when it builds offline with the language's build command and produces the exact expected output for every hidden case, each case run in its own sandbox with ten seconds and one gibibyte. We also record which cases fail and how: a wrong answer, a crash, a timeout, or exhausted memory.
 
-Every passing program is timed against a reference implementation of the same task in the same language. Each reference passes every hidden test and was written for speed with the standard library alone. Timing runs on an Intel Core i9-13900K whose four measurement cores are isolated from the scheduler, timer ticks, RCU callbacks and interrupts and held at a fixed 3.0 GHz. Each comparison first checks the candidate's output on every workload, then runs hyperfine in six ABBA blocks of three runs each, alternating candidate and reference on one pinned core. We report the ratio of median wall times with a _t_ interval over blocks. Timing the reference against itself on the same cores puts the noise floor at a median 95% half-width of 0.7%, far below the differences we report.
+Every passing program is timed against a reference implementation of the same task in the same language. The references were written with the tasks, by Claude Opus 5.5 in Claude Code: one algorithm per task, implemented in each of the eight languages as idiomatic, efficient code over the standard library alone. Each passes every hidden test, and because every language implements the same algorithm, the references differ by language and not by method. Timing runs on an Intel Core i9-13900K whose four measurement cores are isolated from the scheduler, timer ticks, RCU callbacks and interrupts and held at a fixed 3.0 GHz. Each comparison first checks the candidate's output on every workload, then runs hyperfine in six ABBA blocks of three runs each, alternating candidate and reference on one pinned core. We report the ratio of median wall times with a _t_ interval over blocks. Timing the reference against itself on the same cores puts the noise floor at a median 95% half-width of 0.7%, far below the differences we report.
 
 == Analysis
 
@@ -148,12 +155,12 @@ The analysis covers #num(n.data.trials) trials: #num(n.data.models.luna.trials) 
 
 == Strong models pass in every language
 
-GPT-6.1 Terra and Claude Haiku 5.5 wrote a correct program in nearly every trial, in every language (@fig:pass). Terra's pass rate ranged from #pct(lowest("terra")) to #pct(highest("terra")) across the eight languages and Haiku's from #pct(lowest("haiku")) to #pct(highest("haiku")). At this difficulty a capable agent's language does not decide whether it gets the program right.
-
 #figure(
   image("figures/pass-by-language.svg", width: 100%),
   caption: [Share of trials passing every hidden test, over all tasks, efforts and generations, with 95% two-stage bootstrap intervals. Languages are ordered by GPT-6 Luna's pass rate.],
 ) <fig:pass>
+
+GPT-6.1 Terra and Claude Haiku 5.5 wrote a correct program in nearly every trial, in every language (@fig:pass). Terra's pass rate ranged from #pct(lowest("terra")) to #pct(highest("terra")) across the eight languages and Haiku's from #pct(lowest("haiku")) to #pct(highest("haiku")). At this difficulty a capable agent's language does not decide whether it gets the program right.
 
 GPT-6 Luna did separate the languages. It passed #pr("luna", "all") of all its trials, from #prci("luna", "go") in Go to #prci("luna", "zig") in Zig. The intervals are wide because they include the variation between tasks, which is where most of Luna's differences come from.
 
@@ -171,6 +178,8 @@ The big-integer calculator shows why. In Go, Python and JavaScript, whose standa
 JavaScript and TypeScript isolate the type checker: same runtime, same library, same tasks. Of #paired("luna", "javascript", "typescript").pairs matched trials, #paired("luna", "javascript", "typescript").only_a passed only in JavaScript and #paired("luna", "javascript", "typescript").only_b only in TypeScript (#pv(paired("luna", "javascript", "typescript").p)). Python and Rust, the two poles of the debate, came out even: #paired("luna", "python", "rust").only_a trials passed only in Python and #paired("luna", "python", "rust").only_b only in Rust. C and C++, which differ less in their checking than in their standard library, #if paired("luna", "c", "cpp").p < 0.05 [favoured] else [leaned toward] C++: #paired("luna", "c", "cpp").only_b trials passed only in C++ and #paired("luna", "c", "cpp").only_a only in C (#pv(paired("luna", "c", "cpp").p)).
 
 == Python's runtime, not its typing, costs it trials
+
+Python, the language with the most public code, fell behind JavaScript, TypeScript and Go. Of #paired("luna", "python", "javascript").pairs matched trials, #paired("luna", "python", "javascript").only_b passed only in JavaScript and #paired("luna", "python", "javascript").only_a only in Python (#pv(paired("luna", "python", "javascript").p)), and TypeScript and Go beat it by similar margins, #paired("luna", "python", "typescript").only_b to #paired("luna", "python", "typescript").only_a (#pv(paired("luna", "python", "typescript").p)) and #paired("luna", "python", "go").only_b to #paired("luna", "python", "go").only_a (#pv(paired("luna", "python", "go").p)). JavaScript shares Python's dynamic typing and its place in public code, so neither explains the gap. How the programs failed does (@tab:outcomes). Luna's Python programs crashed on a hidden test in #pct(outcome("luna", "python", "crash")) of trials, against #pct(outcome("luna", "javascript", "crash")) in JavaScript, #pct(outcome("luna", "typescript", "crash")) in TypeScript, #pct(outcome("luna", "go", "crash")) in Go and #pct(outcome("luna", "rust", "crash")) in Rust, and gave a wrong answer in #pct(outcome("luna", "python", "wrong-answer"))#if fewest-wrong [, the fewest of any language].
 
 #figure(
   table(
@@ -194,18 +203,16 @@ JavaScript and TypeScript isolate the type checker: same runtime, same library, 
   caption: [How GPT-6 Luna's programs ended (% of trials): passing every hidden test, or failing first by a wrong answer, timeout, crash, failed build or exhausted memory.],
 ) <tab:outcomes>
 
-Python, the language with the most public code, fell behind JavaScript, TypeScript and Go. Of #paired("luna", "python", "javascript").pairs matched trials, #paired("luna", "python", "javascript").only_b passed only in JavaScript and #paired("luna", "python", "javascript").only_a only in Python (#pv(paired("luna", "python", "javascript").p)), and TypeScript and Go beat it by similar margins, #paired("luna", "python", "typescript").only_b to #paired("luna", "python", "typescript").only_a (#pv(paired("luna", "python", "typescript").p)) and #paired("luna", "python", "go").only_b to #paired("luna", "python", "go").only_a (#pv(paired("luna", "python", "go").p)). JavaScript shares Python's dynamic typing and its place in public code, so neither explains the gap. How the programs failed does (@tab:outcomes). Luna's Python programs crashed on a hidden test in #pct(outcome("luna", "python", "crash")) of trials, against #pct(outcome("luna", "javascript", "crash")) in JavaScript, #pct(outcome("luna", "typescript", "crash")) in TypeScript, #pct(outcome("luna", "go", "crash")) in Go and #pct(outcome("luna", "rust", "crash")) in Rust, and gave a wrong answer in #pct(outcome("luna", "python", "wrong-answer"))#if fewest-wrong [, the fewest of any language].
-
 The crashes are not the errors a type checker catches. We replayed one crashing case of each of the #crashes.luna.trials Python trials that crashed and read the exception. Of these, #count(crash-kind("RecursionError")) hit Python's default limit of 1,000 nested calls on the regular-expression engine's deeply nested patterns, and #count(crash-kind("IntDigitLimit")) hit the interpreter's default guard against converting integers of more than 4,300 digits to text, which the big-integer calculator's answers exceed. Only #count(crash-kind("TypeError")) raised a `TypeError`. Both common causes are runtime defaults that a program can raise in one line, and no type system would have flagged either. JavaScript, whose runtime has neither limit at these sizes, crashed in #pct(outcome("luna", "javascript", "crash")) of its trials. Type checking itself changed little: TypeScript's programs passed and failed much as JavaScript's did.
 
 == Agents rarely need the Rust compiler
-
-If the Rust compiler were a crutch, the agents would lean on it. They hardly did (@fig:builds). A Rust session met a failing build #r1(sess("luna", "rust", "failed_builds")) times on average for Luna, #r1(sess("terra", "rust", "failed_builds")) for Terra and #r1(sess("haiku", "rust", "failed_builds")) for Haiku. Across all #rust.sessions Rust sessions the compiler reported #rust.total distinct errors, and #rust.borrow of them concerned ownership or borrowing; the rest were type mismatches and calls to methods that do not exist on the receiver's type. The models nearly always write Rust that satisfies the borrow checker at the first attempt, and what remains wrong in their programs is logic the compiler cannot see.
 
 #figure(
   image("figures/failed-builds.svg", width: 100%),
   caption: [Commands per session whose output carried a compiler, type-checker or syntax error: mean with 95% two-stage bootstrap interval. Python and JavaScript surface such errors only at run time.],
 ) <fig:builds>
+
+If the Rust compiler were a crutch, the agents would lean on it. They hardly did (@fig:builds). A Rust session met a failing build #r1(sess("luna", "rust", "failed_builds")) times on average for Luna, #r1(sess("terra", "rust", "failed_builds")) for Terra and #r1(sess("haiku", "rust", "failed_builds")) for Haiku. Across all #rust.sessions Rust sessions the compiler reported #rust.total distinct errors, and #rust.borrow of them concerned ownership or borrowing; the rest were type mismatches and calls to methods that do not exist on the receiver's type. The models nearly always write Rust that satisfies the borrow checker at the first attempt, and what remains wrong in their programs is logic the compiler cannot see.
 
 TypeScript's checker spoke up more often, #r1(sess("luna", "typescript", "failed_builds")) failing builds per Luna session, and #ts.null of its #ts.total errors were strict null checks: an array read or map lookup that might be `undefined`. The agent answers them with a guard, the build passes, and, as the paired comparison shows, the program is no more often correct for it.
 
@@ -217,12 +224,12 @@ The compiler turns this stale knowledge into working code. Terra and Haiku passe
 
 == More reasoning closes the gap between languages
 
-Luna's spread between languages shrank as its reasoning effort rose (@fig:effort). Without reasoning its languages passed between #pct(calc.min(..langs.map(l => n.effort.at(l).none))) and #pct(calc.max(..langs.map(l => n.effort.at(l).none))) of trials; at the highest setting, between #pct(calc.min(..langs.map(l => n.effort.at(l).max))) and #pct(calc.max(..langs.map(l => n.effort.at(l).max))). Zig was the slowest to come up, at #pct(n.effort.zig.medium) at medium effort against #pct(n.effort.all.medium) for the average language, and caught up only at the two highest settings. Effort, like model strength, buys the agent out of most of what the language costs it.
-
 #figure(
   image("figures/luna-effort.svg", width: 100%),
   caption: [GPT-6 Luna's pass rate by reasoning effort, one panel per language. Black: the language; dashed: the mean over languages; band: 95% two-stage bootstrap interval.],
 ) <fig:effort>
+
+Luna's spread between languages shrank as its reasoning effort rose (@fig:effort). Without reasoning its languages passed between #pct(calc.min(..langs.map(l => n.effort.at(l).none))) and #pct(calc.max(..langs.map(l => n.effort.at(l).none))) of trials; at the highest setting, between #pct(calc.min(..langs.map(l => n.effort.at(l).max))) and #pct(calc.max(..langs.map(l => n.effort.at(l).max))). Zig was the slowest to come up, at #pct(n.effort.zig.medium) at medium effort against #pct(n.effort.all.medium) for the average language, and caught up only at the two highest settings. Effort, like model strength, buys the agent out of most of what the language costs it.
 
 == The least familiar language costs two to three times as much
 
@@ -235,12 +242,12 @@ Correctness comes at a different price in each language (@fig:tokens). Zig sessi
 
 == Agents leave the most speed behind in the fastest languages
 
-Measured against a reference in their own language, the agents' programs came closest in Python and fell furthest behind in the compiled languages (@fig:speed). Terra's passing Python programs ran at #times(speed("terra", "python")) the reference's time, against #times(speed("terra", "go")) in Go, #times(speed("terra", "c")) in C and #times(speed("terra", "zig")) in Zig. Luna's ranged from #times(speed("luna", byspeed("luna").first())) in #lname.at(byspeed("luna").first()) to #times(speed("luna", byspeed("luna").last())) in #lname.at(byspeed("luna").last()). In an interpreted language much of the runtime is the interpreter's, so a weaker algorithm costs less in relative terms; a compiled language exposes every extra allocation and copy.
-
 #figure(
   image("figures/speed.svg", width: 100%),
   caption: [Runtime of each passing program relative to the same-language reference, on a log scale. Grey: one program, geometric mean over the task's workloads; bar: geometric mean over programs; dashed: parity.],
 ) <fig:speed>
+
+Measured against a reference in their own language, the agents' programs came closest in Python and fell furthest behind in the compiled languages (@fig:speed). Terra's passing Python programs ran at #times(speed("terra", "python")) the reference's time, against #times(speed("terra", "go")) in Go, #times(speed("terra", "c")) in C and #times(speed("terra", "zig")) in Zig. Luna's ranged from #times(speed("luna", byspeed("luna").first())) in #lname.at(byspeed("luna").first()) to #times(speed("luna", byspeed("luna").last())) in #lname.at(byspeed("luna").last()). In an interpreted language much of the runtime is the interpreter's, so a weaker algorithm costs less in relative terms; a compiled language exposes every extra allocation and copy.
 
 The choice of language still decides the order of magnitude (@fig:absolute). Against the fastest reference for each workload, Terra's Rust programs took #times(absolute("terra", "rust")) its time and its C programs #times(absolute("terra", "c")), while its Python programs took #times(absolute("terra", "python")) and the Python references themselves #times(absolute("reference", "python")). An agent writing Rust or C leaves more on the table than one writing Python, and its program is still an order of magnitude faster. Reasoning effort bought speed as well: Luna's programs went from #times(n.speed.luna.by_effort.none) the reference's time at no reasoning to #times(n.speed.luna.by_effort.max) at the highest setting.
 
@@ -248,6 +255,35 @@ The choice of language still decides the order of magnitude (@fig:absolute). Aga
   image("figures/speed-absolute.svg", width: 100%),
   caption: [Runtime relative to the fastest reference in any language for the same workload, geometric mean over workloads. Bars mark the references; open markers the agents' passing programs.],
 ) <fig:absolute>
+
+== The gungnir index: what a correct program costs
+
+A developer weighs correctness and cost together, so we fold them into one number. An agent that retries a task until its program passes spends $c slash p$ tokens per correct program, where $c$ is what one session spends and $p$ the chance that its program passes every hidden test. We compute $c slash p$ for every model, task and language, estimating $p$ as $(k + 1 slash 2) slash (n + 1)$ from $k$ passes in $n$ sessions, so that a language that never passed a task costs a finite amount, and divide it by its geometric mean across the eight languages. The gungnir index of a language is 100 over the geometric mean of that ratio across tasks, with every model weighed equally: an average language scores 100, and one that needs half the tokens per correct program scores 200 (@tab:index).
+
+#figure(
+  table(
+    columns: (auto, auto, auto, auto, auto),
+    align: (left, right, right, right, right),
+    stroke: none,
+    table.hline(stroke: 0.6pt),
+    [*Language*], [*Luna*], [*Terra*], [*Haiku*], [*All (95% interval)*],
+    table.hline(stroke: 0.4pt),
+    ..by-index("all").map(l => (
+      [#lname.at(l)],
+      [#r0(idx("luna", l).score)],
+      [#r0(idx("terra", l).score)],
+      [#r0(idx("haiku", l).score)],
+      [#r0(idx("all", l).score) (#r0(idx("all", l).lo)–#r0(idx("all", l).hi))],
+    )).flatten(),
+    table.hline(stroke: 0.6pt),
+  ),
+  caption: [The gungnir index by model and over all three: tokens per correct program in an average language for the same model and task, over those in this language, times 100. Higher is cheaper.],
+) <tab:index>
+
+#let top = by-index("all").slice(0, 6)
+#if top.sorted() == six.sorted() [Six languages share the top of the index, from #r0(idx("all", top.first()).score) for #lname.at(top.first()) to #r0(idx("all", top.last()).score) for #lname.at(top.last())#if ("luna", "terra", "haiku", "all").all(six-overlap) [, and their intervals overlap for every model]. ]C scores #r0(idx("all", "c").score) and Zig #r0(idx("all", "zig").score), so a correct Zig program costs #times(100 / idx("all", "zig").score) the tokens of one in an average language#if zig-c-last [, and every model puts Zig last and C next to last]. Cost moves the index more than correctness does: Luna's Python passed less often than its JavaScript, yet its sessions were cheap enough to score #r0(idx("luna", "python").score) against #r0(idx("luna", "javascript").score).
+
+We leave runtime out of the index. How fast a correct program runs is mostly the language's own property (@fig:absolute), which a developer weighs for an agent as for any other project, and the agents' share of it, the gap to a reference in the same language, is smallest in Python because the interpreter hides a weaker algorithm, so it would reward the wrong thing.
 
 = Discussion <discussion>
 
@@ -271,7 +307,7 @@ The harness itself matters: the same model scores differently in different agent
 
 We asked whether the language a coding agent writes in changes whether its program is correct, what it costs and how fast it runs, and whether a strict compiler or a large body of training data explains the differences. For the two stronger models in our study, correctness did not depend on the language: both passed every hidden test in nearly all trials in all eight languages. For the weakest, the differences followed the standard library and the runtime, not the type system: pairs of languages that differ only in their checking passed equally often, and Python, the most familiar language, trailed JavaScript because its runtime's limits crashed many of its programs.
 
-The strict compiler was a crutch only where the model's knowledge was out of date. The agents seldom tripped Rust's compiler, and in Zig they leaned on it to unlearn a standard library that had changed, at two to three times the cost. The training data showed up as price only at that far end; among the mainstream languages, Rust was as cheap to get right as Python. The language an agent writes in decides what a correct program costs and how fast it runs; whether the agent gets it right depends on the agent.
+The strict compiler was a crutch only where the model's knowledge was out of date. The agents seldom tripped Rust's compiler, and in Zig they leaned on it to unlearn a standard library that had changed, at two to three times the cost. The training data showed up as price only at that far end; among the mainstream languages, Rust was as cheap to get right as Python, and on the gungnir index six of the eight languages share the top. The language an agent writes in decides what a correct program costs and how fast it runs; whether the agent gets it right depends on the agent.
 
 #heading(numbering: none)[Appendix A: Logistic models]
 
