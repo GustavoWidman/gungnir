@@ -45,6 +45,7 @@ and rate limits are retried until the session ends on its own, and never reach t
 | Claude Code | Z.ai (Anthropic-compatible endpoint) | GLM-5.3, GLM-5.3-Flash |
 | Codex | OpenAI | GPT-6 Luna, GPT-6.1 Terra, GPT-6.1 Sol, GPT-6 Astra |
 | Codex | NVIDIA (Responses endpoint) | Nemotron 3.5 Super VL |
+| Codex | DeepSeek (Responses endpoint) | DeepSeek V4.1 Flash |
 
 Every model runs at every effort level it offers. Harness versions are pinned per experiment.
 
@@ -101,7 +102,8 @@ transcript and log.
   - `~/.config/gungnir/claude/oauth_token` for Anthropic, from `claude setup-token`;
   - `~/.config/gungnir/codex/` for OpenAI, a `CODEX_HOME` after `codex login`;
   - `~/.config/gungnir/glm/api_key` for Z.ai;
-  - `~/.config/gungnir/nvidia/api_key` for NVIDIA.
+  - `~/.config/gungnir/nvidia/api_key` for NVIDIA;
+  - `~/.config/gungnir/deepseek/api_key` for DeepSeek.
 - For measuring, a quiet machine with `kernel.perf_event_paranoid` at 1 or less, ideally
   with isolated cores (`isolcpus`, `nohz_full`), where `measure` runs one lane on the first
   thread of each, and fixed clocks, which `clock_mhz` in an experiment's `[measure]` table

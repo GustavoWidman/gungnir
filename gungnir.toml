@@ -53,6 +53,15 @@ credential = { kind = "api-key", var = "NVIDIA_API_KEY", file = "~/.config/gungn
 egress = ["integrate.api.nvidia.com"]
 relay = true
 
+# DeepSeek's own API through Codex, which speaks its Responses API. The key stays with the relay,
+# which also retries a refusal before it reaches the agent.
+[backends.deepseek]
+harness = "codex"
+endpoint = "https://api.deepseek.com/v1"
+credential = { kind = "api-key", var = "DEEPSEEK_API_KEY", file = "~/.config/gungnir/deepseek/api_key" }
+egress = ["api.deepseek.com"]
+relay = true
+
 [[models]]
 id = "claude-fable-5-1"
 efforts = ["low", "medium", "high", "xhigh", "max"]
@@ -127,3 +136,13 @@ id = "nemotron-3.5-super-vl"
 efforts = ["none", "high"]
 served-by = { nvidia = "nvidia/nemotron-3.5-super-vl-120b-a12b" }
 prices = [{ since = "2026-11-06", input = 0.0, output = 0.0, cache-read = 0.0, cache-write = 0.0 }]
+
+# `deepseek-flash` is served by DeepSeek-V4.1-Flash-1017. Its Responses API takes the efforts
+# none (thinking off), low, high and max, and maps minimal to low and medium and xhigh to high.
+# The prices are the off-peak ones; DeepSeek charges double on weekdays 01:00-04:00 and
+# 06:00-10:00 UTC.
+[[models]]
+id = "deepseek-v4.1-flash"
+efforts = ["none", "low", "high", "max"]
+served-by = { deepseek = "deepseek-flash" }
+prices = [{ since = "2026-11-06", input = 0.15, output = 0.6, cache-read = 0.003 }]
