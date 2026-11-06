@@ -206,5 +206,14 @@ Results live under `runs/`, which is not tracked.
 - `scenarios/<id>/`: specs, examples, hidden cases, generators, workload digests and references
 - `experiments/`: experiment matrices
 - `nix/`: the sandbox toolchain environments and the offline TypeScript checker
-- `paper/`: the manuscript (`typst compile paper/main.typ`), bibliography and research notes
+- `paper/`: the manuscript (`typst compile paper/main.typ`), bibliography and research notes;
+  `paper/analysis/` turns a report of the study experiments into the figures and numbers the
+  manuscript reads:
+
+  ```sh
+  gungnir report experiments/study-openai.toml experiments/study-claude.toml --out runs/report/study
+  cd paper
+  python3 -m analysis ../runs/report/study ../runs .
+  python3 -m analysis.crashes ../runs/report/study ../runs ../scenarios .
+  ```
 - `docs/architecture.md`: the design contract

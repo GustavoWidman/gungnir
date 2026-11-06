@@ -35,7 +35,7 @@ nix/typescript-bun.nix        tsc with Bun's type declarations, a package nixpkg
 src/                          the gungnir crate
 docs/architecture.md          this file
 AGENTS.md                     repository map for contributors and coding agents
-paper/                        the manuscript
+paper/                        the manuscript, and the analysis that writes its figures and numbers
 ```
 
 Each catalog is one list in one place.

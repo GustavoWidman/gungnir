@@ -21,7 +21,7 @@ This file is guidance for contributors and coding agents. It describes the repos
 - `scenarios/<id>/` is a task. The loader requires `scenario.toml`, `spec.md`, `examples/`, `hidden/`, `workloads.sha256` and `reference/<language>/`. `gen/gen.py` writes the cases and, on demand, the gitignored `workloads/`.
 - `experiments/<name>.toml` is a matrix to run. `pilot.toml` is the pilot study and `smoke.toml` runs each pilot model once.
 - `docs/architecture.md` is the design contract.
-- `paper/` holds the manuscript and the research notes behind it.
+- `paper/` holds the manuscript and the research notes behind it. `paper/analysis/` is a Python package, run from `paper/` inside the dev shell, that reads a `gungnir report` of the study experiments and the transcripts under `runs/`, and writes `paper/figures/*.svg` and `paper/data/*.json`, which `main.typ` reads for every number it states.
 - `src/` is the `gungnir` crate, a library and a thin binary.
 
 ## Crate map
