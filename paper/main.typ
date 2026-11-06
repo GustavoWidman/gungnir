@@ -73,6 +73,7 @@
 #set text(font: "TeX Gyre Termes", lang: "en")
 #show raw: set text(font: "TeX Gyre Cursor")
 #show table.cell: set text(size: 8pt)
+#set table(inset: (x: 4pt, y: 2pt))
 #show figure.where(kind: table): set figure.caption(position: top)
 
 = Introduction
@@ -114,7 +115,6 @@ Each task is a specification written in English, a handful of visible examples, 
     table.hline(stroke: 0.6pt),
   ),
   caption: [The eight tasks, with the number of hidden test cases and timing workloads of each.],
-  placement: top,
 ) <tab:tasks>
 
 == Languages
@@ -143,31 +143,31 @@ The analysis covers #num(n.data.trials) trials: #num(n.data.models.luna.trials) 
 
 == Strong models pass in every language
 
+GPT-6.1 Terra and Claude Haiku 5.5 wrote a correct program in nearly every trial, in every language (@fig:pass). Terra's pass rate ranged from #pct(lowest("terra")) to #pct(highest("terra")) across the eight languages and Haiku's from #pct(lowest("haiku")) to #pct(highest("haiku")). At this difficulty a capable agent's language does not decide whether it gets the program right.
+
 #figure(
   image("figures/pass-by-language.svg", width: 100%),
   caption: [Share of trials whose program passed every hidden test, by language. Point: share over all tasks, efforts and generations; bar: 95% two-stage bootstrap interval over tasks and trials. Languages are ordered by GPT-6 Luna's pass rate.],
-  placement: top,
 ) <fig:pass>
-
-GPT-6.1 Terra and Claude Haiku 5.5 wrote a correct program in nearly every trial, in every language (@fig:pass). Terra's pass rate ranged from #pct(lowest("terra")) to #pct(highest("terra")) across the eight languages and Haiku's from #pct(lowest("haiku")) to #pct(highest("haiku")). At this difficulty a capable agent's language does not decide whether it gets the program right.
 
 GPT-6 Luna did separate the languages. It passed #pr("luna", "all") of all its trials, from #prci("luna", "go") in Go to #prci("luna", "zig") in Zig. The intervals are wide because they include the variation between tasks, which is where most of Luna's differences come from.
 
 == The standard library separates the languages; the type checker does not
 
+The differences between languages depend on the task far more than on the language itself (@fig:scenarios). Adding language to a logistic model of Luna's outcomes that already accounts for task and effort improves it (χ² = #r1(n.logistic.language.chi2), #n.logistic.language.df df, #pv(n.logistic.language.p)), but letting the language effect differ by task improves it much more (χ² = #r1(n.logistic.scenario_x_language.chi2), #n.logistic.scenario_x_language.df df, #pv(n.logistic.scenario_x_language.p)). The interaction explains #r1((n.logistic.r2.scenario_x_language - n.logistic.r2.language) / (n.logistic.r2.language - n.logistic.r2.base)) times as much deviance as the main effect.
+
 #figure(
   image("figures/luna-scenarios.svg", width: 100%),
   caption: [GPT-6 Luna's pass rate (%) by task and language, over all efforts and generations. Darker cells pass more often.],
-  placement: top,
 ) <fig:scenarios>
-
-The differences between languages depend on the task far more than on the language itself (@fig:scenarios). Adding language to a logistic model of Luna's outcomes that already accounts for task and effort improves it (χ² = #r1(n.logistic.language.chi2), #n.logistic.language.df df, #pv(n.logistic.language.p)), but letting the language effect differ by task improves it much more (χ² = #r1(n.logistic.scenario_x_language.chi2), #n.logistic.scenario_x_language.df df, #pv(n.logistic.scenario_x_language.p)). The interaction explains #r1((n.logistic.r2.scenario_x_language - n.logistic.r2.language) / (n.logistic.r2.language - n.logistic.r2.base)) times as much deviance as the main effect.
 
 The big-integer calculator shows why. In Go, Python and JavaScript, whose standard libraries carry arbitrary-precision integers, Luna passed #pct(n.scenario_grid.at("bigint-calc").go), #pct(n.scenario_grid.at("bigint-calc").python) and #pct(n.scenario_grid.at("bigint-calc").javascript) of its trials. In Rust, C and C++, where the agent must write its own multiplication and division over limbs, it passed #pct(n.scenario_grid.at("bigint-calc").rust), #pct(n.scenario_grid.at("bigint-calc").c) and #pct(n.scenario_grid.at("bigint-calc").cpp). The stack machine reverses the ranking: Go and Rust passed #pct(n.scenario_grid.at("tiny-vm").go) and #pct(n.scenario_grid.at("tiny-vm").rust), Python #pct(n.scenario_grid.at("tiny-vm").python), because the task's 64-bit overflow rules come free with fixed-width integers and must be emulated over Python's unbounded ones.
 
 JavaScript and TypeScript isolate the type checker: same runtime, same library, same tasks. Of #paired("luna", "javascript", "typescript").pairs matched trials, #paired("luna", "javascript", "typescript").only_a passed only in JavaScript and #paired("luna", "javascript", "typescript").only_b only in TypeScript (#pv(paired("luna", "javascript", "typescript").p)). Python and Rust, the two poles of the debate, came out even: #paired("luna", "python", "rust").only_a trials passed only in Python and #paired("luna", "python", "rust").only_b only in Rust. C and C++, which differ less in their checking than in their standard library, leaned toward C++: #paired("luna", "c", "cpp").only_b trials passed only in C++ and #paired("luna", "c", "cpp").only_a only in C (#pv(paired("luna", "c", "cpp").p)).
 
 == Type checking changes how programs fail, not how often
+
+The type checker's mark is on the kind of failure (@tab:outcomes). Luna's Python programs crashed on a hidden test in #pct(outcome("luna", "python", "crash")) of trials, against #pct(outcome("luna", "go", "crash")) in Go, #pct(outcome("luna", "typescript", "crash")) in TypeScript and #pct(outcome("luna", "rust", "crash")) in Rust. Yet Python's programs failed no more often overall, because fewer of them gave a wrong answer: #pct(outcome("luna", "python", "wrong-answer")), against #pct(outcome("luna", "rust", "wrong-answer")) in Rust.
 
 #figure(
   table(
@@ -189,22 +189,18 @@ JavaScript and TypeScript isolate the type checker: same runtime, same library, 
     table.hline(stroke: 0.6pt),
   ),
   caption: [How GPT-6 Luna's programs ended, as a percentage of trials per language: passing every hidden test, or failing first by a wrong answer, a timeout, a crash, a failed build or exhausted memory.],
-  placement: top,
 ) <tab:outcomes>
-
-The type checker's mark is on the kind of failure (@tab:outcomes). Luna's Python programs crashed on a hidden test in #pct(outcome("luna", "python", "crash")) of trials, against #pct(outcome("luna", "go", "crash")) in Go, #pct(outcome("luna", "typescript", "crash")) in TypeScript and #pct(outcome("luna", "rust", "crash")) in Rust. Yet Python's programs failed no more often overall, because fewer of them gave a wrong answer: #pct(outcome("luna", "python", "wrong-answer")), against #pct(outcome("luna", "rust", "wrong-answer")) in Rust.
 
 The crashes are not the errors a type checker catches. We replayed one crashing case of each of the #crashes.luna.trials Python trials that crashed and read the exception. #Count(crashes.luna.kinds.at("RecursionError", default: 0)) hit Python's limit of 1,000 nested calls on the regular-expression engine's deeply nested patterns, and #count(crashes.luna.kinds.at("ValueError", default: 0)) hit the interpreter's guard against converting integers of more than 4,300 digits to text, which the big-integer calculator's answers exceed. Only #count(crashes.luna.kinds.at("TypeError", default: 0)) raised a `TypeError`. Both of the common causes are properties of Python's runtime that a static type system would not have flagged. In the statically typed languages the same task difficulty shows up as wrong answers and timeouts, which no type system prevents either.
 
 == Agents rarely need the Rust compiler
 
+If the Rust compiler were a crutch, the agents would lean on it. They hardly did (@fig:builds). A Rust session met a failing build #r1(sess("luna", "rust", "failed_builds")) times on average for Luna, #r1(sess("terra", "rust", "failed_builds")) for Terra and #r1(sess("haiku", "rust", "failed_builds")) for Haiku. Across all #rust.sessions Rust sessions the compiler reported #rust.total distinct errors, and #rust.borrow of them concerned ownership or borrowing; the rest were type mismatches and calls to methods that do not exist on the receiver's type. The models nearly always write Rust that satisfies the borrow checker at the first attempt, and what remains wrong in their programs is logic the compiler cannot see.
+
 #figure(
   image("figures/failed-builds.svg", width: 100%),
   caption: [Commands per session whose output carried a compiler, type-checker or syntax error, by language. Point: mean over sessions; bar: 95% two-stage bootstrap interval. Python and JavaScript have no compile step and surface such errors only when the program runs.],
-  placement: top,
 ) <fig:builds>
-
-If the Rust compiler were a crutch, the agents would lean on it. They hardly did (@fig:builds). A Rust session met a failing build #r1(sess("luna", "rust", "failed_builds")) times on average for Luna, #r1(sess("terra", "rust", "failed_builds")) for Terra and #r1(sess("haiku", "rust", "failed_builds")) for Haiku. Across all #rust.sessions Rust sessions the compiler reported #rust.total distinct errors, and #rust.borrow of them concerned ownership or borrowing; the rest were type mismatches and calls to methods that do not exist on the receiver's type. The models nearly always write Rust that satisfies the borrow checker at the first attempt, and what remains wrong in their programs is logic the compiler cannot see.
 
 TypeScript's checker spoke up more often, #r1(sess("luna", "typescript", "failed_builds")) failing builds per Luna session, and #ts.null of its #ts.total errors were strict null checks: an array read or map lookup that might be `undefined`. The agent answers them with a guard, the build passes, and, as the paired comparison shows, the program is no more often correct for it.
 
@@ -214,43 +210,39 @@ Zig is where the compiler did the work its advocates claim. Zig sessions met #r1
 
 The compiler turns this stale knowledge into working code. Terra and Haiku passed #pr("terra", "zig") and #pr("haiku", "zig") of their Zig trials. Luna, with less to recover with, passed #pr("luna", "zig"), and #pct(outcome("luna", "zig", "build-error")) of its Zig programs never built at all, the most of any language.
 
+== More reasoning closes the gap between languages
+
+Luna's spread between languages shrank as its reasoning effort rose (@fig:effort). Without reasoning its languages passed between #pct(calc.min(..langs.map(l => n.effort.at(l).none))) and #pct(calc.max(..langs.map(l => n.effort.at(l).none))) of trials; at the highest setting, between #pct(calc.min(..langs.map(l => n.effort.at(l).max))) and #pct(calc.max(..langs.map(l => n.effort.at(l).max))). Zig was the slowest to come up, at #pct(n.effort.zig.medium) at medium effort against #pct(n.effort.all.medium) for the average language, and caught up only at the two highest settings. Effort, like model strength, buys the agent out of most of what the language costs it.
+
+#figure(
+  image("figures/luna-effort.svg", width: 100%),
+  caption: [GPT-6 Luna's pass rate by reasoning effort, one panel per language. Black: the language; dashed: the mean over languages; band: 95% two-stage bootstrap interval.],
+) <fig:effort>
+
 == Python and JavaScript are the cheapest to get right
 
 #figure(
   image("figures/tokens-by-language.svg", width: 100%),
   caption: [Tokens per session relative to the geometric mean of the same task, system and generation across the eight languages (1×, dashed). Point: geometric mean; bar: 95% two-stage bootstrap interval.],
-  placement: top,
 ) <fig:tokens>
 
 Correctness comes at a different price in each language (@fig:tokens). Zig sessions used #times(cost("luna", "zig", "tokens")), #times(cost("terra", "zig", "tokens")) and #times(cost("haiku", "zig", "tokens")) the tokens of an average language for Luna, Terra and Haiku, and took #times(calc.min(..("luna", "terra", "haiku").map(m => cost(m, "zig", "wall_s")))) to #times(calc.max(..("luna", "terra", "haiku").map(m => cost(m, "zig", "wall_s")))) the time. C was the next most expensive, at #times(calc.min(..("luna", "terra", "haiku").map(m => cost(m, "c", "tokens")))) to #times(calc.max(..("luna", "terra", "haiku").map(m => cost(m, "c", "tokens")))) the tokens. The other six languages sat between #times(mainstream.first()) and #times(mainstream.last()). Python and JavaScript were the cheapest for Luna, at #times(cost("luna", "python", "tokens")) and #times(cost("luna", "javascript", "tokens"))\; for the stronger models the six overlap within their intervals, and Rust cost no more than Python. The training-data argument holds at the far end, where the least familiar language costs two to three times as much, and not among the languages a developer is likely to weigh against each other.
 
 == Agents leave the most speed behind in the fastest languages
 
+Measured against a reference in their own language, the agents' programs came closest in Python and fell furthest behind in the compiled languages (@fig:speed). Terra's passing Python programs ran at #times(speed("terra", "python")) the reference's time, against #times(speed("terra", "go")) in Go, #times(speed("terra", "c")) in C and #times(speed("terra", "zig")) in Zig. Luna's ranged from #times(speed("luna", "python")) in Python to #times(speed("luna", "go")) in Go. In an interpreted language much of the runtime is the interpreter's, so a weaker algorithm costs less in relative terms; a compiled language exposes every extra allocation and copy.
+
 #figure(
   image("figures/speed.svg", width: 100%),
   caption: [Runtime of each passing program relative to the reference in the same language, on a log scale. Grey point: one program, the geometric mean over the task's workloads; black bar: geometric mean over programs. Dashed line: parity.],
-  placement: top,
 ) <fig:speed>
 
 #figure(
   image("figures/speed-absolute.svg", width: 100%),
   caption: [Runtime relative to the fastest reference in any language for the same workload, geometric mean over workloads. Bars mark the references; open markers the agents' passing programs.],
-  placement: top,
 ) <fig:absolute>
 
-Measured against a reference in their own language, the agents' programs came closest in Python and fell furthest behind in the compiled languages (@fig:speed). Terra's passing Python programs ran at #times(speed("terra", "python")) the reference's time, against #times(speed("terra", "go")) in Go, #times(speed("terra", "c")) in C and #times(speed("terra", "zig")) in Zig. Luna's ranged from #times(speed("luna", "python")) in Python to #times(speed("luna", "go")) in Go. In an interpreted language much of the runtime is the interpreter's, so a weaker algorithm costs less in relative terms; a compiled language exposes every extra allocation and copy.
-
 The choice of language still decides the order of magnitude (@fig:absolute). Against the fastest reference for each workload, Terra's Rust programs took #times(absolute("terra", "rust")) its time and its C programs #times(absolute("terra", "c")), while its Python programs took #times(absolute("terra", "python")) and the Python references themselves #times(absolute("reference", "python")). An agent writing Rust or C leaves more on the table than one writing Python, and its program is still an order of magnitude faster. Reasoning effort bought speed as well: Luna's programs went from #times(n.speed.luna.by_effort.none) the reference's time at no reasoning to #times(n.speed.luna.by_effort.max) at the highest setting.
-
-== More reasoning closes the gap between languages
-
-#figure(
-  image("figures/luna-effort.svg", width: 100%),
-  caption: [GPT-6 Luna's pass rate by reasoning effort, one panel per language. Black: the language; dashed: the mean over languages; band: 95% two-stage bootstrap interval.],
-  placement: top,
-) <fig:effort>
-
-Luna's spread between languages shrank as its reasoning effort rose (@fig:effort). Without reasoning its languages passed between #pct(calc.min(..langs.map(l => n.effort.at(l).none))) and #pct(calc.max(..langs.map(l => n.effort.at(l).none))) of trials; at the highest setting, between #pct(calc.min(..langs.map(l => n.effort.at(l).max))) and #pct(calc.max(..langs.map(l => n.effort.at(l).max))). Zig was the slowest to come up, at #pct(n.effort.zig.medium) at medium effort against #pct(n.effort.all.medium) for the average language, and caught up only at the two highest settings. Effort, like model strength, buys the agent out of most of what the language costs it.
 
 = Discussion <discussion>
 
@@ -276,12 +268,14 @@ We asked whether the language a coding agent writes in changes whether its progr
 
 The strict compiler was a crutch only where the model's knowledge was out of date. The agents seldom tripped Rust's compiler, and in Zig they leaned on it to unlearn a standard library that had changed, at two to three times the cost. The training data showed up as price only at that far end; among the mainstream languages, Rust was as cheap to get right as Python. The language an agent writes in decides what a correct program costs and how fast it runs; whether the agent gets it right depends on the agent.
 
-#heading(numbering: none)[Appendix A: Logistic models of GPT-6 Luna's outcomes]
+#heading(numbering: none)[Appendix A: Logistic models]
 
 #let clear = langs.slice(1).filter(l => {
   let o = n.logistic.odds_vs_python.at(l)
   o.hi < 1 or o.lo > 1
 })
+
+The models are fitted by maximum likelihood to Luna's #num(n.data.models.luna.trials) trials. The base model has a term for each task and each effort; adding language gives χ² = #r1(n.logistic.language.chi2) on #n.logistic.language.df degrees of freedom (#pv(n.logistic.language.p)), adding the interaction of language with task gives χ² = #r1(n.logistic.scenario_x_language.chi2) on #n.logistic.scenario_x_language.df (#pv(n.logistic.scenario_x_language.p)), and adding the interaction of language with effort instead gives χ² = #r1(n.logistic.effort_x_language.chi2) on #n.logistic.effort_x_language.df (#pv(n.logistic.effort_x_language.p)). McFadden's pseudo-R² is #r2(n.logistic.r2.base) for the base model, #r2(n.logistic.r2.language) with language and #r2(n.logistic.r2.scenario_x_language) with its interaction with task. @tab:odds gives the odds ratios of the model with language. Once the variation between tasks is allowed for, #if clear.len() == 0 [no language's interval stays clear of one.] else [only the interval of #clear.map(l => lname.at(l)).join(" and ") stays clear of one.]
 
 #figure(
   table(
@@ -298,7 +292,5 @@ The strict compiler was a crutch only where the model's knowledge was out of dat
     }).flatten(),
     table.hline(stroke: 0.6pt),
   ),
-  caption: [Odds of passing relative to Python in a logistic model of GPT-6 Luna's trials with task, effort and language, with standard errors clustered by task and language.],
+  caption: [Odds of passing relative to Python for GPT-6 Luna, with task and effort held fixed and standard errors clustered by task and language.],
 ) <tab:odds>
-
-The models are fitted by maximum likelihood to Luna's #num(n.data.models.luna.trials) trials. The base model has a term for each task and each effort; adding language gives χ² = #r1(n.logistic.language.chi2) on #n.logistic.language.df degrees of freedom (#pv(n.logistic.language.p)), adding the interaction of language with task gives χ² = #r1(n.logistic.scenario_x_language.chi2) on #n.logistic.scenario_x_language.df (#pv(n.logistic.scenario_x_language.p)), and adding the interaction of language with effort instead gives χ² = #r1(n.logistic.effort_x_language.chi2) on #n.logistic.effort_x_language.df (#pv(n.logistic.effort_x_language.p)). McFadden's pseudo-R² is #r2(n.logistic.r2.base) for the base model, #r2(n.logistic.r2.language) with language and #r2(n.logistic.r2.scenario_x_language) with its interaction with task. @tab:odds gives the odds ratios of the model with language. Once the variation between tasks is allowed for, #if clear.len() == 0 [no language's interval stays clear of one.] else [only the interval of #clear.map(l => lname.at(l)).join(" and ") stays clear of one.]
