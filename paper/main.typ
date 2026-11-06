@@ -1,4 +1,5 @@
 #import "@preview/charged-ieee:0.1.4": ieee
+#import "@preview/equate:0.3.2": equate
 
 #let n = json("data/numbers.json")
 #let crashes = json("data/python-crashes.json")
@@ -54,8 +55,6 @@
 #let byspeed(m) = langs.filter(l => l in n.speed.at(m)).sorted(key: l => speed(m, l))
 #let absolute(k, l) = n.speed_absolute.at(k).at(l)
 #let idx(k, l) = n.index.at(k).at(l)
-// Text that continues a sentence after a display equation.
-#let cont(body) = { set par(first-line-indent: 0pt); body }
 #let dim(d, l) = n.index.dimensions.at(d).at(l).score
 #let by-index(k) = langs.sorted(key: l => -idx(k, l).score)
 #let lead = by-index("all").first()
@@ -92,6 +91,10 @@
 #show table.cell: set text(size: 8pt)
 #set table(inset: (x: 4pt, y: 2pt))
 #show figure.where(kind: table): set figure.caption(position: top)
+// Number each line of an aligned equation, and give display equations room to breathe.
+#show: equate.with(breakable: false, sub-numbering: false, number-mode: "line")
+#show math.equation.where(block: true): set block(spacing: 1.2em)
+#set math.equation(supplement: none)
 
 = Introduction
 
@@ -263,18 +266,18 @@ The choice of language still decides the order of magnitude (@fig:absolute). Aga
 
 == The gungnir index
 
+A developer choosing a language weighs all of these at once, so we fold them into one score, the gungnir index. It has five dimensions: the share of sessions whose program passes every hidden test, the tokens and the wall time of a session, the runtime of a passing program against the fastest reference for each workload, and the total cyclomatic complexity of a passing program as lizard counts it. For model $m$, task $t$, language $l$ and dimension $d$, let $x_(m,t,l,d)$ be the geometric mean of the dimension over the cell's sessions, or over its passing programs for runtime and complexity, with the pass rate estimated as $(k + 1 slash 2) slash (n + 1)$ from $k$ passes in $n$ sessions so that a language that never passed a task stays finite. The index is then built in three steps:
+
+$ a_(m,t,l,d) &= s_d (ln x_(m,t,l,d) - 1/8 sum_(l') ln x_(m,t,l',d)) #<eq:advantage> \
+  S_(l,d) &= 100 dot exp(1 / (|M| |T|) sum_(m in M, thin t in T) a_(m,t,l,d)) #<eq:score> \
+  G_l &= root(5, product_(d in D) S_(l,d)) #<eq:index> $
+
+Equation (@eq:advantage) is a language's advantage on one dimension: its distance from the mean of the eight languages for the same model and task, so that a model's own speed and price cancel, with $s_d$ equal to $+1$ for the pass rate and $-1$ for the others so that higher is better on every dimension. Equation (@eq:score) averages that advantage over the models $M$ and tasks $T$ into a score, and (@eq:index) takes the geometric mean of the five scores over the dimensions $D$. An average language scores 100 on each, and one whose programs run in half the average language's time scores 200 on runtime. @fig:index shows the index, and @tab:dimensions in Appendix B the five scores behind it.
+
 #figure(
   image("figures/gungnir-index.svg", width: 100%),
   caption: [The gungnir index of each language over the three models, with its 95% interval. The dashed line marks the average language at 100; a dark bar's interval lies above it and a light bar's below.],
 ) <fig:index>
-
-A developer choosing a language weighs all of these at once, so we fold them into one score, the gungnir index. It has five dimensions: the share of sessions whose program passes every hidden test, the tokens and the wall time of a session, the runtime of a passing program against the fastest reference for each workload, and the total cyclomatic complexity of a passing program as lizard counts it. For model $m$, task $t$, language $l$ and dimension $d$, let $x_(m,t,l,d)$ be the geometric mean of the dimension over the cell's sessions, or over its passing programs for runtime and complexity; the pass rate is estimated as $(k + 1 slash 2) slash (n + 1)$ from $k$ passes in $n$ sessions, so that a language that never passed a task stays finite. A language's advantage on a dimension is its distance from the mean of the eight languages for the same model and task, so that a model's own speed and price cancel,
-$ a_(m,t,l,d) = s_d (ln x_(m,t,l,d) - 1/8 sum_(l') ln x_(m,t,l',d)), $ <eq:advantage>
-#cont[its score on the dimension averages that advantage over models and tasks,]
-$ S_(l,d) = 100 dot exp(1 / (|M| |T|) sum_(m in M) sum_(t in T) a_(m,t,l,d)), $ <eq:score>
-#cont[and the index is the geometric mean of its five scores,]
-$ G_l = root(5, product_(d in D) S_(l,d)), $ <eq:index>
-#cont[where $M$ and $T$ are the models and tasks, $D$ the five dimensions, and $s_d$ is $+1$ for the pass rate and $-1$ for the others, so that a higher score is better on every dimension. An average language scores 100, and one whose programs run in half the average language's time scores 200 on runtime. @fig:index shows the index with 95% intervals that resample tasks and then sessions, and @tab:dimensions in Appendix B gives the five scores behind it.]
 
 #lname.at(lead) leads the index at #r0(idx("all", lead).score) (#r0(idx("all", lead).lo)–#r0(idx("all", lead).hi))#if same-lead [, and every model puts it first]. Its programs run in #times(100 / dim("runtime", lead)) the average language's time and carry #times(100 / dim("complexity", lead)) its decision points, while a session takes #times(100 / dim("tokens", lead)) the average language's tokens. The dimensions pull the other languages apart. Python and JavaScript are among the cheapest and quickest languages in which to get a correct program, but their programs run #times(100 / dim("runtime", "python")) and #times(100 / dim("runtime", "javascript")) the average language's time, so Python scores #r0(idx("all", "python").score). Zig's programs are fast, but a session takes #times(100 / dim("tokens", "zig")) the tokens and #times(100 / dim("time", "zig")) the time of an average language's, and Zig scores #r0(idx("all", "zig").score). C's programs are fast too, but a C session takes #times(100 / dim("tokens", "c")) the average language's tokens#if langs.all(l => dim("complexity", "c") <= dim("complexity", l)) [, and its programs carry the most decision points of all].
 
@@ -334,7 +337,8 @@ The models are fitted by maximum likelihood to Luna's #num(n.data.models.luna.tr
 
 #heading(numbering: none)[Appendix B: The gungnir index by dimension]
 
-@tab:dimensions gives each language's score on the five dimensions of @eq:score, over the three models, and the index of @eq:index that folds them together.
+
+@tab:dimensions gives each language's score on the five dimensions of (@eq:score), over the three models, and the index of (@eq:index) that folds them together.
 
 #figure(
   table(
