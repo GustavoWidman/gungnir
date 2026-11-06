@@ -160,14 +160,9 @@ def main(report, runs, out):
         log_ccn=np.log(trials.ccn_total.clip(lower=1)))
     index = stats.language_index(scored, models, LANGUAGES)
     n["index"] = {(SHORT[k] if k in SHORT else k): v for k, v in index.items()}
-    panels = [("correctness", "Pass"), ("tokens", "Tokens"), ("time", "Time"), ("runtime", "Speed"),
-              ("complexity", "Simplicity"), ("all", "Index")]
-    triple = lambda v: (v["score"], v["lo"], v["hi"])
-    index_values = {k: {lang: triple(v) for lang, v in index["dimensions"][k].items()}
-                    for k, _ in panels[:-1]}
-    index_values["all"] = {lang: triple(v) for lang, v in index["all"].items()}
     by_index = sorted(LANGUAGES, key=lambda lang: -index["all"][lang]["score"])
-    figures.index_panels(by_index, panels, index_values, out / "figures", "gungnir-index")
+    figures.index_bars(by_index, {lang: (v["score"], v["lo"], v["hi"]) for lang, v in index["all"].items()},
+                       out / "figures", "gungnir-index")
 
     n["order"] = order
     (out / "data" / "numbers.json").write_text(json.dumps(n, indent=1, default=float) + "\n")

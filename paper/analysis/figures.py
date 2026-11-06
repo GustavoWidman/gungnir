@@ -72,33 +72,28 @@ def dot_panels(rows, models, values, xlabel, out, name, *, log=False, ref=None, 
     save(fig, out, name)
 
 
-def index_panels(rows, panels, values, out, name):
-    """One panel per gungnir index dimension on a shared log axis around the average language's
-    100, then a wider panel for the index on its own axis; panels = [(key, title)] with the index
-    last, values[key][language] = (point, lo, hi)."""
-    fig, axes = plt.subplots(1, len(panels), sharey=True, layout="constrained",
-                             figsize=(COLUMN, 0.18 * len(rows) + 0.6),
-                             gridspec_kw={"width_ratios": [1] * (len(panels) - 1) + [1.9]})
+def index_bars(rows, values, out, name):
+    """The gungnir index as one bar per language from the best down, values[language] =
+    (score, lo, hi), with its interval and a line at the average language's 100. A bar is dark
+    when its interval lies above 100, light when it lies below, and grey otherwise."""
+    fig, ax = plt.subplots(figsize=(COLUMN, 0.2 * len(rows) + 0.45), layout="constrained")
     y = np.arange(len(rows))[::-1]
-    for i, (ax, (key, title)) in enumerate(zip(axes, panels)):
-        last = i == len(panels) - 1
-        point = np.array([values[key][r][0] for r in rows])
-        lo = np.array([values[key][r][1] for r in rows])
-        hi = np.array([values[key][r][2] for r in rows])
-        ax.axvline(100, color=MUTED, lw=0.6, ls="--", zorder=0)
-        ax.hlines(y, lo, hi, color=INK, lw=0.9 if last else 0.7)
-        ax.plot(point, y, "s" if last else "o", ms=3.4 if last else 2.6, color=INK, zorder=3)
-        ax.set_title(title, pad=3, fontweight="bold" if last else "normal")
-        ax.set_xscale("log")
-        ticks, lim = ([60, 100, 150], (52, 190)) if last else ([10, 100], (8, 420))
-        ax.set_xlim(*lim)
-        ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator(ticks))
-        ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:g}"))
-        ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
-        ax.grid(axis="x", color="#e6e6e6", lw=0.5, zorder=0)
-    axes[0].set_yticks(y, [LANGUAGE_NAMES[r] for r in rows])
-    axes[0].set_ylim(-0.6, len(rows) - 0.4)
-    fig.supxlabel("score against the average language (100); higher is better", fontsize=8)
+    score = np.array([values[r][0] for r in rows])
+    lo = np.array([values[r][1] for r in rows])
+    hi = np.array([values[r][2] for r in rows])
+    shade = ["#3a3a3a" if l > 100 else "#d4d4d4" if h < 100 else "#8c8c8c" for l, h in zip(lo, hi)]
+    ax.barh(y, score, height=0.68, color=shade, zorder=2)
+    ax.errorbar(score, y, xerr=[score - lo, hi - score], fmt="none", ecolor=INK, elinewidth=0.7,
+                capsize=1.8, capthick=0.7, zorder=3)
+    for yi, h, v in zip(y, hi, score):
+        ax.text(max(h, 100) + 3, yi, f"{v:.0f}", va="center", ha="left", fontsize=7.5, color=INK)
+    ax.axvline(100, color=INK, lw=0.6, ls="--", zorder=4)
+    ax.set_yticks(y, [LANGUAGE_NAMES[r] for r in rows])
+    ax.set_ylim(-0.6, len(rows) - 0.4)
+    ax.set_xlim(0, max(hi) + 22)
+    ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator([0, 50, 100, 150]))
+    ax.grid(axis="x", color="#e6e6e6", lw=0.5, zorder=0)
+    ax.set_xlabel("gungnir index (average language = 100)", fontsize=8)
     save(fig, out, name)
 
 def heatmap(table, out, name, *, label):
