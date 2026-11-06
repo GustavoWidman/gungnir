@@ -1,5 +1,5 @@
 # The study's OpenAI arm: every effort level of the cheaper GPT models on the full suite. Luna is
-# cheap on the plan's limits and takes every repetition; Terra waits at one for now.
+# cheap on the plan's limits and takes every repetition; Terra, dearer, takes two.
 name = "study-openai"
 results = "../runs/study-openai"
 repetitions = 1
@@ -43,3 +43,4 @@ repetitions = 5
 [[systems]]
 model = "gpt-6.1-terra"
 efforts = "all"
+repetitions = 2
