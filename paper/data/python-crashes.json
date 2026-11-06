@@ -1,0 +1,43 @@
+{
+ "haiku": {
+  "trials": 1,
+  "kinds": {
+   "RecursionError": 1
+  },
+  "by_scenario": {
+   "regex-lite": {
+    "RecursionError": 1
+   }
+  }
+ },
+ "luna": {
+  "trials": 18,
+  "kinds": {
+   "RecursionError": 9,
+   "ValueError": 4,
+   "TypeError": 2,
+   "IndexError": 1,
+   "KeyError": 1,
+   "RuntimeError": 1
+  },
+  "by_scenario": {
+   "bigint-calc": {
+    "ValueError": 4
+   },
+   "regex-lite": {
+    "RecursionError": 9,
+    "TypeError": 1
+   },
+   "json-path": {
+    "IndexError": 1
+   },
+   "ledger": {
+    "TypeError": 1,
+    "KeyError": 1
+   },
+   "line-diff": {
+    "RuntimeError": 1
+   }
+  }
+ }
+}
