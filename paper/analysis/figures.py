@@ -30,12 +30,13 @@ def style():
         "axes.edgecolor": INK, "axes.linewidth": 0.6, "xtick.major.width": 0.6,
         "ytick.major.width": 0.6, "xtick.major.size": 2.5, "ytick.major.size": 0,
         "axes.spines.top": False, "axes.spines.right": False, "svg.fonttype": "path",
-        "lines.linewidth": 0.9, "figure.dpi": 150,
+        "lines.linewidth": 0.9, "figure.dpi": 150, "svg.hashsalt": "gungnir",
     })
 
 
 def save(fig, out, name):
-    fig.savefig(Path(out) / f"{name}.svg", bbox_inches="tight", pad_inches=0.02)
+    fig.savefig(Path(out) / f"{name}.svg", bbox_inches="tight", pad_inches=0.02,
+                metadata={"Date": None})
     plt.close(fig)
 
 
@@ -43,7 +44,7 @@ def dot_panels(rows, models, values, xlabel, out, name, *, log=False, ref=None, 
                extra=None):
     """One panel per model; values[model][language] = (point, lo, hi)."""
     fig, axes = plt.subplots(1, len(models), sharey=True, layout="constrained",
-                             figsize=(COLUMN, 0.2 * len(rows) + 0.55))
+                             figsize=(COLUMN, 0.18 * len(rows) + 0.55))
     axes = np.atleast_1d(axes)
     y = np.arange(len(rows))[::-1]
     for ax, model in zip(axes, models):
@@ -114,7 +115,7 @@ def effort_multiples(rates, mean, out, name):
 def speed_strips(points, models, rows, out, name):
     """points[model][language] = per-trial runtime ratios to the same-language reference."""
     fig, axes = plt.subplots(1, len(models), sharey=True, layout="constrained",
-                             figsize=(COLUMN, 0.2 * len(rows) + 0.6))
+                             figsize=(COLUMN, 0.18 * len(rows) + 0.6))
     axes = np.atleast_1d(axes)
     y = np.arange(len(rows))[::-1]
     rng = np.random.default_rng(1)
@@ -142,10 +143,10 @@ def speed_strips(points, models, rows, out, name):
 def absolute_speed(values, rows, models, out, name):
     """values[key][language] = geometric-mean runtime over the fastest program for the
     workload, with key 'reference' or a model."""
-    fig, ax = plt.subplots(figsize=(COLUMN, 0.2 * len(rows) + 0.5), layout="constrained")
+    fig, ax = plt.subplots(figsize=(COLUMN, 0.18 * len(rows) + 0.5), layout="constrained")
     y = np.arange(len(rows))[::-1]
     ax.plot([values["reference"][r] for r in rows], y, "|", ms=7, mew=1.2, color=INK,
-            label="expert reference")
+            label="reference")
     for model in models:
         ax.plot([values[model].get(r, np.nan) for r in rows], y, MARKERS[model], ms=3.4,
                 mfc="white", mec=INK, mew=0.8, label=MODEL_NAMES[model])
