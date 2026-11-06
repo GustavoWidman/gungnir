@@ -33,8 +33,8 @@ def load(report, runs):
 
     trials["passed"] = (trials.verdict == "pass").astype(int)
     trials["case_share"] = trials.cases_passed / trials.cases_total
-    trials["tokens"] = (trials.input_tokens + trials.cache_read_tokens
-                        + trials.cache_write_tokens + trials.output_tokens)
+    trials["tokens"] = (trials.input_tokens + trials.cache_read_tokens + trials.cache_write_tokens
+                        + trials.cache_write_1h_tokens + trials.output_tokens)
     trials["outcome"] = trials.failure.fillna("pass")
     trials = trials.merge(pd.DataFrame(sessions.sessions(runs, trials)),
                           on=["system", "scenario", "language", "rep"])
