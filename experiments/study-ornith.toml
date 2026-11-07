@@ -33,7 +33,7 @@ wall = "4h"
 idle = "30m"
 
 [concurrency]
-lmstudio = 4
+lmstudio = 1
 
 [[systems]]
 model = "ornith-1.5-35b-a3b"
