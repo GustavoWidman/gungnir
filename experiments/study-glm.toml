@@ -32,7 +32,7 @@ wall = "4h"
 idle = "30m"
 
 [concurrency]
-zai = 8
+zai = 6
 
 [[systems]]
 model = "glm-5.3-flash"
