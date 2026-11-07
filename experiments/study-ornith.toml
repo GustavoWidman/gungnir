@@ -1,5 +1,5 @@
-# The study's Ornith arm: every effort level of Ornith 1.5 35B-A3B, reasoning off and on, on the
-# full suite, through Codex against LM Studio on local hardware.
+# The study's Ornith arm: Ornith 1.5 35B-A3B with reasoning on, on the full suite, through Codex
+# against LM Studio on local hardware, one session at a time.
 name = "study-ornith"
 results = "../runs/study-ornith"
 repetitions = 1
@@ -37,5 +37,5 @@ lmstudio = 1
 
 [[systems]]
 model = "ornith-1.5-35b-a3b"
-efforts = "all"
+efforts = ["high"]
 repetitions = 5
