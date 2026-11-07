@@ -38,4 +38,4 @@ cliproxy = 4
 [[systems]]
 model = "gemini-3.8-flash"
 efforts = "all"
-repetitions = 5
+repetitions = 1
