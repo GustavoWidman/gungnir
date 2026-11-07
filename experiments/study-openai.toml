@@ -1,5 +1,5 @@
 # The study's OpenAI arm: every effort level of the cheaper GPT models on the full suite, five
-# repetitions each, and one generation of GPT-6.1 Sol.
+# repetitions each, and two generations of GPT-6.1 Sol.
 name = "study-openai"
 results = "../runs/study-openai"
 repetitions = 1
@@ -48,4 +48,4 @@ repetitions = 5
 [[systems]]
 model = "gpt-6.1-sol"
 efforts = "all"
-repetitions = 1
+repetitions = 2
