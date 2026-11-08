@@ -215,6 +215,12 @@ Results live under `runs/`, which is not tracked.
 - Costs are list-price equivalents computed from token usage and dated price tables, not bills.
 - An NVIDIA session's wall time includes the relay's waits on the free tier's throttling, which
   each attempt's `egress.jsonl` records.
+- Claude Code cuts each response of a model it does not know at 32,000 output tokens, reasoning
+  included, and tells the model to resume. After three such cuts in a row it ends the session
+  in an error, which is no sample, but a session that resumed and completed is one, and its
+  transcript holds the resume turn. A model whose catalog entry sets `max-output-tokens`
+  launches with Claude Code's cap raised to it: GLM-5.3 and GLM-5.3-Flash state 131,072, which
+  Claude Code 2.1.316 lowers to its own maximum of 128,000.
 - Token categories are not comparable across vendors as reported: only Anthropic reports cache
   writes, while OpenAI, Z.ai and NVIDIA count them as plain input. Compare new input (uncached
   input plus cache writes), cache reads and output separately.

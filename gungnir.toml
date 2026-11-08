@@ -138,16 +138,21 @@ prices = [
   { since = "2026-11-03", above-prompt-tokens = 272000, input = 0.2, output = 0.75, cache-read = 0.01 },
 ]
 
+# Claude Code cuts a response of a model it does not know at 32,000 output tokens, reasoning
+# included, which GLM-5.3-Flash outgrows at high effort. Third-party listings give it an output
+# limit of about 131K tokens, and Z.ai accepted max_tokens = 131072 for it on 2026-11-08.
 [[models]]
 id = "glm-5.3"
 efforts = ["low", "high", "max"]
 served-by = { zai = "glm-5.3" }
+max-output-tokens = 131072
 prices = [{ since = "2026-11-03", input = 1.4, output = 4.4, cache-read = 0.26 }]
 
 [[models]]
 id = "glm-5.3-flash"
 efforts = ["low", "high", "max"]
 served-by = { zai = "glm-5.3-flash" }
+max-output-tokens = 131072
 prices = [{ since = "2026-11-03", input = 0.15, output = 0.5, cache-read = 0.03 }]
 
 # The endpoint takes every effort from none to xhigh, and max as xhigh, but only none (reasoning

@@ -122,6 +122,12 @@ fn loads_the_repository_catalog() {
         .unwrap();
     assert_eq!(glm.id().to_string(), "claude-code-2.1.316_zai_glm-5.3_high");
     assert_eq!(glm.api_model(), "glm-5.3");
+    for model in ["glm-5.3", "glm-5.3-flash"] {
+        let ceiling = catalog.model(&id(model)).unwrap().max_output_tokens();
+        assert_eq!(ceiling.map(u32::from), Some(131_072), "{model}");
+    }
+    assert_eq!(glm.max_output_tokens().map(u32::from), Some(131_072));
+    assert_eq!(haiku.max_output_tokens(), None);
 
     let nvidia = catalog.backend(&id("nvidia")).unwrap();
     assert_eq!(nvidia.harness().as_str(), "codex");
