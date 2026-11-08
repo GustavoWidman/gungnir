@@ -1,4 +1,5 @@
-# The study's Claude arm: Claude Haiku 5.5, Sonnet 5.5 and Opus 5.5 on the full suite.
+# The study's Claude arm: every effort level of Claude Haiku 5.5, Sonnet 5.5 and Opus 5.5 on the full
+# suite.
 name = "study-claude"
 results = "../runs/study-claude"
 repetitions = 1
@@ -36,12 +37,12 @@ anthropic = 12
 
 [[systems]]
 model = "claude-haiku-5-5"
-efforts = ["low", "medium", "high"]
+efforts = "all"
 
 [[systems]]
 model = "claude-sonnet-5-5"
-efforts = ["low", "medium", "high"]
+efforts = "all"
 
 [[systems]]
 model = "claude-opus-5-5"
-efforts = ["low", "medium", "high"]
+efforts = "all"

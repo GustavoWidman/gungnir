@@ -1,4 +1,4 @@
-# The study's Claude Fable arm: Claude Fable 5.1 on the full suite, on its own weekly allowance
+# The study's Claude Fable arm: every effort level of Claude Fable 5.1 on the full suite, on its own weekly allowance
 # beside the Claude arm.
 name = "study-fable"
 results = "../runs/study-fable"
@@ -37,4 +37,4 @@ anthropic = 4
 
 [[systems]]
 model = "claude-fable-5-1"
-efforts = ["low", "medium", "high"]
+efforts = "all"
