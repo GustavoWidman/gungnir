@@ -38,4 +38,4 @@ nvidia = 3
 [[systems]]
 model = "nemotron-3.5-super-vl"
 efforts = "all"
-repetitions = 1
+repetitions = 2
