@@ -1,0 +1,40 @@
+# The study's Claude Fable arm: Claude Fable 5.1 on the full suite, on its own weekly allowance
+# beside the Claude arm.
+name = "study-fable"
+results = "../runs/study-fable"
+repetitions = 1
+scenarios = [
+  "bigint-calc",
+  "exact-cover",
+  "json-path",
+  "ledger",
+  "line-diff",
+  "regex-lite",
+  "route-fuel",
+  "tiny-vm",
+]
+languages = ["python", "rust", "zig", "go", "c", "cpp", "javascript", "typescript"]
+
+[machine]
+cpu = "13th Gen Intel(R) Core(TM) i9-13900K"
+host = "11b301add99fa61a4eb9f0a36eae41f1"
+
+[measure]
+blocks = 6
+runs = 3
+warmup = 0
+clock_mhz = 3000
+
+[pins]
+claude-code = "2.1.316"
+
+[budget]
+wall = "4h"
+idle = "30m"
+
+[concurrency]
+anthropic = 4
+
+[[systems]]
+model = "claude-fable-5-1"
+efforts = ["low", "medium", "high"]
