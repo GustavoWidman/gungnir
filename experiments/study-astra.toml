@@ -1,4 +1,4 @@
-# The study's GPT-6 Astra arm: one generation at every effort level on the full suite, run beside
+# The study's GPT-6 Astra arm: two generations at every effort level on the full suite, run beside
 # the OpenAI arm on the same plan.
 name = "study-astra"
 results = "../runs/study-astra"
@@ -38,4 +38,4 @@ openai = 4
 [[systems]]
 model = "gpt-6-astra"
 efforts = "all"
-repetitions = 1
+repetitions = 2
