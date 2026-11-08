@@ -654,6 +654,13 @@ mod tests {
     }
 
     #[test]
+    fn the_inputs_of_a_glm_run_keep_their_stored_form() {
+        let stored = r#"{"system":"claude-code-2.1.316_zai_glm-5.3-flash_low","api_model":"glm-5.3-flash","endpoint":"https://api.z.ai/api/anthropic","prompt":"8e6e9496dcc70b01872b0d4ab40be1710484f063b0c497795337d9626da6fe45","workspace":"2d197b6fe297ac1143f6d27eb99bd9f82bed131aa5fe91c133b6205e2241b9ed","toolchains":{"base":"/nix/store/9n09h64ihkgb3bn80hpyrdviz5qxrl7c-gungnir-base","language":"/nix/store/2a3bpzxxhqkcdy1lbr7m5irz3bq54ag0-gungnir-language-go","harness":"/nix/store/65brf6grg59p6s37ck070x1m5i9lrgjc-gungnir-harness-claude-code"},"wall":"4h","idle":"30m"}"#;
+        let inputs: RunInputs = serde_json::from_str(stored).unwrap();
+        assert_eq!(serde_json::to_string(&inputs).unwrap(), stored);
+    }
+
+    #[test]
     fn the_budgets_a_run_ran_under_stay_on_its_record() {
         let repo = Repo::new();
         let json = serde_json::to_value(current(&repo)).unwrap();

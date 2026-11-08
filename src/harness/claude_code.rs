@@ -73,6 +73,11 @@ impl Driver for ClaudeCode {
                 ));
             }
         }
+        // Claude Code cuts each response of a model it does not know at 32,000 output tokens,
+        // tells the model to resume, and ends the session after three such cuts in a row.
+        if let Some(tokens) = req.system.max_output_tokens() {
+            env.push(plain("CLAUDE_CODE_MAX_OUTPUT_TOKENS", tokens.to_string()));
+        }
         // `--bare` would also skip the user's settings, but it refuses OAuth tokens.
         let argv = [
             "claude",
@@ -367,12 +372,13 @@ fn timestamp(seconds: i64) -> Option<DateTime<Utc>> {
 mod tests {
     use super::*;
     use crate::{
-        catalog::Endpoint,
+        catalog::{Catalog, Endpoint},
         harness::{AgentOutcome, Ending, Exit, Fold, Harness, ProcessEnd},
         secret::Secret,
         testing::{self, id},
     };
     use std::{fs, path::Path};
+    use tempfile::TempDir;
 
     fn harness() -> Harness {
         Harness(&ClaudeCode)
@@ -405,7 +411,22 @@ mod tests {
     }
 
     fn launch(model: &str, backend: &str, var: &str) -> Result<Launch> {
-        let catalog = testing::catalog();
+        launch_in(&testing::catalog(), model, backend, var)
+    }
+
+    /// The fixture catalog with `glm` stating an output ceiling of 131072 tokens.
+    fn ceiling_catalog() -> Catalog {
+        let dir = TempDir::new().unwrap();
+        let text = testing::CATALOG_TOML.replacen(
+            "id = \"glm\"\n",
+            "id = \"glm\"\nmax-output-tokens = 131072\n",
+            1,
+        );
+        testing::write(dir.path(), "gungnir.toml", text);
+        Catalog::load(&dir.path().join("gungnir.toml")).unwrap()
+    }
+
+    fn launch_in(catalog: &Catalog, model: &str, backend: &str, var: &str) -> Result<Launch> {
         let system = catalog.system(&id(model), &id(backend), Effort::High, id("2.1.316"))?;
         let credential = CredentialMaterial::Env {
             var: var.into(),
@@ -493,6 +514,60 @@ mod tests {
             assert_eq!(env[var.as_str()], &plain("glm"), "{var}");
         }
         assert_eq!(launch.argv[6], "glm");
+    }
+
+    fn named(pairs: &[(&str, EnvValue)]) -> Vec<(String, EnvValue)> {
+        pairs
+            .iter()
+            .map(|(name, value)| ((*name).to_owned(), value.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn a_model_without_an_output_ceiling_leaves_claude_code_at_its_default() {
+        let secret = || EnvValue::Secret(Secret::new("sk-test".into()));
+        let quiet = [
+            ("CLAUDE_CONFIG_DIR", plain("/home/agent/.claude")),
+            ("DISABLE_AUTOUPDATER", plain("1")),
+            ("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", plain("1")),
+            ("DISABLE_TELEMETRY", plain("1")),
+            ("DISABLE_ERROR_REPORTING", plain("1")),
+        ];
+        let anthropic = named(&[&quiet[..], &[("TOKEN", secret())]].concat());
+        let zai = named(
+            &[
+                &quiet[..],
+                &[
+                    ("KEY", secret()),
+                    (
+                        "ANTHROPIC_BASE_URL",
+                        plain("https://api.z.ai/api/anthropic"),
+                    ),
+                    ("ANTHROPIC_DEFAULT_OPUS_MODEL", plain("glm")),
+                    ("ANTHROPIC_DEFAULT_SONNET_MODEL", plain("glm")),
+                    ("ANTHROPIC_DEFAULT_HAIKU_MODEL", plain("glm")),
+                ],
+            ]
+            .concat(),
+        );
+        assert_eq!(launch("opus", "anthropic", "TOKEN").unwrap().env, anthropic);
+        assert_eq!(launch("glm", "zai", "KEY").unwrap().env, zai);
+        let beside_a_ceiling = launch_in(&ceiling_catalog(), "opus", "anthropic", "TOKEN");
+        assert_eq!(beside_a_ceiling.unwrap().env, anthropic);
+    }
+
+    #[test]
+    fn a_model_with_an_output_ceiling_raises_claude_codes_cap_to_it() {
+        for (backend, var) in [("zai", "KEY"), ("anthropic", "TOKEN")] {
+            let without = launch("glm", backend, var).unwrap();
+            let with = launch_in(&ceiling_catalog(), "glm", backend, var).unwrap();
+            let mut expected = without.env.clone();
+            expected.push(("CLAUDE_CODE_MAX_OUTPUT_TOKENS".into(), plain("131072")));
+            assert_eq!(with.env, expected, "{backend}");
+            assert_eq!(with.argv, without.argv, "{backend}");
+            assert_eq!(with.stdin, without.stdin, "{backend}");
+            assert!(with.files.is_empty(), "{backend}");
+        }
     }
 
     #[test]

@@ -236,6 +236,35 @@ mod tests {
         );
     }
 
+    #[test]
+    fn an_output_ceiling_leaves_a_committed_glm_run_current() {
+        let repo = Repo::new();
+        let glm = "[[systems]]\nmodel = \"glm\"\nbackend = \"zai\"\nefforts = [\"high\"]\n";
+        let experiment =
+            fixture::EXPERIMENT_TOML.replacen("openai = 1\n", "openai = 1\nzai = 1\n", 1);
+        write(
+            repo.root.path(),
+            "experiments/fixture.toml",
+            format!("{experiment}\n{glm}"),
+        );
+        let trial = fixture::trial(&repo.experiment(), "glm");
+        fixture::commit_run(&repo, &trial, &[("main.py", "print(input())\n")]);
+        let before = read(&repo, "glm");
+        assert_eq!((stage(&before), before.stale), ("ran", None));
+
+        let catalog = fs::read_to_string(repo.root.path().join("gungnir.toml")).unwrap();
+        let ceiling = "id = \"glm\"\nmax-output-tokens = 131072\n";
+        write(
+            repo.root.path(),
+            "gungnir.toml",
+            catalog.replacen("id = \"glm\"\n", ceiling, 1),
+        );
+        let experiment = repo.experiment();
+        let system = &fixture::trial(&experiment, "glm").system;
+        assert_eq!(system.max_output_tokens().map(u32::from), Some(131_072));
+        assert_eq!(read(&repo, "glm"), before);
+    }
+
     #[tokio::test]
     async fn stale_names_the_first_phase_whose_inputs_changed() {
         let repo = Repo::new();
