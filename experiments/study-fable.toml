@@ -1,5 +1,5 @@
-# The study's Claude Fable arm: every effort level of Claude Fable 5.1 on the full suite, on its own weekly allowance
-# beside the Claude arm.
+# The study's Claude Fable arm: every effort level of Claude Fable 5.1 on the full suite, run after
+# the Claude arm on the same plan, whose weekly allowance caps Fable at half of it.
 name = "study-fable"
 results = "../runs/study-fable"
 repetitions = 1

@@ -33,7 +33,7 @@ wall = "4h"
 idle = "30m"
 
 [concurrency]
-anthropic = 12
+anthropic = 18
 
 [[systems]]
 model = "claude-haiku-5-5"
