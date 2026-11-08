@@ -15,7 +15,7 @@ gungnir runs a benchmark of AI coding agents. It drives each vendor's own CLI he
 ## Repository layout
 
 ```text
-gungnir.toml                  catalog: sandbox base packages, harness packages, backends, models, prices
+gungnir.toml                  catalog: sandbox base packages, harness packages, backends, models, output ceilings, prices
 languages/<id>/
   language.toml               packages, build, run, version, sources, ignore, lizard, env, profile
   preamble.md                 per-language prompt preamble; {build}, {run} and {version} placeholders
@@ -73,6 +73,8 @@ An experiment's results are tied to the toolchain set it ran with. A committed r
 Identifiers are slugs (`[a-z0-9][a-z0-9.-]*`) behind one macro, one newtype per kind: `LanguageId`, `ScenarioId`, `ModelId`, `BackendId`, `CaseId`, `WorkloadId`. `Rep` and `AttemptNo` are positive integers. A `SystemId` is derived from a `System` and never parsed back.
 
 `Effort` is a closed enum: `None`, `Minimal`, `Low`, `Medium`, `High`, `Xhigh`, `Max`, ordered by rank. The catalog lists the levels each model accepts. Each driver declares which levels its CLI flag can carry. A `System` is constructed only by `Catalog::systems`, which rejects an effort outside the intersection, so a `System` value is always runnable.
+
+A model may state `max-output-tokens`, the most output tokens one response of it may carry, as a positive integer that fits in 32 bits. `Catalog::system` copies it into the `System` beside the API model. Like the API model, it is not part of the `SystemId`: it shapes how the agent is launched, not which system ran.
 
 `TokenUsage` keeps disjoint buckets: `input`, `cache_read`, `cache_write` (the default cache), `cache_write_long` (Anthropic's one-hour cache), `output`, and `reasoning: Option<u64>` as a subset of `output`. Each driver normalizes its vendor's semantics at the parse boundary (Anthropic's `input_tokens` excludes cache reads, OpenAI's includes them). Usage is stored per sample at the finest grain the CLI reports, each sample tagged with the request and model when the CLI names them (Codex names neither). Totals are derived, never stored.
 

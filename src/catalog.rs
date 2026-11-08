@@ -12,6 +12,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fmt,
     net::Ipv4Addr,
+    num::NonZeroU32,
     path::{Path, PathBuf},
 };
 
@@ -96,6 +97,7 @@ impl Catalog {
             model: model_id.clone(),
             api_model: api_model.clone(),
             effort,
+            max_output_tokens: model.max_output_tokens,
         })
     }
 }
@@ -257,6 +259,7 @@ impl fmt::Display for UserPath {
 pub struct Model {
     efforts: BTreeSet<Effort>,
     served_by: BTreeMap<BackendId, String>,
+    max_output_tokens: Option<NonZeroU32>,
     prices: BTreeMap<NaiveDate, Tiers>,
 }
 
@@ -269,6 +272,11 @@ impl Model {
     /// The backends serving the model. Never empty.
     pub fn backends(&self) -> impl Iterator<Item = &BackendId> {
         self.served_by.keys()
+    }
+
+    /// The most output tokens one response of the model may carry, when the catalog states it.
+    pub fn max_output_tokens(&self) -> Option<NonZeroU32> {
+        self.max_output_tokens
     }
 
     /// The rates in effect on `day` for a request whose prompt has `prompt_tokens` tokens,
@@ -319,6 +327,7 @@ pub struct System {
     model: ModelId,
     api_model: String,
     effort: Effort,
+    max_output_tokens: Option<NonZeroU32>,
 }
 
 impl System {
@@ -352,6 +361,12 @@ impl System {
 
     pub fn effort(&self) -> Effort {
         self.effort
+    }
+
+    /// The model's [`Model::max_output_tokens`], which shapes the launch but not the system's
+    /// identity.
+    pub fn max_output_tokens(&self) -> Option<NonZeroU32> {
+        self.max_output_tokens
     }
 }
 
@@ -468,6 +483,7 @@ struct RawModel {
     id: ModelId,
     efforts: Vec<Effort>,
     served_by: BTreeMap<BackendId, String>,
+    max_output_tokens: Option<i64>,
     prices: Vec<RawPrice>,
 }
 
@@ -677,9 +693,24 @@ impl RawModel {
             );
             ensure!(!api_model.is_empty(), "served-by.{backend} is empty");
         }
+        let max_output_tokens = self
+            .max_output_tokens
+            .map(|tokens| {
+                u32::try_from(tokens)
+                    .ok()
+                    .and_then(NonZeroU32::new)
+                    .ok_or_else(|| {
+                        eyre!(
+                            "max-output-tokens = {tokens} is not a positive integer of at most {}",
+                            u32::MAX
+                        )
+                    })
+            })
+            .transpose()?;
         Ok(Model {
             efforts,
             served_by: self.served_by,
+            max_output_tokens,
             prices: price_table(self.prices)?,
         })
     }

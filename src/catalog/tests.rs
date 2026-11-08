@@ -221,6 +221,58 @@ fn systems_need_a_serving_backend_and_an_offered_effort() {
 }
 
 #[test]
+fn a_model_may_state_the_most_output_tokens_one_response_carries() {
+    let absent = load(CATALOG).unwrap();
+    assert_eq!(absent.model(&id("m")).unwrap().max_output_tokens(), None);
+    let system = absent
+        .system(&id("m"), &id("proxy"), Effort::High, id("1.0.0"))
+        .unwrap();
+    assert_eq!(system.max_output_tokens(), None);
+
+    let stated = load(&CATALOG.replacen(
+        "id = \"m\"\n",
+        "id = \"m\"\nmax-output-tokens = 131072\n",
+        1,
+    ))
+    .unwrap();
+    let tokens = NonZeroU32::new(131_072);
+    assert_eq!(stated.model(&id("m")).unwrap().max_output_tokens(), tokens);
+    for backend in ["proxy", "anthropic"] {
+        let ceiled = stated
+            .system(&id("m"), &id(backend), Effort::High, id("1.0.0"))
+            .unwrap();
+        assert_eq!(ceiled.max_output_tokens(), tokens, "{backend}");
+        let plain = absent
+            .system(&id("m"), &id(backend), Effort::High, id("1.0.0"))
+            .unwrap();
+        assert_eq!(ceiled.id(), plain.id(), "{backend}");
+    }
+}
+
+#[test]
+fn an_output_ceiling_must_be_a_positive_integer() {
+    for (value, needles) in [
+        (
+            "0",
+            &["id = \"m\"", "max-output-tokens = 0", "positive"][..],
+        ),
+        ("-1", &["id = \"m\"", "max-output-tokens = -1", "positive"]),
+        (
+            "4294967296",
+            &["id = \"m\"", "max-output-tokens = 4294967296", "4294967295"],
+        ),
+        ("1.5", &["max-output-tokens = 1.5", "floating point"]),
+        ("\"lots\"", &["max-output-tokens = \"lots\"", "string"]),
+    ] {
+        rejects(
+            "id = \"m\"\n",
+            &format!("id = \"m\"\nmax-output-tokens = {value}\n"),
+            needles,
+        );
+    }
+}
+
+#[test]
 fn a_model_is_found_by_the_name_its_backend_serves_it_under() {
     let catalog = load(CATALOG).unwrap();
     let model = catalog.model(&id("m")).unwrap();
