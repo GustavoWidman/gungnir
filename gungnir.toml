@@ -84,22 +84,27 @@ credential = { kind = "api-key", var = "LMSTUDIO_API_KEY", file = "~/.config/gun
 egress = ["192.168.101.190"]
 relay = true
 
+# Sonnet, Opus and Fable get Claude Code's highest output ceiling, which Claude Code clamps to each
+# model's own maximum, so a long response is never cut and resumed at the 32,000 default.
 [[models]]
 id = "claude-fable-5-1"
 efforts = ["low", "medium", "high", "xhigh", "max"]
 served-by = { anthropic = "claude-fable-5-1" }
+max-output-tokens = 128000
 prices = [{ since = "2026-11-03", input = 10.0, output = 50.0, cache-read = 0.25, cache-write = 12.5, cache-write-1h = 20.0 }]
 
 [[models]]
 id = "claude-opus-5-5"
 efforts = ["low", "medium", "high", "xhigh", "max"]
 served-by = { anthropic = "claude-opus-5-5" }
+max-output-tokens = 128000
 prices = [{ since = "2026-11-03", input = 4.0, output = 20.0, cache-read = 0.2, cache-write = 5.0, cache-write-1h = 8.0 }]
 
 [[models]]
 id = "claude-sonnet-5-5"
 efforts = ["low", "medium", "high", "xhigh", "max"]
 served-by = { anthropic = "claude-sonnet-5-5" }
+max-output-tokens = 128000
 prices = [{ since = "2026-11-03", input = 2.0, output = 10.0, cache-read = 0.1, cache-write = 2.5, cache-write-1h = 4.0 }]
 
 [[models]]
