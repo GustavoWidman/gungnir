@@ -127,7 +127,7 @@ fn loads_the_repository_catalog() {
         assert_eq!(ceiling.map(u32::from), Some(131_072), "{model}");
     }
     assert_eq!(glm.max_output_tokens().map(u32::from), Some(131_072));
-    assert_eq!(haiku.max_output_tokens(), None);
+    assert_eq!(haiku.max_output_tokens().map(u32::from), Some(128_000));
 
     let nvidia = catalog.backend(&id("nvidia")).unwrap();
     assert_eq!(nvidia.harness().as_str(), "codex");
