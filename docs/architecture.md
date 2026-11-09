@@ -245,7 +245,7 @@ All phases are safe to rerun and safe to interrupt. The first Ctrl-C drains: not
 
 `gungnir index` scores each language by how well coding agents do in it, from the committed records of one or more experiments, as one number where an average language scores 100 and higher is better. `src/index/` computes it as a pure function of plain sample rows, apart from reading the records and writing the tables.
 
-**Samples.** The index reads the trials the report reads, those whose committed run is a sample, and keeps those with a current grade. A generation is one system's repetition in one experiment: a program for every scenario and language the experiment asks of it. A generation counts only when at least `--complete` of its cells (0.95 by default) hold a sample with a current grade, so that a repetition still in progress does not tilt the comparison toward the cells it reached first. Samples pool by model, the catalog's model id, over efforts and generations.
+**Samples.** The index reads the trials the report reads, those whose committed run is a sample, and keeps those with a current grade. A generation is one system's repetition in one experiment: a program for every scenario and language the experiment asks of it. A generation is complete when at least `--complete` of its cells (0.95 by default) hold a sample with a current grade, and it counts only when the same repetition is complete for every system of its model in the experiment, so that a repetition still in progress tilts the comparison neither toward the cells it reached first nor toward the efforts that reached it first. Samples pool by model, the catalog's model id, over efforts and generations.
 
 **Dimensions.** Each sample counts on five:
 
@@ -272,7 +272,7 @@ Every dimension weighs 1 unless `--weight DIMENSION=WEIGHT` sets it. A weight is
 **Output.** `index` prints one row per language in descending index: the index and its interval, the five dimension scores and each model's index. With `--out DIR` it replaces that directory as `report` replaces its own, refusing one that is neither empty nor an index:
 
 - `scores.csv`: one row per scope (`all`, or a model id), language and dimension (`index`, `pass`, `tokens`, `time`, `speed` or `simplicity`) with `score`, `low` and `high`, empty where the scope lacks the value, such as speed for a model never measured;
-- `generations.csv`: every generation, its cell and graded counts, and whether it counted;
+- `generations.csv`: every generation, its cell and graded counts, whether it is complete and whether it counted;
 - `manifest.json`, written last: the experiments with the sessions that wrote the records the samples come from, the index's own session, the completeness share, the weights and the bootstrap.
 
 ## Decisions

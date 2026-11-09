@@ -43,6 +43,7 @@ row! {
         pub cells: usize,
         pub graded: usize,
         pub complete: bool,
+        pub counted: bool,
     }
 }
 
@@ -139,6 +140,7 @@ impl GenerationRow {
             cells: generation.cells,
             graded: generation.graded,
             complete: generation.is_complete(complete),
+            counted: generation.counted,
         }
     }
 }

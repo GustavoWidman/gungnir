@@ -1,12 +1,12 @@
 //! The samples the index reads from the committed records of experiments: every trial whose
 //! committed run is a sample and whose grade is current, as the report reads them, from the
-//! generations graded completely enough.
+//! generations graded completely enough at every effort of their model.
 use super::{Sample, Timing};
 use crate::{
     catalog::{System, SystemId},
     experiment::Experiment,
     grade::{GradeRecord, Verdict},
-    id::Rep,
+    id::{ModelId, Rep},
     measure::{self, MeasureRecord},
     report::{self, Reported, Trial},
     toolchains::Toolchains,
@@ -24,6 +24,10 @@ pub struct Generation {
     pub cells: usize,
     /// The cells whose committed run is a sample with a current grade.
     pub graded: usize,
+    /// Whether its samples count: it and the same repetition of every other system of its model
+    /// in the experiment are complete, so a model's scores never lean toward the efforts that
+    /// reached a repetition first.
+    pub counted: bool,
 }
 
 impl Generation {
@@ -36,7 +40,7 @@ impl Generation {
 /// What the index read from experiments.
 #[derive(Debug)]
 pub struct Read {
-    /// The samples of the complete generations.
+    /// The samples of the counted generations.
     pub samples: Vec<Sample>,
     /// Every generation of every experiment, complete or not.
     pub generations: Vec<Generation>,
@@ -47,7 +51,7 @@ pub struct Read {
 }
 
 /// Reads the samples of `experiments`, keeping the generations of which at least `complete` of
-/// the cells are graded.
+/// the cells are graded, alongside the same repetition of every other system of their model.
 pub fn read(experiments: &[Experiment], toolchains: &Toolchains, complete: f64) -> Result<Read> {
     let mut names = BTreeSet::new();
     for experiment in experiments {
@@ -74,6 +78,7 @@ pub fn read(experiments: &[Experiment], toolchains: &Toolchains, complete: f64) 
                     rep: key.rep,
                     cells: 0,
                     graded: 0,
+                    counted: false,
                 });
             generation.cells += 1;
         }
@@ -89,10 +94,11 @@ pub fn read(experiments: &[Experiment], toolchains: &Toolchains, complete: f64) 
             }
             graded.push((generation, sample, trial));
         }
+        count_whole_repetitions(&mut generations, complete);
         let mut sessions = BTreeSet::new();
         for (generation, sample, trial) in graded {
             let generation = generations.get(&generation);
-            if generation.is_some_and(|generation| generation.is_complete(complete)) {
+            if generation.is_some_and(|generation| generation.counted) {
                 read.samples.push(sample);
                 sessions.extend(trial.sessions().cloned());
             }
@@ -105,6 +111,28 @@ pub fn read(experiments: &[Experiment], toolchains: &Toolchains, complete: f64) 
         });
     }
     Ok(read)
+}
+
+/// Marks counted each complete generation whose repetition is complete for every system of its
+/// model in the experiment.
+fn count_whole_repetitions(generations: &mut BTreeMap<(SystemId, Rep), Generation>, share: f64) {
+    let mut systems: BTreeMap<ModelId, BTreeSet<SystemId>> = BTreeMap::new();
+    let mut finished: BTreeMap<(ModelId, Rep), usize> = BTreeMap::new();
+    for ((system, rep), generation) in generations.iter() {
+        let model = generation.system.model();
+        systems
+            .entry(model.clone())
+            .or_default()
+            .insert(system.clone());
+        if generation.is_complete(share) {
+            *finished.entry((model.clone(), *rep)).or_default() += 1;
+        }
+    }
+    for ((_, rep), generation) in generations.iter_mut() {
+        let model = generation.system.model();
+        let whole = systems.get(model).map_or(0, BTreeSet::len);
+        generation.counted = finished.get(&(model.clone(), *rep)) == Some(&whole);
+    }
 }
 
 /// What a graded trial counts in the index.

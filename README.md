@@ -150,7 +150,7 @@ gungnir index experiments/study-openai.toml experiments/study-claude.toml
 The gungnir index scores each language against the average language for the same model and
 scenario on pass rate, tokens, session time, program speed and simplicity, where 100 is average
 and higher is better. `index` counts a generation only once `--complete` of its cells (95% by
-default) are graded, and `--weight speed=0` reweighs or drops a dimension. `docs/architecture.md`
+default) are graded at every effort of its model, and `--weight speed=0` reweighs or drops a dimension. `docs/architecture.md`
 states the definition.
 
 `run` takes `--quota-ceiling BACKEND[:WINDOW]=FRACTION` to stop a backend at a share of a

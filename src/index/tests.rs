@@ -1,11 +1,12 @@
 use super::*;
 use crate::{
+    experiment::Experiment,
     measure::Protocol,
     provenance::Session,
     run::fixture::{self, Repo},
     store::{Digest, MANIFEST, PartialDir},
     testing,
-    trial::{FINAL, Phase},
+    trial::{FINAL, Phase, TrialKey},
 };
 use serde_json::{Value, json};
 use std::fs;
@@ -74,14 +75,69 @@ async fn only_the_samples_of_generations_graded_completely_enough_count() {
             timings: Vec::new(),
         }]
     );
-    let generations: Vec<(&str, usize, usize, bool)> = (read.generations.iter())
+    let generations: Vec<(&str, usize, usize, bool, bool)> = (read.generations.iter())
         .map(|generation| {
             let model = generation.system.model().as_str();
             let complete = generation.is_complete(read.complete);
-            (model, generation.cells, generation.graded, complete)
+            let cells = (generation.cells, generation.graded);
+            (model, cells.0, cells.1, complete, generation.counted)
         })
         .collect();
-    assert_eq!(generations, [("opus", 1, 1, true), ("luna", 1, 0, false)]);
+    assert_eq!(
+        generations,
+        [("opus", 1, 1, true, true), ("luna", 1, 0, false, false)]
+    );
+}
+
+/// The fixture's trial of `model` at `effort`.
+fn trial_at(experiment: &Experiment, model: &str, effort: &str) -> TrialKey {
+    let trials = experiment.trials().into_iter();
+    trials
+        .filter(|trial| trial.system.model().as_str() == model)
+        .find(|trial| trial.system.effort().as_str() == effort)
+        .unwrap()
+}
+
+#[tokio::test]
+async fn a_generation_counts_only_once_its_model_finished_it_at_every_effort() {
+    let repo = Repo::new();
+    let both = fixture::EXPERIMENT_TOML.replacen(
+        "model = \"opus\"\nefforts = [\"low\"]",
+        "model = \"opus\"\nefforts = [\"low\", \"high\"]",
+        1,
+    );
+    testing::write(repo.root.path(), "experiments/fixture.toml", both);
+    let experiment = repo.experiment();
+    for effort in ["low", "high"] {
+        let trial = trial_at(&experiment, "opus", effort);
+        fixture::commit_run(&repo, &trial, &[("main.py", "print(input())\n")]);
+    }
+    fixture::commit_grade(&repo, &trial_at(&experiment, "opus", "low")).await;
+
+    let counted = |read: &Read| -> Vec<(&str, bool, bool)> {
+        let opus = read.generations.iter();
+        opus.filter(|generation| generation.system.model().as_str() == "opus")
+            .map(|generation| {
+                let effort = generation.system.effort().as_str();
+                (
+                    effort,
+                    generation.is_complete(read.complete),
+                    generation.counted,
+                )
+            })
+            .collect()
+    };
+    let read = read(std::slice::from_ref(&experiment), &repo.toolchains, 0.95).unwrap();
+    assert!(read.samples.is_empty(), "{:?}", read.samples);
+    assert_eq!(
+        counted(&read),
+        [("high", false, false), ("low", true, false)]
+    );
+
+    fixture::commit_grade(&repo, &trial_at(&experiment, "opus", "high")).await;
+    let read = super::read(&[experiment], &repo.toolchains, 0.95).unwrap();
+    assert_eq!(read.samples.len(), 2);
+    assert_eq!(counted(&read), [("high", true, true), ("low", true, true)]);
 }
 
 #[tokio::test]
@@ -195,9 +251,9 @@ async fn the_scores_replace_the_output_directory_beside_their_manifest() {
     assert_eq!(
         generations.lines().collect::<Vec<_>>(),
         [
-            "experiment,system,model,effort,rep,cells,graded,complete",
-            "fixture,claude-code-2.1.316_anthropic_opus_low,opus,low,1,1,1,true",
-            "fixture,codex-0.166.0_openai_luna_low,luna,low,1,1,0,false",
+            "experiment,system,model,effort,rep,cells,graded,complete,counted",
+            "fixture,claude-code-2.1.316_anthropic_opus_low,opus,low,1,1,1,true,true",
+            "fixture,codex-0.166.0_openai_luna_low,luna,low,1,1,0,false,false",
         ]
     );
     let manifest: Value = serde_json::from_slice(&fs::read(out.join(MANIFEST)).unwrap()).unwrap();

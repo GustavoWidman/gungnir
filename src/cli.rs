@@ -173,7 +173,8 @@ enum Command {
         #[arg(required = true)]
         experiments: Vec<PathBuf>,
         /// Count a generation, one repetition of one system, only when at least this share of
-        /// its scenario and language cells holds a sample with a current grade.
+        /// its scenario and language cells holds a sample with a current grade, and of the same
+        /// repetition of every other system of its model in the experiment.
         #[arg(long, value_name = "SHARE", default_value_t = 0.95, value_parser = share)]
         complete: f64,
         /// Weigh a dimension (pass, tokens, time, speed or simplicity) in every index against
@@ -293,20 +294,20 @@ fn write_index(
     let read = index::read(&experiments, &toolchains, complete)?;
     ensure!(
         !read.samples.is_empty(),
-        "no generation has {:.0}% of its cells graded",
+        "no generation has {:.0}% of its cells graded at every effort of its model",
         complete * 100.0
     );
     let bootstrap = Bootstrap::DEFAULT;
     let scores = index::score(&read.samples, &weights, bootstrap);
     print!("{}", IndexTable(&scores));
-    let counted = (read.generations.iter())
-        .filter(|generation| generation.is_complete(complete))
-        .count();
+    let generations = read.generations.iter();
+    let counted = generations.clone().filter(|g| g.counted).count();
+    let short = generations.filter(|g| !g.is_complete(complete)).count();
     println!(
-        "{} samples from {counted} generations; {} generations with less than {:.0}% of their cells graded left out",
+        "{} samples from {counted} generations; left out: {short} generations with less than {:.0}% of their cells graded and {} waiting for the same repetition at another effort of their model",
         read.samples.len(),
-        read.generations.len() - counted,
         complete * 100.0,
+        read.generations.len() - counted - short,
     );
     if let Some(out) = out {
         let first = paths
