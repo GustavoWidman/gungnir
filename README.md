@@ -247,6 +247,6 @@ Results live under `runs/`, which is not tracked.
   gungnir index experiments/study-openai.toml experiments/study-claude.toml --out runs/index/study
   cd paper
   python3 -m analysis ../runs/report/study ../runs/index/study ../runs .
-  python3 -m analysis.crashes ../runs/report/study ../runs ../scenarios .
+  python3 -m analysis.crashes ../runs/report/study ../runs/index/study ../runs ../scenarios .
   ```
 - `docs/architecture.md`: the design contract

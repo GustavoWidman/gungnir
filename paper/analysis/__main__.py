@@ -31,7 +31,7 @@ def main(report, index_dir, runs, out):
     out = Path(out)
     (out / "figures").mkdir(parents=True, exist_ok=True)
     (out / "data").mkdir(parents=True, exist_ok=True)
-    trials, workloads = data.load(report, runs)
+    trials, workloads = data.load(report, index_dir, runs)
     models = [m for m in MODELS if m in set(trials.model)]
     per = {m: trials[trials.model == m] for m in models}
     n = {}

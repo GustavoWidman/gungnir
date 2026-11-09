@@ -1,7 +1,7 @@
 """Why Python programs crash on hidden tests: replays one crashing case of each such trial in
 a sandbox and keeps the exception it raised.
 
-    python -m analysis.crashes REPORT RUNS SCENARIOS OUT
+    python -m analysis.crashes REPORT INDEX RUNS SCENARIOS OUT
 
 Needs `bwrap` on PATH. Writes OUT/data/python-crashes.json.
 """
@@ -40,9 +40,9 @@ def replay(bwrap, trial_dir, case_in):
     return re.split(r"[:(]", lines[-1], maxsplit=1)[0].strip()
 
 
-def main(report, runs, scenarios, out):
+def main(report, index, runs, scenarios, out):
     bwrap = shutil.which("bwrap")
-    trials = complete(pd.read_csv(f"{report}/trials.csv"))
+    trials = complete(pd.read_csv(f"{report}/trials.csv"), index)
     cases = pd.read_csv(f"{report}/cases.csv")
     crashed = trials[(trials.language == "python") & (trials.failure == "crash")]
     first = cases[(cases.outcome == "crash")].merge(
@@ -63,4 +63,4 @@ def main(report, runs, scenarios, out):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:5])
+    main(*sys.argv[1:6])

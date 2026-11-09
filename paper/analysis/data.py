@@ -14,22 +14,17 @@ MODEL_NAMES = {"gpt-6-luna": "GPT-6 Luna", "gpt-6.1-terra": "GPT-6.1 Terra",
                "claude-haiku-5-5": "Claude Haiku 5.5"}
 SHORT = {"gpt-6-luna": "luna", "gpt-6.1-terra": "terra", "claude-haiku-5-5": "haiku"}
 
-# A generation of one model at one effort enters the analysis once this share of its
-# scenario-language cells is graded.
-COMPLETE = 0.95
-
-
-def complete(trials):
-    """The graded trials of the generations that are complete enough to analyse."""
+def complete(trials, index):
+    """The graded trials of the generations the gungnir index in `index` counted: those graded
+    completely enough at every effort of their model."""
+    generations = pd.read_csv(f"{index}/generations.csv")
+    counted = generations[generations.counted][["system", "rep"]]
     trials = trials[trials.model.isin(MODELS) & trials.verdict.notna()]
-    cells = trials.scenario.nunique() * len(LANGUAGES)
-    graded = trials.groupby(["model", "effort", "rep"]).size()
-    keep = graded[graded >= COMPLETE * cells].index
-    return trials.set_index(["model", "effort", "rep"]).loc[keep].reset_index()
+    return trials.merge(counted, on=["system", "rep"])
 
 
-def load(report, runs):
-    trials = complete(pd.read_csv(f"{report}/trials.csv"))
+def load(report, index, runs):
+    trials = complete(pd.read_csv(f"{report}/trials.csv"), index)
 
     trials["passed"] = (trials.verdict == "pass").astype(int)
     trials["case_share"] = trials.cases_passed / trials.cases_total
