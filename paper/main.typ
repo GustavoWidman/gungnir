@@ -209,22 +209,6 @@ The eight languages span the two arguments. Python and JavaScript are dynamicall
 
 A system under test is a harness, a model and a reasoning-effort setting (@tab:models). OpenAI's models ran through the Codex CLI 0.166.0 against OpenAI's endpoint, Nemotron 3.5 Super VL and DeepSeek V4.1 Flash through the same CLI against their vendors' endpoints, and Anthropic's models through Claude Code 2.1.316. None of the models accepts a seed, so we treat each session as a draw and repeat trials over independent generations. A trial is one task, one language, one system and one generation, and a generation counts only once every effort of its model has completed it, so that no model's results lean toward the efforts that finished first. The agent starts in a workspace that already builds an empty program and receives the specification, the visible examples, and the build and run commands. Each session may run for four hours and may sit idle for thirty minutes. A session counts once the agent declares itself finished; one cut short by the provider or the harness is run again, so every sample is a session the agent completed.
 
-#figure(
-  table(
-    columns: (auto, auto, auto, auto, auto),
-    align: (left, left, left, right, right),
-    stroke: none,
-    table.hline(stroke: 0.6pt),
-    [*Model*], [*Agent*], [*Efforts*], [*Gen.*], [*Trials*],
-    table.hline(stroke: 0.4pt),
-    ..models.map(m => ([#mname.at(m)], [#agent.at(m)], [#effort-span(m)], [#gens(m)],
-      [#num(n.data.models.at(m).trials)])).flatten(),
-    table.hline(stroke: 0.6pt),
-  ),
-  placement: auto,
-  caption: [The models, the agent each ran in, its reasoning-effort settings, and the generations and trials analysed.],
-) <tab:models>
-
 Every session runs in a bubblewrap sandbox with a private file system, no network except the model provider's endpoint through an allowlisting proxy, and limits on memory, processes and CPU. The hidden tests, the references and the grader never enter it.
 
 == Grading and timing
@@ -248,10 +232,24 @@ The analysis covers #num(n.data.trials) trials from #count(models.len()) models 
 GPT-6 Luna and Nemotron 3.5 Super VL did separate the languages. Luna passed #pr("luna", "all") of all its trials, from #prci("luna", "go") in Go to #prci("luna", "zig") in Zig, and Nemotron #pr("nemotron", "all"), from #prci("nemotron", "go") in Go to #prci("nemotron", "zig") in Zig. The intervals are wide because they include the variation between tasks, which is where most of the differences come from.
 
 #figure(
+  table(
+    columns: (auto, auto, auto, auto, auto),
+    align: (left, left, left, right, right),
+    inset: (x: 4pt, y: 1.5pt),
+    stroke: none,
+    table.hline(stroke: 0.6pt),
+    [*Model*], [*Agent*], [*Efforts*], [*Gen.*], [*Trials*],
+    table.hline(stroke: 0.4pt),
+    ..models.map(m => ([#mname.at(m)], [#agent.at(m)], [#effort-span(m)], [#gens(m)],
+      [#num(n.data.models.at(m).trials)])).flatten(),
+    table.hline(stroke: 0.6pt),
+  ),
+  caption: [The models, their agents and efforts, and the generations and trials analysed.],
+) <tab:models>
+
+#figure(
   image("figures/pass-by-language.svg", width: 100%),
-  placement: top,
-  scope: "parent",
-  caption: [Share of trials passing every hidden test, with 95% two-stage bootstrap intervals, in order of GPT-6 Luna's pass rate.],
+  caption: [Share of each model's trials passing every hidden test (%), by language, over all its efforts and generations. Darker cells pass more often.],
 ) <fig:pass>
 
 == The standard library separates the languages; the type checker does not
@@ -260,8 +258,6 @@ The differences between languages depend on the task far more than on the langua
 
 #figure(
   image("figures/weak-scenarios.svg", width: 100%),
-  placement: top,
-  scope: "parent",
   caption: [Pass rate (%) by task and language of the two models that leave the language room to matter, over all their efforts and generations: #count(int(n.data.models.luna.trials / 64)) trials per cell for GPT-6 Luna and #count(int(n.data.models.nemotron.trials / 64)) for Nemotron 3.5 Super VL. Darker cells pass more often.],
 ) <fig:scenarios>
 
@@ -275,13 +271,13 @@ Python, the language with the most public code, fell behind JavaScript, TypeScri
 
 #figure(
   table(
-    columns: (auto, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr),
-    align: (left, right, right, right, right, right, right, right, right, right),
+    columns: (auto, auto, auto, auto, auto, auto, auto, auto),
+    align: (left, right, right, right, right, right, right, right),
     stroke: none,
     table.hline(stroke: 0.6pt),
-    [], table.cell(colspan: 5, align: center)[*Two weaker models*], table.cell(colspan: 4, align: center)[*#Count(strong.len()) stronger models*],
-    table.hline(start: 1, end: 6, stroke: 0.4pt), table.hline(start: 6, end: 10, stroke: 0.4pt),
-    [], [*Pass*], [*Wrong*], [*Time*], [*Crash*], [*Build*], [*Pass*], [*Wrong*], [*Time*], [*Crash*],
+    [], table.cell(colspan: 5, align: center)[*Two weaker models*], table.cell(colspan: 2, align: center)[*#Count(strong.len()) stronger*],
+    table.hline(start: 1, end: 6, stroke: 0.4pt), table.hline(start: 6, end: 8, stroke: 0.4pt),
+    [], [*Pass*], [*Wrong*], [*Time*], [*Crash*], [*Build*], [*Pass*], [*Time*],
     table.hline(stroke: 0.4pt),
     ..langs.map(l => (
       [#lname.at(l)],
@@ -291,15 +287,11 @@ Python, the language with the most public code, fell behind JavaScript, TypeScri
       [#r0(og("weak", l, "crash"))],
       [#r0(og("weak", l, "build-error"))],
       [#r1(og("strong", l, "pass"))],
-      [#r1(og("strong", l, "wrong-answer"))],
       [#r1(og("strong", l, "timeout"))],
-      [#r1(og("strong", l, "crash"))],
     )).flatten(),
     table.hline(stroke: 0.6pt),
   ),
-  placement: top,
-  scope: "parent",
-  caption: [How the programs ended (% of trials): passing every hidden test, or failing first by a wrong answer, timeout, crash or failed build. The rest exhausted memory or printed past the output cap.],
+  caption: [How the programs ended (% of trials): passing every hidden test, or failing first by a wrong answer, timeout, crash or failed build. The rest exhausted memory or printed past the output cap; the stronger models' wrong answers and crashes stay under 1% in every language.],
 ) <tab:outcomes>
 
 The crashes are not the errors a type checker catches. We replayed one crashing case of each of the #crashes.luna.trials Python trials of Luna's that crashed and read the exception. Of these, #count(crash-kind("luna", "RecursionError")) hit Python's default limit of 1,000 nested calls on the regular-expression engine's deeply nested patterns, and #count(crash-kind("luna", "IntDigitLimit")) hit the interpreter's default guard against converting integers of more than 4,300 digits to text, which the big-integer calculator's answers exceed. Only #count(crash-kind("luna", "TypeError")) raised a `TypeError`. Both common causes are runtime defaults that a program can raise in one line, and no type system would have flagged either. #if recursion-claude.len() == 3 [The recursion limit reached even the strongest models: it cost each of the three Claude models a Python trial on the regular-expression engine.] JavaScript, whose runtime has neither limit at these sizes, crashed in #pct(og("weak", "javascript", "crash")) of the weaker models' trials. Type checking itself changed little: TypeScript's programs passed and failed much as JavaScript's did.
@@ -310,9 +302,7 @@ If the Rust compiler were a crutch, the agents would lean on it. They hardly did
 
 #figure(
   image("figures/failed-builds.svg", width: 100%),
-  placement: top,
-  scope: "parent",
-  caption: [Commands per session whose output carried a compiler, type-checker or syntax error: mean with 95% two-stage bootstrap interval. Python and JavaScript surface such errors only at run time. Each panel has its own scale.],
+  caption: [Commands per session whose output carried a compiler, type-checker or syntax error, mean by model and language, shaded on a log scale. Python and JavaScript surface such errors only at run time.],
 ) <fig:builds>
 
 TypeScript's checker spoke up more often, #r1(sess("luna", "typescript", "failed_builds")) failing builds per Luna session, and #num(ts.null) of its #num(ts.total) errors were strict null checks: an array read or map lookup that might be `undefined`. The agent answers them with a guard, the build passes, and, as the paired comparison shows, the program is no more often correct for it.
@@ -327,30 +317,26 @@ The compiler turns this stale knowledge into working code. #if zig-strong-pass [
 
 Reasoning effort mattered only where the model left room for it (@fig:effort-models). The #count(strong.len()) stronger models passed #pct(strong-effort-lo) to #pct(strong-effort-hi) of their trials at every effort they ran, while Luna rose from #pct(effort-lo("luna")) to #pct(effort-hi("luna")) and Nemotron from #pct(effort-lo("nemotron")) to #pct(effort-hi("nemotron")).
 
-#figure(
-  image("figures/effort-models.svg", width: 100%),
-  placement: auto,
-  caption: [Pass rate over all languages by reasoning effort, one line per model across the efforts it ran. Grey: the #count(strong.len()) stronger models.],
-) <fig:effort-models>
-
 Luna's spread between languages shrank as its reasoning effort rose (@fig:effort), and letting the language effect differ by effort improves a logistic model of its outcomes (χ² = #r1(n.logistic_luna.effort_x_language.chi2), #n.logistic_luna.effort_x_language.df df, #pv(n.logistic_luna.effort_x_language.p)). Without reasoning its languages passed between #pct(calc.min(..langs.map(l => n.effort.at(l).none))) and #pct(calc.max(..langs.map(l => n.effort.at(l).none))) of trials; at the highest setting, between #pct(calc.min(..langs.map(l => n.effort.at(l).max))) and #pct(calc.max(..langs.map(l => n.effort.at(l).max))). Zig was the slowest to come up, at #pct(n.effort.zig.medium) at medium effort against #pct(n.effort.all.medium) for the average language, and caught up only at the two highest settings. Effort, like model strength, buys the agent out of most of what the language costs it.
 
 #figure(
+  image("figures/effort-models.svg", width: 100%),
+  caption: [Pass rate over all languages by reasoning effort, one line per model across the efforts it ran. Grey: the #count(strong.len()) stronger models.],
+) <fig:effort-models>
+
+#figure(
   image("figures/luna-effort.svg", width: 100%),
-  placement: auto,
   caption: [GPT-6 Luna's pass rate by reasoning effort, one panel per language. Black: the language; dashed: the mean over languages; band: 95% two-stage bootstrap interval.],
 ) <fig:effort>
 
 == The least familiar language costs the most
 
-Correctness comes at a different price in each language (@fig:tokens). Zig sessions used #times(lo-of(strong, zig-tokens)) to #times(hi-of(strong, zig-tokens)) the tokens of an average language for the stronger models, #times(zig-tokens("luna")) for Luna and #times(zig-tokens("nemotron")) for Nemotron, and took #times(lo-of(models, m => cost(m, "zig", "wall_s"))) to #times(hi-of(models, m => cost(m, "zig", "wall_s"))) the time. C was the next most expensive, at #times(lo-of(models, m => cost(m, "c", "tokens"))) to #times(hi-of(models, m => cost(m, "c", "tokens"))) the tokens. The other six languages sat between #times(mainstream.first()) and #times(mainstream.last()). Python and JavaScript were the cheapest for Luna, at #times(cost("luna", "python", "tokens")) and #times(cost("luna", "javascript", "tokens")), and Luna's Rust sessions took #more(rust-luna) more tokens than its Python ones. For the stronger models Rust cost at most #more(rust-strong) more than Python or JavaScript.
-
 #figure(
   image("figures/tokens-by-language.svg", width: 100%),
-  placement: top,
-  scope: "parent",
-  caption: [Tokens per session relative to the geometric mean of the same task, system and generation across the eight languages (1×, dashed): geometric mean with 95% two-stage bootstrap interval.],
+  caption: [Tokens per session relative to the geometric mean of the same task, system and generation across the eight languages, so 1.0 is an average language: geometric mean by model and language. Darker cells cost more.],
 ) <fig:tokens>
+
+Correctness comes at a different price in each language (@fig:tokens). Zig sessions used #times(lo-of(strong, zig-tokens)) to #times(hi-of(strong, zig-tokens)) the tokens of an average language for the stronger models, #times(zig-tokens("luna")) for Luna and #times(zig-tokens("nemotron")) for Nemotron, and took #times(lo-of(models, m => cost(m, "zig", "wall_s"))) to #times(hi-of(models, m => cost(m, "zig", "wall_s"))) the time. C was the next most expensive, at #times(lo-of(models, m => cost(m, "c", "tokens"))) to #times(hi-of(models, m => cost(m, "c", "tokens"))) the tokens. The other six languages sat between #times(mainstream.first()) and #times(mainstream.last()). Python and JavaScript were the cheapest for Luna, at #times(cost("luna", "python", "tokens")) and #times(cost("luna", "javascript", "tokens")), and Luna's Rust sessions took #more(rust-luna) more tokens than its Python ones. For the stronger models Rust cost at most #more(rust-strong) more than Python or JavaScript.
 
 == The strongest models match the references
 
@@ -358,16 +344,13 @@ Measured against a reference in its own language, a program's speed followed the
 
 #figure(
   image("figures/speed.svg", width: 100%),
-  placement: top,
-  scope: "parent",
-  caption: [Runtime of each passing program relative to the same-language reference, on a log scale. Grey: one program, geometric mean over the task's workloads; bar: geometric mean over programs; dashed: parity.],
+  caption: [Runtime of the passing programs relative to the reference in the same language, geometric mean by model and language. Below 1.0 the agents' programs ran faster than the reference; darker cells ran slower.],
 ) <fig:speed>
 
 The choice of language still decides the order of magnitude (@fig:absolute). Against the fastest reference for each workload, Terra's Rust programs took #times(absolute("terra", "rust")) its time and its C programs #times(absolute("terra", "c")), while its Python programs took #times(absolute("terra", "python")) and the Python references themselves #times(absolute("reference", "python")). An agent writing Rust or C leaves more on the table than one writing Python, and its program is still an order of magnitude faster. Reasoning effort bought speed as well: Luna's programs went from #times(n.speed.luna.by_effort.none) the reference's time at no reasoning to #times(n.speed.luna.by_effort.max) at the highest setting.
 
 #figure(
   image("figures/speed-absolute.svg", width: 100%),
-  placement: auto,
   caption: [Runtime relative to the fastest reference in any language for the same workload, geometric mean over workloads. Bars mark the references; open markers the agents' passing programs.],
 ) <fig:absolute>
 
@@ -383,7 +366,6 @@ Equation (@eq:advantage) is a language's advantage on one dimension: its distanc
 
 #figure(
   image("figures/gungnir-index.svg", width: 100%),
-  placement: auto,
   caption: [The gungnir index of each language over the #count(models.len()) models, with its 95% interval. The dashed line marks the average language at 100; a dark bar's interval lies above it and a light bar's below.],
 ) <fig:index>
 
