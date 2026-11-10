@@ -175,7 +175,7 @@ The answer to the first question is no for correctness and yes for everything el
 
 = Study design <design>
 
-We ran the study with gungnir, a harness we built for it. It drives each vendor's command-line agent headless in a sandbox, grades and times the program the agent leaves, and keeps every transcript. The harness, the tasks, the references and every record behind this paper are available at #link("https://github.com/GustavoWidman/gungnir")[github.com/GustavoWidman/gungnir].
+We ran the study with gungnir, a harness we built for it. It drives each vendor's command-line agent headless in a sandbox, grades and times the program the agent leaves, and keeps every transcript. The harness, the tasks and the references are available at #link("https://github.com/GustavoWidman/gungnir")[github.com/GustavoWidman/gungnir], and every record behind this paper, each session's transcript included, at #link("https://doi.org/10.5281/zenodo.24120074")[doi.org/10.5281/zenodo.24120074].
 
 == Tasks
 
