@@ -140,7 +140,7 @@ gungnir index experiments/study-openai.toml experiments/study-claude.toml
 | Command | Purpose |
 |---|---|
 | `plan` | Validate an experiment and print the trial matrix it expands to |
-| `check` | Build and grade every reference solution, regenerating missing workloads |
+| `check` | Build and grade every reference solution, regenerating missing or mismatched workloads |
 | `run` | Run pending trials, one lane per backend, behind quota ceilings, deadlines and an error stop |
 | `grade` | Grade committed runs offline against the hidden cases |
 | `measure` | Time passing programs against the reference under the experiment's protocol, one comparison per measurement core (`--cores`) |
