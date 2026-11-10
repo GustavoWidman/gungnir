@@ -1,4 +1,4 @@
-"""Intervals and tests. Trials of one scenario share a task, so every interval resamples
+"""Intervals and tests. Trials of one scenario share a task, so every bootstrap interval resamples
 scenarios first and trials within them second."""
 
 import numpy as np

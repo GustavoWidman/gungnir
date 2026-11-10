@@ -1,5 +1,5 @@
-"""The paper's figures, each one column wide. Grids put models in rows and languages in columns,
-and intervals are 95% two-stage bootstrap intervals over scenarios and trials."""
+"""The paper's figures, each one column wide. Grids put models or scenarios in rows and languages
+in columns, and intervals are 95% two-stage bootstrap intervals over scenarios and trials."""
 
 import os
 from pathlib import Path
