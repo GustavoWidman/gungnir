@@ -243,8 +243,10 @@ Results live under `runs/`, which is not tracked.
   numbers the manuscript reads:
 
   ```sh
-  gungnir report experiments/study-openai.toml experiments/study-claude.toml --out runs/report/study
-  gungnir index experiments/study-openai.toml experiments/study-claude.toml --out runs/index/study
+  study="experiments/study-openai.toml experiments/study-astra.toml experiments/study-claude.toml
+    experiments/study-nvidia.toml experiments/study-deepseek.toml"
+  gungnir report $study --out runs/report/study
+  gungnir index $study --out runs/index/study
   cd paper
   python3 -m analysis ../runs/report/study ../runs/index/study ../runs .
   python3 -m analysis.crashes ../runs/report/study ../runs/index/study ../runs ../scenarios .
