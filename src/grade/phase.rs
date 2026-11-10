@@ -1,7 +1,7 @@
 //! The grade phase: each committed run without a current grade, judged and committed with the
 //! judge's evidence, and each current grade whose complexity was counted otherwise than it
-//! would be now, recounted in place. It writes only grade directories, so it may run while
-//! `run` still runs.
+//! would be now, recounted in place. It writes only its session and grade directories, so it
+//! may run while `run` still runs.
 use super::{Complexity, Counting, GradeRecord, Verdict, judge};
 use crate::{
     experiment::Experiment,

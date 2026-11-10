@@ -57,7 +57,7 @@ pub(crate) struct Reported {
 
 /// Reads every trial of `experiments`, prices their tokens at the list prices of `prices`,
 /// and replaces `out` with the tables and their manifest. Refuses to replace a directory that
-/// is neither empty nor a report.
+/// is neither empty nor holds a manifest.
 pub fn report(
     experiments: &[Experiment],
     toolchains: &Toolchains,

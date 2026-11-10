@@ -26,7 +26,8 @@ pub struct Spec {
     pub closure: Closure,
     /// Host paths bound into the guest, in order, after everything else.
     pub mounts: Vec<Mount>,
-    /// PATH inside: the language, the sandbox base, and the harness for agents.
+    /// PATH inside: the language, the sandbox base, and the harness for agents or the
+    /// measurement or profiling tools for timing and profiling.
     pub path: Vec<PathBuf>,
     pub env: Vec<(String, EnvValue)>,
     pub cwd: PathBuf,

@@ -2,7 +2,7 @@
 //! program exits. hyperfine reports the same figure for each timed run, but the kernel counts
 //! the spawning process's own peak into the child's, so hyperfine's figure never falls below
 //! its footprint: 3.3 MiB for a Zig program whose peak GNU time reads as 0.9 MiB. Above that
-//! floor the two agree to the KiB.
+//! floor the two agree to the KiB for a program whose peak is the same on every run.
 use super::RUSAGE;
 use eyre::{Result, WrapErr};
 use std::{ffi::OsString, fs, io::ErrorKind, path::Path};

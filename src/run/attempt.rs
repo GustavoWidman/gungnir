@@ -502,7 +502,7 @@ mod tests {
     use std::{collections::BTreeMap, path::PathBuf};
     use tempfile::TempDir;
 
-    /// The fixture repository with its credentials, an open vault and a session.
+    /// The fixture repository with its credentials, an open vault and a stop.
     struct Bench {
         repo: Repo,
         home: TempDir,

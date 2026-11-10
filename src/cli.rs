@@ -80,7 +80,7 @@ enum Command {
         /// The experiment file, such as experiments/smoke.toml.
         experiment: PathBuf,
         /// Stop starting attempts on a backend once a quota window reports this fraction used,
-        /// in an attempt's transcript or a reading of the backend's quota source, as
+        /// in a committed attempt's transcript or a reading of the backend's quota source, as
         /// BACKEND[:WINDOW]=FRACTION[@TIME]: WINDOW names one window (any window when omitted),
         /// and TIME, in RFC 3339, counts only attempts that started, and readings taken, at or
         /// after it. Such as anthropic:seven_day=0.75, zai:5h=0.5 or
@@ -1729,8 +1729,8 @@ mod tests {
         assert!(parse(&bench).is_ok());
     }
 
-    /// The fixture repository with languages `python` and `rust` and no lizard, so judging
-    /// needs no host tool, and fake toolchains for both.
+    /// The fixture repository with languages `python`, `rust` and any extra ones, none with
+    /// lizard, so judging needs no host tool, and fake toolchains for `python` and `rust`.
     struct CheckFixture {
         _root: TempDir,
         languages: BTreeMap<LanguageId, Language>,

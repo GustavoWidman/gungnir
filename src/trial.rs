@@ -1,5 +1,5 @@
 //! Trial identity and the layout of an experiment's results directory. The directories under
-//! `results/<experiment>/` are named here and nowhere else.
+//! `results/<experiment>/`, down to each phase's own, are named here and nowhere else.
 use crate::{
     catalog::System,
     id::{AttemptNo, LanguageId, Rep, ScenarioId, WorkloadId},

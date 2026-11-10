@@ -175,7 +175,7 @@ impl Budget {
         self.wall
     }
 
-    /// The longest an attempt may go without printing anything.
+    /// The longest an attempt may go without printing a line on stdout.
     pub fn idle(&self) -> Duration {
         self.idle
     }

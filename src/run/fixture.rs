@@ -75,8 +75,7 @@ pub struct Play {
 }
 
 impl Play {
-    /// An agent that prints the captured transcript `name` from `tests/fixtures/harness/` and
-    /// exits 0.
+    /// An agent that prints the transcript `name` from `tests/fixtures/harness/` and exits 0.
     pub fn transcript(name: &str) -> Self {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures/harness")

@@ -114,7 +114,7 @@ mod tests {
     };
     use std::fs;
 
-    /// Commits a first attempt of the `opus` trial with the captured Claude Code transcript
+    /// Commits a first attempt of the `opus` trial with the Claude Code transcript fixture
     /// `name` and the fixture's record as `edit` leaves it.
     fn committed(
         repo: &Repo,

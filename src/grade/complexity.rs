@@ -297,7 +297,7 @@ fn csv_fields(line: &str) -> Result<Vec<&str>> {
 }
 
 /// Reads the file table of lizard's default report, whose rows are
-/// `{nloc:7}{avg_nloc:10}{avg_ccn:8}{avg_token:10}{function_cnt:10}     {file}`.
+/// `{nloc:7}{avg_nloc:10}{avg_ccn:8}{avg_token:11}{function_cnt:10}     {file}`.
 fn file_nloc(report: &str) -> Result<BTreeMap<&str, u32>> {
     let mut lines = report
         .lines()

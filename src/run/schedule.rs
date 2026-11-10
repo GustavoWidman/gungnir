@@ -53,7 +53,8 @@ pub struct Guard {
     /// limits aside, so that a trial its agent can never finish does not run forever.
     pub max_attempts: Option<NonZeroU32>,
     /// Start nothing on a backend whose quota source reads a window at least this fraction
-    /// used, until the window resets. [`meter::HOLD`] for a backend not named.
+    /// used, until the window resets or a reading shows it below. [`meter::HOLD`] for a backend
+    /// not named.
     pub holds: BTreeMap<BackendId, f64>,
 }
 

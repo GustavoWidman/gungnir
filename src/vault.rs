@@ -1,7 +1,8 @@
-//! Credentials. Each backend's credential is read from the file `gungnir.toml` names, handed
-//! to one attempt with the exact strings to redact, and staged into an isolated home that is
-//! removed after the attempt, or held by the attempt's relay for a backend that relays. A
-//! Codex login the CLI refreshed during an attempt is written back to its master copy.
+//! Credentials. Each backend's credential is read from the file or Codex home `gungnir.toml`
+//! names and handed to one attempt with the exact strings to redact. The agent gets it in its
+//! environment or in a file of an isolated home that is removed after the attempt, or, for a
+//! backend that relays, the attempt's relay holds it instead. A Codex login the CLI refreshed
+//! during an attempt is written back to its master copy.
 use crate::{
     catalog::{Catalog, Credential, Endpoint},
     egress::Relay,

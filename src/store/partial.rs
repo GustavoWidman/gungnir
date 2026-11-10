@@ -76,8 +76,8 @@ pub fn read_record<T: DeserializeOwned>(dir: &Path) -> Result<Option<T>> {
 }
 
 /// Replaces the record of the committed directory `dir` atomically, so a reader sees the old
-/// record or the new one. Only a record re-derived from what its directory already holds is
-/// rewritten. Fails, writing nothing, when `dir` is not committed, so a directory another phase
+/// record or the new one. Only a record re-derived from files already on disk is rewritten.
+/// Fails, writing nothing, when `dir` is not committed, so a directory another phase
 /// withdrew meanwhile is never recreated.
 pub fn rewrite_record(dir: &Path, record: &impl Serialize) -> Result<()> {
     let path = dir.join(RECORD);

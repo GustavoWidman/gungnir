@@ -75,7 +75,8 @@ impl Record {
 pub enum Verdict {
     /// Tunnelled to an allowlisted host.
     Allowed,
-    /// Refused with 403: not a CONNECT, not allowlisted, or not a request at all.
+    /// Refused: with 403 when it is neither a CONNECT to an allowlisted host nor a request to
+    /// the relay, or no request at all, and with another 4xx when the relay cannot take it.
     Denied,
     /// Allowlisted, but the host could not be reached; answered with 502.
     Unreachable,
