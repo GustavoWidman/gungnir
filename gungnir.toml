@@ -1,8 +1,9 @@
-# The catalog: sandbox base, measurement tools, harness packages, backends and models.
-# Adding a model is one [[models]] entry. Adding a backend for an existing harness is one
-# [backends.<id>] table. Prices are USD per million tokens, checked on the vendor pages on
-# 2026-11-03 (paper/notes/facts-models-tooling.md). A rate the vendor page does not list is
-# omitted, never guessed.
+# The catalog: sandbox base, measurement and profiling tools, harness packages, backends and
+# models. Adding a model is one [[models]] entry. Adding a backend for an existing harness is one
+# [backends.<id>] table. Prices are USD per million tokens from the vendor's pricing page,
+# read on the date of each model's first tier (paper/notes/facts-models-tooling.md has the
+# 2026-11-03 readings); `since` is the date a tier applies from. A rate the vendor page does not
+# list is omitted, never guessed.
 
 [sandbox]
 packages = ["bashInteractive", "coreutils", "diffutils", "findutils", "gawk", "gnugrep", "gnused", "which", "socat", "cacert"]

@@ -3,7 +3,7 @@
 Inputs come from fixed seeds. Expected outputs come from the Python reference. A hand-written
 case also states its expected output, and the generator fails when the reference disagrees, so
 regenerating re-checks the reference against the spec. The cases are committed; the workloads
-are large, so they are regenerated on demand and never committed.
+are regenerated on demand and never committed.
 """
 
 import hashlib

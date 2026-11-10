@@ -1,4 +1,5 @@
-# The study's GLM arm: every effort level of GLM-5.3-Flash on the full suite, through Claude Code.
+# A GLM arm, which the paper's study leaves out: every effort level of GLM-5.3-Flash on the full
+# suite, through Claude Code.
 name = "study-glm"
 results = "../runs/study-glm"
 repetitions = 1

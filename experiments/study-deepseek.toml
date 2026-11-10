@@ -1,4 +1,4 @@
-# The study's DeepSeek arm: DeepSeek V4.1 Flash at its default effort, high, on the full suite,
+# The study's DeepSeek arm: DeepSeek V4.1 Flash at high effort, on the full suite,
 # through Codex against DeepSeek's own API.
 name = "study-deepseek"
 results = "../runs/study-deepseek"

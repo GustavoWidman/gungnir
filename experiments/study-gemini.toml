@@ -1,5 +1,5 @@
-# The study's Gemini arm: Gemini 3.8 Flash at the one effort level its proxy offers, on the full
-# suite, through Codex against a CLIProxyAPI instance.
+# A Gemini arm, which the paper's study leaves out: Gemini 3.8 Flash at the one effort level its
+# proxy offers, on the full suite, through Codex against a CLIProxyAPI instance.
 name = "study-gemini"
 results = "../runs/study-gemini"
 repetitions = 1
