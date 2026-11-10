@@ -147,7 +147,7 @@ def effort_multiples(rates, mean, out, name):
 
 
 def absolute_speed(values, rows, models, out, name):
-    """values[key][language] = geometric-mean runtime over the fastest program for the
+    """values[key][language] = geometric-mean runtime over the fastest reference for the
     workload, with key 'reference' or a model."""
     fig, ax = plt.subplots(figsize=(COLUMN, 0.18 * len(rows) + 0.5), layout="constrained")
     y = np.arange(len(rows))[::-1]
@@ -157,13 +157,14 @@ def absolute_speed(values, rows, models, out, name):
         ax.plot([values[model].get(r, np.nan) for r in rows], y, MARKERS[model], ms=3.4,
                 mfc="white", mec=INK, mew=0.8, label=PANEL[model])
     ax.set_xscale("log", base=2)
-    ax.set_xlim(0.9, 40)
-    ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator([1, 2, 4, 8, 16, 32]))
+    fastest = np.nanmin([v for key in ["reference", *models] for v in values[key].values()])
+    ax.set_xlim(min(0.9, 0.9 * fastest), 40)
+    ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator([0.5, 1, 2, 4, 8, 16, 32]))
     ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:g}×"))
     ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
     ax.grid(axis="x", color="#e6e6e6", lw=0.5, zorder=0)
     ax.set_yticks(y, [LANGUAGE_NAMES[r] for r in rows])
-    ax.set_xlabel("runtime / fastest program for the workload, any language")
+    ax.set_xlabel("runtime / fastest reference for the workload, any language")
     fig.legend(frameon=False, fontsize=7, loc="outside upper center", ncol=5,
                handletextpad=0.2, columnspacing=1.0)
     save(fig, out, name)
