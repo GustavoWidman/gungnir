@@ -4284,27 +4284,27 @@
     ]
    },
    "javascript": {
-    "failed_builds": 0.0,
-    "diagnostics": 0.0,
+    "failed_builds": 0.020833333333333332,
+    "diagnostics": 0.03333333333333333,
     "runtime_failures": 0.07916666666666666,
     "commands": 4.0,
-    "sessions_with_failed_build": 0.0,
+    "sessions_with_failed_build": 2.083333333333333,
     "failed_builds_ci": [
+     0.020833333333333332,
      0.0,
-     0.0,
-     0.0
+     0.0625
     ]
    },
    "typescript": {
-    "failed_builds": 0.6166666666666667,
-    "diagnostics": 1.2208333333333334,
+    "failed_builds": 0.6291666666666667,
+    "diagnostics": 1.2333333333333334,
     "runtime_failures": 0.125,
     "commands": 6.0,
     "sessions_with_failed_build": 48.75,
     "failed_builds_ci": [
-     0.6166666666666667,
-     0.44583333333333336,
-     0.7958333333333333
+     0.6291666666666667,
+     0.45416666666666666,
+     0.8208333333333333
     ]
    },
    "go": {
@@ -4382,27 +4382,27 @@
     ]
    },
    "javascript": {
-    "failed_builds": 0.016666666666666666,
-    "diagnostics": 0.016666666666666666,
-    "runtime_failures": 0.029166666666666667,
+    "failed_builds": 0.004166666666666667,
+    "diagnostics": 0.004166666666666667,
+    "runtime_failures": 0.04583333333333333,
     "commands": 7.0,
-    "sessions_with_failed_build": 1.6666666666666667,
+    "sessions_with_failed_build": 0.4166666666666667,
     "failed_builds_ci": [
-     0.016666666666666666,
+     0.004166666666666667,
      0.0,
-     0.058333333333333334
+     0.020833333333333332
     ]
    },
    "typescript": {
-    "failed_builds": 0.17916666666666667,
-    "diagnostics": 0.18333333333333332,
-    "runtime_failures": 0.03333333333333333,
+    "failed_builds": 0.1875,
+    "diagnostics": 0.19166666666666668,
+    "runtime_failures": 0.058333333333333334,
     "commands": 8.0,
-    "sessions_with_failed_build": 14.166666666666666,
+    "sessions_with_failed_build": 15.0,
     "failed_builds_ci": [
-     0.17916666666666667,
+     0.1875,
      0.04583333333333333,
-     0.35010416666666705
+     0.375
     ]
    },
    "go": {
@@ -4492,15 +4492,15 @@
     ]
    },
    "typescript": {
-    "failed_builds": 0.1125,
-    "diagnostics": 0.1125,
+    "failed_builds": 0.125,
+    "diagnostics": 0.125,
     "runtime_failures": 0.05,
     "commands": 9.0,
-    "sessions_with_failed_build": 11.25,
+    "sessions_with_failed_build": 12.5,
     "failed_builds_ci": [
-     0.1125,
-     0.0,
-     0.2625
+     0.125,
+     0.0125,
+     0.275
     ]
    },
    "go": {
@@ -4676,27 +4676,27 @@
     ]
    },
    "javascript": {
-    "failed_builds": 0.28125,
-    "diagnostics": 0.28125,
-    "runtime_failures": 1.34375,
+    "failed_builds": 0.875,
+    "diagnostics": 1.6875,
+    "runtime_failures": 1.625,
     "commands": 34.0,
-    "sessions_with_failed_build": 18.75,
+    "sessions_with_failed_build": 31.25,
     "failed_builds_ci": [
-     0.28125,
-     0.0,
-     0.625
+     0.875,
+     0.25,
+     2.03125
     ]
    },
    "typescript": {
-    "failed_builds": 5.0625,
-    "diagnostics": 15.9375,
-    "runtime_failures": 0.75,
+    "failed_builds": 5.5625,
+    "diagnostics": 16.6875,
+    "runtime_failures": 0.78125,
     "commands": 36.0,
     "sessions_with_failed_build": 96.875,
     "failed_builds_ci": [
-     5.0625,
-     3.15625,
-     7.28125
+     5.5625,
+     3.34375,
+     8.09375
     ]
    },
    "go": {
@@ -4774,27 +4774,27 @@
     ]
    },
    "javascript": {
-    "failed_builds": 0.0,
-    "diagnostics": 0.0,
+    "failed_builds": 0.75,
+    "diagnostics": 1.0,
     "runtime_failures": 1.5,
     "commands": 57.0,
-    "sessions_with_failed_build": 0.0,
+    "sessions_with_failed_build": 50.0,
     "failed_builds_ci": [
-     0.0,
-     0.0,
-     0.0
+     0.75,
+     0.125,
+     1.5
     ]
    },
    "typescript": {
-    "failed_builds": 2.25,
-    "diagnostics": 4.25,
+    "failed_builds": 2.375,
+    "diagnostics": 4.375,
     "runtime_failures": 0.875,
     "commands": 53.5,
     "sessions_with_failed_build": 62.5,
     "failed_builds_ci": [
-     2.25,
+     2.375,
      0.625,
-     4.625
+     5.0
     ]
    },
    "go": {
@@ -4872,21 +4872,21 @@
     ]
    },
    "javascript": {
-    "failed_builds": 0.025,
-    "diagnostics": 0.025,
-    "runtime_failures": 0.3,
+    "failed_builds": 0.075,
+    "diagnostics": 0.075,
+    "runtime_failures": 0.325,
     "commands": 16.5,
-    "sessions_with_failed_build": 2.5,
+    "sessions_with_failed_build": 7.5,
     "failed_builds_ci": [
-     0.025,
+     0.075,
      0.0,
-     0.1
+     0.225
     ]
    },
    "typescript": {
     "failed_builds": 0.35,
     "diagnostics": 0.475,
-    "runtime_failures": 0.15,
+    "runtime_failures": 0.275,
     "commands": 17.0,
     "sessions_with_failed_build": 27.500000000000004,
     "failed_builds_ci": [
@@ -5068,15 +5068,15 @@
     ]
    },
    "javascript": {
-    "failed_builds": 0.0,
-    "diagnostics": 0.0,
+    "failed_builds": 0.125,
+    "diagnostics": 0.16666666666666666,
     "runtime_failures": 0.16666666666666666,
     "commands": 19.0,
-    "sessions_with_failed_build": 0.0,
+    "sessions_with_failed_build": 8.333333333333332,
     "failed_builds_ci": [
+     0.125,
      0.0,
-     0.0,
-     0.0
+     0.4166666666666667
     ]
    },
    "typescript": {
@@ -5171,9 +5171,9 @@
   },
   "typescript": {
    "null": 540,
-   "other": 488,
+   "other": 519,
    "sessions": 736,
-   "total": 1028
+   "total": 1059
   }
  },
  "speed": {

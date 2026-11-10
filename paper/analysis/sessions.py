@@ -6,16 +6,20 @@ import re
 from collections import Counter
 from pathlib import Path
 
+# Bun's parser puts the location of an error on the next line, four spaces in; the stack of an
+# uncaught exception, which Bun also prints after "error:", sits six spaces in.
+BUN_PARSE = r"^error: (?P<msg>.*)\n {4}at [^\s(]+\.[mc]?[jt]sx?:\d+:\d+$"
+
 # A diagnostic that a compiler, type checker or parser reports before the program runs.
 STATIC = {
-    "rust": r"^error\[(?P<key>E\d{4})\]: (?P<msg>.*)$",
-    "zig": r"\.zig:\d+:\d+: error: (?P<msg>.*)$",
-    "go": r"^\S+\.go:\d+:\d+: (?P<msg>(?!.*panic).*)$",
-    "c": r"\.[ch]:\d+:\d+: error: (?P<msg>.*)$",
-    "cpp": r"\.(?:cpp|cc|cxx|hpp|hh|h):\d+:\d+: error: (?P<msg>.*)$",
-    "typescript": r"error (?P<key>TS\d+): (?P<msg>.*)$",
-    "javascript": r"^\s*(?P<key>SyntaxError): (?P<msg>.*)$",
-    "python": r"^\s*(?P<key>SyntaxError|IndentationError|TabError): (?P<msg>.*)$",
+    "rust": [r"^error\[(?P<key>E\d{4})\]: (?P<msg>.*)$"],
+    "zig": [r"\.zig:\d+:\d+: error: (?P<msg>.*)$"],
+    "go": [r"^\S+\.go:\d+:\d+: (?P<msg>(?!.*panic).*)$"],
+    "c": [r"\.[ch]:\d+:\d+: error: (?P<msg>.*)$"],
+    "cpp": [r"\.(?:cpp|cc|cxx|hpp|hh|h):\d+:\d+: error: (?P<msg>.*)$"],
+    "typescript": [r"error (?P<key>TS\d+): (?P<msg>.*)$", BUN_PARSE],
+    "javascript": [BUN_PARSE],
+    "python": [r"^\s*(?P<key>SyntaxError|IndentationError|TabError): (?P<msg>.*)$"],
 }
 
 # A failure of the running program in the agent's own test runs.
@@ -25,12 +29,12 @@ RUNTIME = {
     "go": r"^panic: |goroutine \d+ \[running\]|^fatal error: ",
     "c": r"Segmentation fault|core dumped|Aborted|AddressSanitizer|stack smashing|double free",
     "cpp": r"Segmentation fault|core dumped|Aborted|AddressSanitizer|terminate called|stack smashing",
-    "typescript": r"^\s*(TypeError|ReferenceError|RangeError):|Maximum call stack",
-    "javascript": r"^\s*(TypeError|ReferenceError|RangeError):|Maximum call stack",
+    "typescript": r"^\s*(TypeError|ReferenceError|RangeError|SyntaxError):|Maximum call stack",
+    "javascript": r"^\s*(TypeError|ReferenceError|RangeError|SyntaxError):|Maximum call stack",
     "python": r"Traceback \(most recent call last\)",
 }
 
-STATIC_RE = {lang: re.compile(p, re.M) for lang, p in STATIC.items()}
+STATIC_RE = {lang: [re.compile(p, re.M) for p in ps] for lang, ps in STATIC.items()}
 RUNTIME_RE = {lang: re.compile(p, re.M) for lang, p in RUNTIME.items()}
 
 # Rust's ownership and borrowing errors, the part of its compiler a crutch would lean on.
@@ -105,7 +109,7 @@ def session(trial_dir, harness, lang):
     for output in outputs:
         counts["commands"] += 1
         found = {(m.groupdict().get("key"), m.group("msg").strip()[:120])
-                 for m in STATIC_RE[lang].finditer(output)}
+                 for pattern in STATIC_RE[lang] for m in pattern.finditer(output)}
         if found:
             counts["failed_builds"] += 1
             counts["diagnostics"] += len(found)

@@ -308,7 +308,7 @@ If the Rust compiler were a crutch, the agents would lean on it. They hardly did
 
 #figure(
   image("figures/failed-builds.svg", width: 100%),
-  caption: [Commands per session whose output carried a compiler, type-checker or syntax error, mean by model and language, shaded on a log scale. Python and JavaScript surface such errors only at run time.],
+  caption: [Commands per session whose output carried a compiler, type-checker or syntax error, mean by model and language, shaded on a log scale. Python and JavaScript have no type checker, so only their syntax errors count.],
 ) <fig:builds>
 
 TypeScript's checker spoke up more often, #r1(sess("luna", "typescript", "failed_builds")) failing builds per Luna session, and #num(ts.null) of its #num(ts.total) errors were strict null checks: an array read or map lookup that might be `undefined`. The agent answers them with a guard, the build passes, and, as the paired comparison shows, the program is no more often correct for it.
