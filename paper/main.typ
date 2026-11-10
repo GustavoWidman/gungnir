@@ -3,6 +3,7 @@
 
 #let n = json("data/numbers.json")
 #let crashes = json("data/python-crashes.json")
+#let wt = json("data/weights.json")
 
 #let langs = ("python", "javascript", "typescript", "go", "rust", "zig", "c", "cpp")
 #let lname = (python: "Python", javascript: "JavaScript", typescript: "TypeScript", go: "Go",
@@ -73,6 +74,9 @@
 #let lead = by-index("all").first()
 #let trail = by-index("all").slice(6)
 #let trail-scores = trail.map(l => r0(idx("all", l).score))
+#let shifted-lead = wt.shifted.values().all(v => v.order.first() == lead)
+#let drawn(k, l) = 100 * wt.drawn.at(k).at(l)
+#let drawn-last = langs.filter(l => wt.drawn.last.at(l) > 0)
 #let without-runtime(l) = 100 * calc.exp(("pass", "tokens", "time", "simplicity").map(d => calc.ln(dim(d, l) / 100)).sum() / 4)
 #let lead-without-runtime = langs.sorted(key: l => -without-runtime(l)).first()
 #let same-lead = models.all(k => by-index(k).first() == lead)
@@ -372,7 +376,7 @@ Equation (@eq:advantage) is a language's advantage on one dimension: its distanc
 
 #lname.at(lead) leads the index at #r0(idx("all", lead).score) (#r0(idx("all", lead).lo)–#r0(idx("all", lead).hi))#if same-lead [, and every one of the #count(models.len()) models puts it first]. Its programs run in #times(100 / dim("speed", lead)) the average language's time and carry #times(100 / dim("simplicity", lead)) its decision points, while a session takes #times(100 / dim("tokens", lead)) the average language's tokens. The dimensions pull the other languages apart. JavaScript is the cheapest and quickest language in which to get a correct program, at #times(100 / dim("tokens", "javascript")) the average language's tokens and #times(100 / dim("time", "javascript")) its time, but its programs run #times(100 / dim("speed", "javascript")) the average language's time, and Python's #times(100 / dim("speed", "python")), so Python scores #r0(idx("all", "python").score). Zig's programs are fast, but a session takes #times(100 / dim("tokens", "zig")) the tokens and #times(100 / dim("time", "zig")) the time of an average language's, and Zig scores #r0(idx("all", "zig").score). C's programs are fast too, but a C session takes #times(100 / dim("tokens", "c")) the average language's tokens#if langs.all(l => dim("simplicity", "c") <= dim("simplicity", l)) [, and its programs carry the most decision points of all].
 
-The index weighs its five dimensions equally, which suits compute-bound programs such as these. A developer who cares little how fast the program runs can drop the speed score: on the other four, #lname.at(lead-without-runtime) comes first at #r0(without-runtime(lead-without-runtime)), Python scores #r0(without-runtime("python")) and Zig #r0(without-runtime("zig")).
+The index weighs its five dimensions equally. Which one matters most depends on who is choosing: a team that pays per token, one that waits on its agent, one that runs the program for years. With no basis for one weight over another, equal weights are what most composite indices use @nardo2008handbook, so we tested how much the ranking rests on them. #if shifted-lead [Leaving out any one dimension, or counting it twice, keeps #lname.at(lead) first in all ten cases. ]Across #num(wt.drawn.draws) weightings drawn uniformly at random, #lname.at(lead) comes first in #pct(drawn("first", lead)) of them and in the top two in #pct(drawn("top_two", lead))#if drawn-last.sorted() == trail.sorted() [, and #lname.at(trail.first()) or #lname.at(trail.last()) comes last in every one]. A developer who cares little how fast the program runs can leave out the speed score: on the other four, #lname.at(lead-without-runtime) still comes first at #r0(without-runtime(lead-without-runtime)), Python rises to #r0(without-runtime("python")) and Zig falls to #r0(without-runtime("zig")).
 
 = Discussion <discussion>
 

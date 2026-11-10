@@ -1,0 +1,267 @@
+{
+ "shifted": {
+  "without-pass": {
+   "order": [
+    "rust",
+    "go",
+    "cpp",
+    "c",
+    "javascript",
+    "typescript",
+    "zig",
+    "python"
+   ],
+   "index": {
+    "rust": 143.19841746231626,
+    "go": 120.16027893754084,
+    "cpp": 111.58978467619482,
+    "c": 102.37758509237284,
+    "javascript": 99.17804696749454,
+    "typescript": 92.89757423528907,
+    "zig": 74.57019979041478,
+    "python": 73.54284827652063
+   }
+  },
+  "double-pass": {
+   "order": [
+    "rust",
+    "go",
+    "cpp",
+    "c",
+    "javascript",
+    "typescript",
+    "zig",
+    "python"
+   ],
+   "index": {
+    "rust": 126.5455846134371,
+    "go": 115.293887266603,
+    "cpp": 107.30449848215511,
+    "c": 101.81008609362527,
+    "javascript": 99.82841396597243,
+    "typescript": 96.10006328417224,
+    "zig": 81.07038146393843,
+    "python": 80.30341651429623
+   }
+  },
+  "without-tokens": {
+   "order": [
+    "rust",
+    "go",
+    "cpp",
+    "c",
+    "javascript",
+    "zig",
+    "typescript",
+    "python"
+   ],
+   "index": {
+    "rust": 136.4037381195144,
+    "go": 115.0175693095779,
+    "cpp": 110.05390285552328,
+    "c": 105.06943989482546,
+    "javascript": 92.87722101748717,
+    "zig": 91.64196209168175,
+    "typescript": 91.49851302475146,
+    "python": 70.30143566187196
+   }
+  },
+  "double-tokens": {
+   "order": [
+    "rust",
+    "go",
+    "cpp",
+    "javascript",
+    "c",
+    "typescript",
+    "python",
+    "zig"
+   ],
+   "index": {
+    "rust": 130.71385629150805,
+    "go": 118.70548237534034,
+    "cpp": 108.30053193573306,
+    "javascript": 104.29377744363421,
+    "c": 100.06367461689216,
+    "typescript": 97.07719787926534,
+    "python": 82.75321156599989,
+    "zig": 70.66041247649491
+   }
+  },
+  "without-time": {
+   "order": [
+    "rust",
+    "go",
+    "cpp",
+    "c",
+    "javascript",
+    "typescript",
+    "zig",
+    "python"
+   ],
+   "index": {
+    "rust": 137.47771796935876,
+    "go": 118.1009930935251,
+    "cpp": 112.56634013780722,
+    "c": 104.18333579130423,
+    "javascript": 94.67560031771536,
+    "typescript": 91.22324431641597,
+    "zig": 83.60940382227619,
+    "python": 72.23751008066698
+   }
+  },
+  "double-time": {
+   "order": [
+    "rust",
+    "go",
+    "cpp",
+    "javascript",
+    "c",
+    "typescript",
+    "python",
+    "zig"
+   ],
+   "index": {
+    "rust": 130.03220660044232,
+    "go": 116.63024851603001,
+    "cpp": 106.68299300779702,
+    "javascript": 102.96884171637421,
+    "c": 100.63025029833616,
+    "typescript": 97.27238858121322,
+    "python": 81.26791941463384,
+    "zig": 75.1165563421843
+   }
+  },
+  "without-speed": {
+   "order": [
+    "rust",
+    "javascript",
+    "go",
+    "python",
+    "typescript",
+    "cpp",
+    "c",
+    "zig"
+   ],
+   "index": {
+    "rust": 122.6660889894304,
+    "javascript": 114.2439638048552,
+    "go": 110.37458017280055,
+    "python": 110.35309918190465,
+    "typescript": 106.35527224829875,
+    "cpp": 97.5703607830849,
+    "c": 88.62270107949611,
+    "zig": 63.98714400744843
+   }
+  },
+  "double-speed": {
+   "order": [
+    "rust",
+    "go",
+    "cpp",
+    "c",
+    "javascript",
+    "zig",
+    "typescript",
+    "python"
+   ],
+   "index": {
+    "rust": 140.29950205700135,
+    "go": 122.01152563855506,
+    "cpp": 117.35158188931156,
+    "c": 112.08927765587585,
+    "javascript": 90.84667370657529,
+    "zig": 89.77951812131984,
+    "typescript": 87.81200775079161,
+    "python": 61.26860097926722
+   }
+  },
+  "without-simplicity": {
+   "order": [
+    "rust",
+    "go",
+    "cpp",
+    "c",
+    "javascript",
+    "typescript",
+    "zig",
+    "python"
+   ],
+   "index": {
+    "rust": 126.15256999468234,
+    "go": 122.82675402570243,
+    "cpp": 114.06340219720035,
+    "c": 111.36728617394391,
+    "javascript": 98.21945561919168,
+    "typescript": 92.87457109524946,
+    "zig": 81.04192048510683,
+    "python": 67.95650225798474
+   }
+  },
+  "double-simplicity": {
+   "order": [
+    "rust",
+    "go",
+    "cpp",
+    "javascript",
+    "c",
+    "typescript",
+    "python",
+    "zig"
+   ],
+   "index": {
+    "rust": 137.70247321613863,
+    "go": 113.61916262477672,
+    "cpp": 105.74747542106482,
+    "javascript": 100.47689150955841,
+    "c": 96.25477893007852,
+    "typescript": 96.11593064839583,
+    "python": 84.6461042598838,
+    "zig": 76.6948033474114
+   }
+  }
+ },
+ "drawn": {
+  "draws": 100000,
+  "first": {
+   "c": 1e-05,
+   "cpp": 0.0,
+   "go": 0.04263,
+   "javascript": 0.01881,
+   "python": 0.0,
+   "rust": 0.93855,
+   "typescript": 0.0,
+   "zig": 0.0
+  },
+  "top_two": {
+   "c": 0.03349,
+   "cpp": 0.04625,
+   "go": 0.79118,
+   "javascript": 0.10427,
+   "python": 0.04174,
+   "rust": 0.98299,
+   "typescript": 8e-05,
+   "zig": 0.0
+  },
+  "last": {
+   "c": 0.0,
+   "cpp": 0.0,
+   "go": 0.0,
+   "javascript": 0.0,
+   "python": 0.4332,
+   "rust": 0.0,
+   "typescript": 0.0,
+   "zig": 0.5668
+  },
+  "bottom_two": {
+   "c": 0.29663,
+   "cpp": 0.0,
+   "go": 0.0,
+   "javascript": 0.05214,
+   "python": 0.70337,
+   "rust": 0.0,
+   "typescript": 0.18256,
+   "zig": 0.7653
+  }
+ }
+}

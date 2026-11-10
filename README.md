@@ -250,6 +250,7 @@ Results live under `runs/`, which is not tracked.
   cd paper
   python3 -m analysis ../runs/report/study ../runs/index/study ../runs .
   python3 -m analysis.crashes ../runs/report/study ../runs/index/study ../runs ../scenarios .
+  python3 -m analysis.weights ../runs/index/study .
   ```
 - `docs/architecture.md`: the design contract
 
