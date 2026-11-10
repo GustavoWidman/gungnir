@@ -41,7 +41,7 @@ lizard and bubblewrap come from the nixpkgs revision that `flake.lock` pins (0bb
 
 ### Surprises
 1. **Model outputs are not reproducible.** No seeds, and temperature is mostly rejected. Plan for k repeats per configuration, which multiplies cost by k.
-2. **Reasoning levels don't match across vendors.** The ten models have **48 effort settings in total**, or 54 if you add the Sonnet and Haiku thinking-off modes. Defaults differ too: medium for Opus 5.5, Haiku 5.5 and the OpenAI models; high for Fable and Sonnet; max for GLM. GPT-6 has no `minimal`, Astra and Sol have no `none`, and GLM has only 3 levels.
+2. **Reasoning levels don't match across vendors.** The ten models have **48 effort settings in total**, or 54 if you add the Sonnet and Haiku thinking-off modes. Defaults differ too: medium for Opus 5.5, Haiku 5.5, Sol, Terra and Luna (Astra's is not stated); high for Fable and Sonnet; max for GLM. GPT-6 has no `minimal`, Astra and Sol have no `none`, and GLM has only 3 levels.
 3. **GLM doesn't report reasoning tokens separately.**
 4. **Unprivileged perf needs `perf_event_paranoid` at 2 or less** (or `CAP_PERFMON`). Above that, hyperfine leaves out its instruction count and `gungnir profile` refuses to run.
 5. **Forced tool use is rejected by Opus 5.5, Sonnet 5.5 and Fable 5.1** (`tool_choice` "any"/"tool" returns a 400).

@@ -93,7 +93,7 @@ Collected 2026-11-03. "fetched" entries were opened on the primary page; "snippe
 17. **Wu, Anderson & Guha, "The Best Programming Language for Tokenmaxxing"**, arXiv 2607.22807 (Jul 2026; LMPL 2026 per researchr, snippet-only). https://arxiv.org/html/2607.22807 (fetched)
     - Setup: mini-swe-agent, 5 models, Python / Java / Rust / OCaml, 100 LiveCodeBench tasks, 1 run per cell, effort fixed per model.
     - Statistics: a linear mixed-effects model on log tokens with a random intercept for each problem. Problem identity explains 73–97% of the token variance.
-    - OCaml cost the most tokens for every model (1.28–1.69× Python for open models). GPT-5.5 used 1.30–1.36× and Sonnet 4.6 1.16–1.28× in all non-Python languages.
+    - OCaml cost significantly more tokens than Python for every model (1.28–1.69× Python over all five models). GPT-5.5 used 1.30–1.36× and Sonnet 4.6 1.16–1.28× in all non-Python languages.
     - Agents often wrote code that did not compile in unfamiliar languages.
     - Accuracy was mostly similar across languages. This is the best method template for this study, but effort is not varied.
 

@@ -126,12 +126,6 @@ No paper I found already does most of this study. Efficiency across many languag
   - LeetCode's percentile rank drifts over time.
   - Temperature does not change mean runtime but correlates with variance (0.41).
 
-**15. Improving Assembly Code Performance with LLMs via Reinforcement Learning** (2025). Fetched (arXiv). Venue NeurIPS 2025 is snippet-only.
-- **Where:** arXiv 2505.11480. Opened https://arxiv.org/html/2505.11480v1.
-- **Scope:** x86-64 assembly generated from CodeNet C programs. Baseline is gcc `-O3` output. 21 models.
-- **Measurement:** hyperfine, discarding 3 warm-up runs and averaging the next 10.
-- **Setting:** single-shot. Best model 1.47× over the baseline.
-
 **16. Beyond Single LLMs: … Multi-Stage Performance-Guided LLM Orchestration (PerfOrch)** (2025). Fetched (abstract only).
 - **Where:** arXiv 2510.01379. Opened https://arxiv.org/abs/2510.01379v1.
 - **Scope:** Python, Java, C++, Go, Rust on HumanEval-X and EffiBench-X; 17 models. It is a method paper, and its measurement method is not described on the abstract page.
@@ -230,31 +224,30 @@ No paper I found already does most of this study. Efficiency across many languag
 - **Georges, Buytaert, Eeckhout** (OOPSLA 2007), snippet-only. **Barrett et al., "Virtual Machine Warmup Blows Hot and Cold"** (OOPSLA 2017), snippet-only: only about 30–56% of VM/benchmark pairs warm up in the traditional way. **Curtsinger & Berger, STABILIZER** (ASPLOS 2013), snippet-only. **Laaber et al.** (EMSE 2019, cloud microbenchmarking), snippet-only: coefficient of variation 0.03% to over 100%; randomized interleaving detects slowdowns of 10% or less. **Hoefler & Belli** (SC15), snippet-only. **Fleming & Wallace** (CACM 1986), snippet-only: use the geometric mean for normalized results.
 - **Complexity-metric validity:** Landman et al. (ICSME 2014), snippet-only: cyclomatic complexity vs SLOC correlation is only moderate per method and stronger when aggregated. Muñoz Barón et al. (ESEM 2020), snippet-only: validates cognitive complexity against comprehension time.
 - **hyperfine** (fetched https://github.com/sharkdp/hyperfine and its CITATION.cff). Author David Peter; I found no DOI. Features: `--warmup`, `--prepare`, `-N` (no shell), at least 10 runs (about 3 s by default), outlier warnings, JSON export of every run, hardware counters.
-- **Academic uses of hyperfine I found:** PIE (#8) and the assembly RL paper (#15).
+- **Academic uses of hyperfine I found:** PIE (#8).
 - **lizard** (fetched https://github.com/terryyin/lizard). Computes cyclomatic complexity, NLOC, tokens and parameters for C/C++, C#, Go, Java, JavaScript, TypeScript, Python, Rust and Zig.
 
 ## Coverage map
 
 Y = yes, P = partial, – = no. "Many langs" means 5 or more.
 
-| Work | Many langs | Zig | Asm | Agentic | Effort sweep | Runtime eff. | Complexity | Cost/tokens | Repeats + variance |
-|---|---|---|---|---|---|---|---|---|---|
-| EffiBench-X | Y (6) | – | – | P (refine appendix) | – (reasoning vs not) | Y | – | – | P (3 runs, 2 models) |
-| EffiBench / Mercury / EvalPerf / ENAMEL / COFFE | – (Python) | – | – | – | – | Y | – | – | P |
-| ECCO | – | – | – | P (multi-turn) | – | Y | – | – | P |
-| PIE | – (C++) | – | – | – | – | Y | – | – | Y (variance study) |
-| SWE-Perf / SWE-fficiency | – | – | – | Y | – | Y | – | P | Y (timing) |
-| GSO | P (mixed in repos) | – | – | Y | – | Y | – | – | P |
-| trace | – (3) | – | – | – | P (thinking on/off) | Y | – | – | Y (5 runs, CV) |
-| EvoCodeBench | Y (5) | – | – | P | – | Y (LeetCode %) | – | – | – |
-| Assembly RL | – | – | Y | – | – | Y | – | – | P |
-| Coignion et al. | – | – | – | – | – | Y | – | – | Y |
-| Pereira 2017/2021 | Y (27) | – | – | n/a | n/a | Y | – | n/a | Y |
-| Solovyeva et al. | – (3) | – | – | – | – | Y (+energy) | – | – | Y |
-| Sonar reasoning blog | – (Java) | – | – | – | Y | – | Y | Y | – |
-| Kharma et al. | P (4) | – | – | – | – | – | Y | – | – |
-| Nguyen & Nadi | P (4) | – | – | – | – | – | Y | – | – |
-| SlopCodeBench | – (Python run) | – | – | Y | – (fixed high) | – | Y | Y | P |
+| Work | Many langs | Zig | Agentic | Effort sweep | Runtime eff. | Complexity | Cost/tokens | Repeats + variance |
+|---|---|---|---|---|---|---|---|---|
+| EffiBench-X | Y (6) | – | P (refine appendix) | – (reasoning vs not) | Y | – | – | P (3 runs, 2 models) |
+| EffiBench / Mercury / EvalPerf / ENAMEL / COFFE | – (Python) | – | – | – | Y | – | – | P |
+| ECCO | – | – | P (multi-turn) | – | Y | – | – | P |
+| PIE | – (C++) | – | – | – | Y | – | – | Y (variance study) |
+| SWE-Perf / SWE-fficiency | – | – | Y | – | Y | – | P | Y (timing) |
+| GSO | P (mixed in repos) | – | Y | – | Y | – | – | P |
+| trace | – (3) | – | – | P (thinking on/off) | Y | – | – | Y (5 runs, CV) |
+| EvoCodeBench | Y (5) | – | P | – | Y (LeetCode %) | – | – | – |
+| Coignion et al. | – | – | – | – | Y | – | – | Y |
+| Pereira 2017/2021 | Y (27) | – | n/a | n/a | Y | – | n/a | Y |
+| Solovyeva et al. | – (3) | – | – | – | Y (+energy) | – | – | Y |
+| Sonar reasoning blog | – (Java) | – | – | Y | – | Y | Y | – |
+| Kharma et al. | P (4) | – | – | – | – | Y | – | – |
+| Nguyen & Nadi | P (4) | – | – | – | – | Y | – | – |
+| SlopCodeBench | – (Python run) | – | Y | – (fixed high) | – | Y | Y | P |
 
 ## Gaps
 
@@ -290,7 +283,7 @@ Y = yes, P = partial, – = no. "Many langs" means 5 or more.
 ## Open questions
 
 - **Not verified:** Pereira's normalized numbers (the table is an image); the 10 languages in Buscemi's study; Nguyen & Nadi's per-language medians; the environment-size and link-order examples in Mytkowicz (not on the page I opened).
-- **Venues seen only in search results or listings:** Mercury (NeurIPS 2024), EvalPerf (COLM 2024), ENAMEL (ICLR 2025), ECCO (EMNLP 2024), GSO and the assembly RL paper (NeurIPS 2025), SWE-Perf (ICML 2026).
+- **Venues seen only in search results or listings:** Mercury (NeurIPS 2024), EvalPerf (COLM 2024), ENAMEL (ICLR 2025), ECCO (EMNLP 2024), GSO (NeurIPS 2025), SWE-Perf (ICML 2026).
 - **EffiBench-X v2** (27 Oct 2026): I did not check what changed from v1 beyond confirming the same 6 languages and no new frontier models.
 - **Inconsistent numbers inside papers:** SWE-fficiency (0.15× vs 0.23×; a GPT-5 Mini figure that differs between text and table); SWE-Perf (1 core vs 5 cores); Sonar (543 vs over 4,400 tasks).
 - **Other gaps:** whether SonarQube or any cognitive-complexity tool supports Zig; whether hyperfine has a DOI (none in its CITATION.cff). Very recent or unindexed effort-sweep work could exist; extended searches found none that measure runtime.

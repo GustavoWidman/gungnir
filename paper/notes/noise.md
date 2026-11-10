@@ -20,7 +20,7 @@ Instruction-count ratios were 1.000, with one at 0.999 (JavaScript's JIT).
 
 With bench mode off (powersave governor, turbo on), tiny-vm in C ran about 1.8 times faster, at the turbo clock. Its intervals widened to 0.935–1.032.
 
-On the shared VM the noise floor was 5–15%. On the desktop in bench mode it is under 0.5% for workloads above about 150 ms, and a few percent for workloads near 35 ms.
+In bench mode the noise floor is under 0.5% for workloads above about 150 ms, and a few percent for workloads near 35 ms.
 
 ## Desktop, four lanes, 2026-11-05
 
