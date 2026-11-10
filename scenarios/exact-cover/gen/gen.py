@@ -1,7 +1,7 @@
 """Writes the cases (examples/ and hidden/) or the workloads/ for exact-cover.
 
 Inputs come from fixed seeds. Expected outputs come from the Python reference. The cases are
-committed; the workloads are large, so they are regenerated on demand and never committed.
+committed; the workloads are regenerated on demand and never committed.
 """
 
 import hashlib

@@ -1,4 +1,4 @@
-# One trial per pilot model, to check every harness, backend and credential end to end.
+# One trial per pilot model, to check the pilot's harnesses, backends and credentials end to end.
 name = "smoke"
 results = "../runs/smoke"
 repetitions = 1
