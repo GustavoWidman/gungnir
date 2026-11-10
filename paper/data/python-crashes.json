@@ -10,6 +10,28 @@
    }
   }
  },
+ "opus": {
+  "trials": 1,
+  "kinds": {
+   "RecursionError": 1
+  },
+  "by_scenario": {
+   "regex-lite": {
+    "RecursionError": 1
+   }
+  }
+ },
+ "sonnet": {
+  "trials": 1,
+  "kinds": {
+   "RecursionError": 1
+  },
+  "by_scenario": {
+   "regex-lite": {
+    "RecursionError": 1
+   }
+  }
+ },
  "luna": {
   "trials": 33,
   "kinds": {
@@ -42,6 +64,28 @@
    "line-diff": {
     "RuntimeError": 1,
     "ValueError": 1
+   }
+  }
+ },
+ "nemotron": {
+  "trials": 5,
+  "kinds": {
+   "TypeError": 2,
+   "RecursionError": 2,
+   "IntDigitLimit": 1
+  },
+  "by_scenario": {
+   "exact-cover": {
+    "TypeError": 1
+   },
+   "regex-lite": {
+    "RecursionError": 2
+   },
+   "bigint-calc": {
+    "IntDigitLimit": 1
+   },
+   "json-path": {
+    "TypeError": 1
    }
   }
  }
