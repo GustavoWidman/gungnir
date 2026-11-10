@@ -6,7 +6,7 @@ Collected 2026-11-03. "fetched" entries were opened on the primary page; "snippe
 
 No paper I found already does most of this study. Efficiency across many languages is partly covered, by one benchmark with six languages. Complexity across languages is covered only thinly. A reasoning-effort sweep has been measured against code complexity and cost (in Java only), but nobody has measured it against how fast the generated code runs.
 
-- **Closest overlap: EffiBench-X** (NeurIPS 2025 D&B). It covers 6 languages and compares runtime and memory to a human expert solution in the same language. It has no Rust, C, C#, TypeScript, Zig or assembly, no reasoning-effort levels, no complexity metrics, no cost or tokens, and is single-shot.
+- **Closest overlap: EffiBench-X** (NeurIPS 2025 D&B). It covers 6 languages and compares runtime and memory to a human expert solution in the same language. It has no Rust, C, TypeScript or Zig, no reasoning-effort levels, no complexity metrics, no cost or tokens, and is single-shot.
 - **Closest on effort × complexity: Sonar's GPT-5 study** (vendor blog). It sweeps reasoning effort and reports complexity, size and cost, but only on Java, with no runtime and no repeated runs.
 
 ## Sources found
@@ -231,7 +231,7 @@ No paper I found already does most of this study. Efficiency across many languag
 - **Complexity-metric validity:** Landman et al. (ICSME 2014), snippet-only: cyclomatic complexity vs SLOC correlation is only moderate per method and stronger when aggregated. Muñoz Barón et al. (ESEM 2020), snippet-only: validates cognitive complexity against comprehension time.
 - **hyperfine** (fetched https://github.com/sharkdp/hyperfine and its CITATION.cff). Author David Peter; I found no DOI. Features: `--warmup`, `--prepare`, `-N` (no shell), at least 10 runs (about 3 s by default), outlier warnings, JSON export of every run, hardware counters.
 - **Academic uses of hyperfine I found:** PIE (#8) and the assembly RL paper (#15).
-- **lizard** (fetched https://github.com/terryyin/lizard). Computes cyclomatic complexity, NLOC, tokens and parameters for C/C++, C#, Go, Java, JavaScript, TypeScript, Python, Rust and Zig. Assembly is not supported.
+- **lizard** (fetched https://github.com/terryyin/lizard). Computes cyclomatic complexity, NLOC, tokens and parameters for C/C++, C#, Go, Java, JavaScript, TypeScript, Python, Rust and Zig.
 
 ## Coverage map
 
@@ -259,7 +259,7 @@ Y = yes, P = partial, – = no. "Many langs" means 5 or more.
 ## Gaps
 
 1. **No study combines a reasoning-effort sweep with the runtime of the generated code**, in any language. Effort-sweep evidence is limited to Sonar's Java study (complexity, issues, cost) and accuracy/token studies. trace only compares thinking on vs off and finds no reliable efficiency gain.
-2. **No efficiency benchmark covers more than 6 languages**, and none includes Rust together with C, C#, TypeScript or Zig. I found no Zig efficiency or quality study at all; Zig appears only in blog anecdotes. Assembly appears only as optimization of C-compiled output, not as one language among many.
+2. **No efficiency benchmark covers more than 6 languages**, and none includes Rust together with C, TypeScript or Zig. I found no Zig efficiency or quality study at all; Zig appears only in blog anecdotes.
 3. **No study measures runtime and complexity on the same LLM outputs across languages.** Kharma et al. has complexity in 4 languages but no runtime. EffiBench-X has runtime but no complexity.
 4. **Cost, tokens and wall-clock time are almost never reported alongside efficiency.** Sonar and SlopCodeBench report cost, but not runtime.
 5. **Repeated generations per configuration with variance reporting are rare.** Most benchmarks use temperature 0 or a single sample per configuration; Mercury (K = 5) and EvalPerf (50 samples) are exceptions.
@@ -274,8 +274,8 @@ Y = yes, P = partial, – = no. "Many langs" means 5 or more.
 
    Suggested approach: report efficiency only on passing runs, with pass rate separately. Use log-ratios against the same-language reference, summarized by geometric mean (Fleming & Wallace). Add a second ratio against one global reference (e.g., the C or Rust solution) so that "LLM vs expert" stays separate from "language vs language". For pairwise model comparisons, use only tasks both models passed, as EvalPerf does.
 2. **Make the reference solutions comparable across languages.** Use the same algorithm and the same threading, and no third-party libraries unless they are equivalent across languages. van Kempen et al. showed that the TypeScript vs JavaScript and C vs C++ gaps in Pereira's data came from implementation differences, not from the languages.
-3. **Fix and report build flags; never benchmark with sanitizers on.** EffiBench-X built C++ with `-fsanitize=address`, and Solovyeva built with `-O0`. Pin compiler and runtime versions and use release builds (Rust release, Zig ReleaseFast, C# Release, `-O2`/`-O3`).
-4. **Plan for process startup and JIT warm-up.** hyperfine starts a new process for every run. Its `--warmup` warms OS caches but not the JVM, V8 or .NET JIT. Either make inputs large enough that runtime is far longer than startup, or measure a trivial "hello" program per language as a startup baseline. Barrett et al. show steady state is not guaranteed even in-process. State which you measure: end-to-end time or steady-state time.
+3. **Fix and report build flags; never benchmark with sanitizers on.** EffiBench-X built C++ with `-fsanitize=address`, and Solovyeva built with `-O0`. Pin compiler and runtime versions and use release builds (Rust release, Zig ReleaseFast, `-O2`/`-O3`).
+4. **Plan for process startup and JIT warm-up.** hyperfine starts a new process for every run. Its `--warmup` warms OS caches but not a language runtime's JIT. Either make inputs large enough that runtime is far longer than startup, or measure a trivial "hello" program per language as a startup baseline. Barrett et al. show steady state is not guaranteed even in-process. State which you measure: end-to-end time or steady-state time.
 5. **Size inputs so they actually stress the algorithm.** Prior work scales inputs until a time limit (EvalPerf, up to 20 s), uses hardness levels (ENAMEL), or generates stress tests (COFFE). Tiny inputs make all solutions look the same.
 6. **Treat noise as a first-class problem.**
    - Pin cores (taskset or cpuset), fix CPU frequency or disable turbo, use an otherwise idle machine.
@@ -283,8 +283,8 @@ Y = yes, P = partial, – = no. "Many langs" means 5 or more.
    - Take at least 10 timed runs after warm-up and report median with a confidence interval (Kalibera & Jones).
    - Only call a difference real if it passes a significance test (SWE-Perf uses Mann–Whitney) or exceeds a threshold. PIE's identical programs differed by up to 1.91×, which is why it requires at least 10% for %Opt.
    - Optionally record `perf stat` instruction counts as a low-noise secondary metric (EvalPerf, COFFE). They miss memory and cache effects and include JIT work, so do not use them as the only metric.
-7. **Keep two kinds of variance separate.** Timing noise comes from re-running the same binary. Generation variance comes from different outputs of the same model and prompt; Coignion found temperature changes the spread of runtimes. With 10 generations per configuration, use bootstrap or mixed-effects models with the task as a random effect.
-8. **Use one complexity tool across all languages.** lizard covers every proposed language except assembly. Cyclomatic complexity tracks code size, so report it per function, as a density (per line of code), and controlling for size (Landman; Sonar; 2602.07882). Sonar found that higher effort mainly produces more code while complexity per line stays flat. For assembly, cyclomatic complexity per function is not well defined. Use instruction or basic-block counts instead (my suggestion, not taken from a paper).
+7. **Keep two kinds of variance separate.** Timing noise comes from re-running the same binary. Generation variance comes from different outputs of the same model and prompt; Coignion found temperature changes the spread of runtimes. Use bootstrap or mixed-effects models with the task as a random effect.
+8. **Use one complexity tool across all languages.** lizard covers all eight languages of the study. Cyclomatic complexity tracks code size (Landman; Sonar; 2602.07882): Sonar found that higher effort mainly produces more code while complexity per line stays flat.
 9. **Avoid contamination.** Prior benchmarks use tasks released after the models' training cutoffs; the hand-written scenarios also help here.
 
 ## Open questions

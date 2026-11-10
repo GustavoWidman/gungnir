@@ -2,9 +2,9 @@
 
 Collected 2026-11-03. "fetched" entries were opened on the primary page; "snippet-only" entries were not. Check every citation against the primary source before it goes into the paper.
 
-I found no paper that already does this study. Correctness-only "how do LLMs do across languages" is well covered, so on its own it won't be new. What's open is putting together a within-model reasoning-effort sweep, many languages including Zig and x86-64 assembly, repeated runs, measured runtime of the produced code, complexity, and cost/tokens. The three closest 2026 works each cover a different slice, and this paper should cite them:
+I found no paper that already does this study. Correctness-only "how do LLMs do across languages" is well covered, so on its own it won't be new. What's open is putting together a within-model reasoning-effort sweep, many languages including Zig, repeated runs, measured runtime of the produced code, complexity, and cost/tokens. The three closest 2026 works each cover a different slice, and this paper should cite them:
 
-- Endoh's mame/ai-coding-lang-bench: 13 languages, 20 runs each, wall-clock time, cost and lines of code, but one model, no effort sweep, no runtime measurement of the produced code, and no Zig or assembly.
+- Endoh's mame/ai-coding-lang-bench: 13 languages, 20 runs each, wall-clock time, cost and lines of code, but one model, no effort sweep, no runtime measurement of the produced code, and no Zig.
 - Wu, Anderson & Guha, "Tokenmaxxing" (arXiv 2607.22807): agentic, tokens per language, 5 current models, but 4 languages and a fixed effort per model.
 - Acher & Jézéquel's chess-engine study (arXiv 2606.13763): 17 languages including x86-64 assembly, with cost and tokens, but one run per engine and no effort sweep.
 
@@ -262,23 +262,22 @@ Y = yes, P = partial, N = no.
 | Kian-hdr bench | Y (9) | N | N | Y | N | Y (CPU, RSS) | N | N | P (n≈2) |
 | SuperCoder | N | N | Y (optimising given asm) | P | N | Y (speedup) | N | N | P (best-of-8) |
 | Akita Zig blog | N | Y (anecdotal) | N | Y | N | N | N | P | N |
-| **This study** | Y | Y | Y | ? | Y | Y | Y | Y | Y |
+| **This study** | Y | Y | N | Y | Y | Y | Y | Y | Y |
 
 ---
 
 ## Gaps
 
 1. **No formal evaluation includes Zig.** I searched arXiv, OpenReview, ACL and ACM and found none. The only Zig evidence is Akita's anecdotal blog post. The closest formal analogue is OdinEval. Zig is also absent from MultiPL-E, McEval (40 languages), AutoCodeBench, Multi-LCB, Aider and the SWE-bench variants.
-2. **No work has frontier models write x86-64 assembly from a plain-language task description and grades it with hidden tests across models.** Existing assembly work is compiling (C or IR to assembly) or optimising given assembly (SuperCoder). The only from-scratch case is a single Codex chess engine.
-3. **No within-model reasoning-effort sweep is reported per language.** Effort varies only incidentally:
+2. **No within-model reasoning-effort sweep is reported per language.** Effort varies only incidentally:
    - Aider's GPT-5 low/medium/high, aggregated over 6 languages.
    - Multi-LCB's gpt-oss Low/Medium, open models only.
    - AutoCodeBench's thinking on vs. off.
    - "Does more reasoning close the low-resource-language gap?" A targeted search found no direct study.
-4. **No work combines all of these:** cross-language correctness for current frontier models, measured runtime of the produced code (hyperfine-grade), cyclomatic complexity, and cost/tokens, with repeated runs. EffiBench-X measures runtime against human baselines but uses older models at temperature 0 with single runs. Kian-hdr measures CPU time and memory but with one model, n≈2, and no Zig or assembly.
-5. **Repeated runs with variance are rare** (only Multi-LCB and mame). Most agentic studies use n=1.
+3. **No work combines all of these:** cross-language correctness for current frontier models, measured runtime of the produced code (hyperfine-grade), cyclomatic complexity, and cost/tokens, with repeated runs. EffiBench-X measures runtime against human baselines but uses older models at temperature 0 with single runs. Kian-hdr measures CPU time and memory but with one model, n≈2, and no Zig.
+4. **Repeated runs with variance are rare** (only Multi-LCB and mame). Most agentic studies use n=1.
 
-**Warning:** for frontier models, correctness is near ceiling in mainstream languages. Tokenmaxxing got 97–100% for GPT-5.5, and mame got 597 of 600 runs passing. Hand-written hidden-test scenarios may show almost no correctness gap between Python, Go, Java, TS and similar languages. The interesting differences are likely to appear in tokens, cost and time, in Zig and assembly, and at low effort levels. Design the tasks to be hard enough.
+**Warning:** for frontier models, correctness is near ceiling in mainstream languages. Tokenmaxxing got 97–100% for GPT-5.5, and mame got 597 of 600 runs passing. Hand-written hidden-test scenarios may show almost no correctness gap between Python, Go, Java, TS and similar languages. The interesting differences are likely to appear in tokens, cost and time, in Zig, and at low effort levels. Design the tasks to be hard enough.
 
 ---
 
@@ -291,7 +290,7 @@ Y = yes, P = partial, N = no.
 - **Format confounds.** Forcing everything into stdin/stdout I/O produces parsing and format failures that are not algorithmic errors. Multi-LCB also doesn't control language dialects or versions.
 - **Python overfitting and per-language contamination.** A model's Python score does not predict its other scores (Multi-LCB).
 - **Language confusion.** Models emit the wrong language, drifting toward Python (MBXP; arXiv 2503.13620).
-- **Agents escape into Python.** Agents prototype in Python or write Python programs that generate the target code (2606.10933, 2607.22807). If Python is installed in the sandbox, the Zig or assembly measurement can be contaminated. Decide whether to allow it and record it either way.
+- **Agents escape into Python.** Agents prototype in Python or write Python programs that generate the target code (2606.10933, 2607.22807). gungnir's prompt therefore states that no other programming language is available.
 - **Agents overspend.** They distrust the given tests, invent their own inputs, and revise solutions that already pass, which inflates token counts. Token counts are heavy-tailed, so use mixed-effects models with the problem as a random effect (2607.22807).
 - **Cheating and leakage.**
   - A chess engine silently imported python-chess.
@@ -300,9 +299,8 @@ Y = yes, P = partial, N = no.
 - **Cost comparability.** Prices differ by vendor. The chess paper normalised to $1 / $5 per million input / output tokens; Tokenmaxxing reported no dollar figures at all. Reasoning budgets differ between models, so within-model language comparisons are cleaner than cross-model ones.
 - **Efficiency is entangled with correctness.** Failed solutions score 0, and runtime is relative to each language's own baseline (EffiBench-X). Kian-hdr's CPU time includes startup and JIT (just-in-time compilation), which hits JVM and .NET languages and Node.
 - **Benchmark selection bias.** Aider kept the 225 problems that 3 or fewer of 7 particular models solved. AutoCodeBench's filtering model is weaker on low-resource languages, which may leave easier problems in those languages.
-- **Zig and assembly specifics.**
+- **Zig specifics.**
   - Zig is pre-1.0 with API churn: 0.15 broke ArrayList and the build system API, and 0.16 shipped in April 2026 (snippet). Pin the version and state it in the prompt.
-  - For assembly, fix the assembler (NASM vs. GAS), syntax (Intel vs. AT&T) and ABI (System V). x86 was reported harder than ARM and RISC-V (CompilerEval).
 - **Type checkers add agent time.** mypy and Steep made runs 1.6–3.2× slower (mame).
 
 ---
@@ -319,5 +317,5 @@ Y = yes, P = partial, N = no.
   - Aider: whether per-language results exist anywhere.
 - **Grey literature:** Kian-hdr's "gpt-6.1-sol" alias can't be verified.
 - **Unread pages:** I couldn't access the Springer or ScienceDirect versions (PROBE, Neurocomputing 2025). MultiPL-T, ProgramBench, LangChoiceBench and the other assembly papers are snippet-only.
-- **Target models:** No multilingual paper I found evaluates the GPT-6/6.1 family, GLM 5.3 or Claude 5.x. The closest are GLM-5.2, GPT-5.5 and Opus 4.6/4.7.
+- **Target models:** No multilingual paper I found evaluates the GPT-6/6.1 family or Claude 5.x. The closest are GPT-5.5 and Opus 4.6/4.7.
 - **Zig:** The absence of formal Zig evaluations rests on search-engine coverage. Unindexed or very recent work may exist.

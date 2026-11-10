@@ -74,7 +74,7 @@ Collected 2026-11-03. "fetched" entries were opened on the primary page; "snippe
 14. **Ivanova et al., "Multi-LCB"**, arXiv 2606.20517 (ICLR 2026 per the arXiv comments field). https://arxiv.org/html/2606.20517 (fetched)
     - LiveCodeBench problems converted into 12 languages. Table 1 reports Pass@1 averaged over 10 runs at t=0.2.
     - GPT-OSS-120B averaged 53.1 at low effort and 67.8 at medium. GPT-OSS-20B averaged 43.3 at low and 59.8 at medium. I verified these averages.
-    - Per-language gains, as pulled out of the table by the fetch tool (needs manual check):
+    - Per-language gains, read from the table and not checked by hand:
       - 120B: about 11.6 (C#) to 18.1 (Go).
       - 20B: about 11.2 (C#) to 19.9 (Rust).
     - The smallest gains were in C# and Scala, the weakest languages, so this data does not suggest that more effort helps less common languages more.
@@ -271,54 +271,34 @@ Collected 2026-11-03. "fetched" entries were opened on the primary page; "snippe
 
 ### Findings that should shape the study design
 
-**1. Harness: keep one minimal harness fixed for every model, and never use vendor CLIs.**
+**1. Harness: a result describes the harness and the model together.**
 - The same model moves 6–17 points between harnesses on Terminal-Bench (#22), and up to 11–15 (Epoch, #23) or 29.8 points (#24) on SWE-bench.
-- Which harness is best depends on the model (#22, #3), so vendor CLIs would mix up harness effects with model effects.
+- Which harness is best depends on the model (#22, #3), so a result from a vendor CLI mixes harness effects with model effects.
 - Epoch and Terminal-Bench both recommend one standardized, bash-only scaffold for comparing models (#23, #22, #27).
-- Option A is plain generation, which gives the cleanest attribution and is the cheapest.
-- Option B is a fixed compile/test loop: mini-swe-agent or Terminus-2 style, a fixed turn limit and time limit, compiler output and visible tests only, hidden tests kept hidden.
-- If the budget allows, make single-shot vs fixed loop a 2-level factor on a subset of the data. Reasons:
-  - Compile-error loops depend on the language (OCaml in #17).
-  - Effort changes tool-call behavior (#48).
-  - Higher effort often hurt in agent settings (#3, #4).
-  - Feedback loops give small gains once compute is matched (#29, #30), so compare at matched cost.
 - Report results as model+harness systems (#25).
 - Watch for hard-coded test answers in the logs. HAL found agents doing this (#3).
 
 **2. Reasoning effort: treat it as a setting within each model, not one scale shared across vendors.**
 - Levels are not comparable across vendors or even across versions of one model (#48, #8). GLM-5.3 cannot turn thinking off.
 - Always set the effort explicitly and log it, because defaults differ (Opus 5.5 defaults to medium).
-- Plot results against the reasoning tokens actually used, not just the level labels.
 - Set a large max-token limit so answers are not cut off. Thinking counts toward the limit (#48), and truncation lowers scores (#35).
 - Expect flat returns at the top end: #1, #2, #7, #3. Some settings may even get worse (#4, #5).
 
 **3. Repetitions and statistics.**
 - The number of distinct scenarios limits power more than repetitions do. Miller needs about 1,000 items to detect 3 points (#31), and adding repetitions has diminishing returns.
-- Each scenario is implemented in up to 11 languages, which is exactly Miller's translated-questions case. Cluster by scenario.
-- With fewer than a few hundred items, use Bayesian or Wilson intervals rather than CLT or bootstrap ones (#32).
-- Suggested model: logit(pass) ~ model × effort × language + (1|scenario) + (1|scenario:language). This follows #36 and #17.
-- 10 repetitions is defensible for a small benchmark (#35, #36). For small agent differences it may not be enough (#33, #34).
-- Set the repetition count by power analysis. Note that power for an interaction effect is much lower than for main effects.
-- Pre-register the effort × language hypothesis. #26 shows how post-hoc subgroup findings mislead.
-- Report the mean pass@1, pass@k with the unbiased estimator (#40), and pass^k for consistency (#41).
+- Each scenario is implemented in eight languages, which is exactly Miller's translated-questions case. Cluster by scenario.
 - Temperature 0 does not make runs reproducible (#38, #39, #33).
-- Runtime speed and complexity can only be measured on passing solutions, so different effort levels are judged on different subsets. Compare on the subset all settings solve, or model the two outcomes jointly. This is my inference, not something a source states.
-- Normalize cyclomatic complexity by lines of code or per function (#1).
+- Runtime speed and complexity can only be measured on passing solutions, so different effort levels are judged on different subsets. This is my inference, not something a source states.
 
 **4. Cost.**
 - Log, per call: input tokens, cached input, output tokens, and reasoning tokens (#48).
 - Convert to dollars using a dated price snapshot, and publish the token counts so readers can reprice (#21, #3).
-- Report cost-of-pass for each model × effort × language cell (#20), and accuracy–cost Pareto plots per language (#21).
 - In a multi-turn harness, account for prompt caching and thinking re-billed as input (#48). HAL left caching out (#3).
-- Token counts are not comparable across vendors' tokenizers. Re-tokenize visible code with one shared tokenizer, as Artificial Analysis does (#43). Hidden reasoning tokens can only be taken as the vendor reports them.
+- Token counts are not comparable across vendors' tokenizers. Hidden reasoning tokens can only be taken as the vendor reports them.
 
 **5. Time.**
 - Wall-clock time depends on provider load and batching (#39), rate limits during parallel runs (#3), the benchmark client itself (#44), and which provider serves the model (#23, #45, #46).
-- Report three things:
-  1. Token counts, as the measure of work that does not depend on the provider.
-  2. Measured time: time to first token, end-to-end time, and per-turn time, with median over runs, timestamps, region and concurrency.
-  3. Optionally, a derived time = output tokens ÷ a reference throughput measured at about the same time (in the spirit of #43).
-- I found no peer-reviewed source for the derived time in item 3, so present it as this study's own method.
+- Report token counts, as the measure of work that does not depend on the provider, beside the measured end-to-end time.
 - In a harness, report model time separately from compile and test time.
 - Call each vendor's own API directly, including Z.ai for GLM (#23).
 
@@ -333,17 +313,15 @@ Collected 2026-11-03. "fetched" entries were opened on the primary page; "snippe
   - Tokenmaxxing (#17): language effects on tokens, but effort is held fixed.
   - mmPISA (#18): effort × *natural* language, an analogue only.
 - This looks like a real gap this paper could fill.
-- I found no effort studies at all for Zig or x86-64 assembly, and no Zig benchmark scoring frontier models.
+- I found no effort studies at all for Zig, and no Zig benchmark scoring frontier models.
 - I found no peer-reviewed method for reporting time independently of the provider.
 
 ### Open questions (could not verify)
 
-- The per-language Multi-LCB gains were pulled out by a summarizing tool. Check Table 1 of the paper by hand.
+- The per-language Multi-LCB gains have not been checked against Table 1 of the paper by hand.
 - The AutoCodeBench per-language values were matched to columns by position and may be misaligned.
 - The "9 runs for 2 points, 36 runs for 1 point" figures come only from #34 quoting #33.
 - Hochlehnert's seed advice is unclear: 10 or 30 seeds.
 - The effort-level findings in #12 are snippet-only.
 - Venues that are snippet-only: Kapoor et al. (TMLR), HAL (ICLR 2026), Cost-of-Pass (ICLR 2026), Tokenmaxxing (LMPL 2026).
 - Terminal-Bench gives inconsistent task counts (89 vs 74).
-- GLM-5.3's effort levels are unconfirmed. A third-party page lists low / high / max, but the official docs show none.
-- I did not check whether GPT-6.x reasoning models accept a temperature setting.
