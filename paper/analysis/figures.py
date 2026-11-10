@@ -11,13 +11,14 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib import font_manager  # noqa: E402
 
-from .data import EFFORTS, LANGUAGE_NAMES, MODEL_NAMES  # noqa: E402
+from .data import EFFORTS, LANGUAGE_NAMES, MODEL_NAMES, PANEL  # noqa: E402
 
 COLUMN = 3.4  # inches, one column of the two-column layout
+PAGE = 7.1  # inches, both columns
 INK = "#222222"
 MUTED = "#9a9a9a"
 ACCENT = "#c0392b"
-MARKERS = {"gpt-6-luna": "o", "gpt-6.1-terra": "s", "claude-haiku-5-5": "D"}
+MARKERS = dict(zip(MODEL_NAMES, "osD^v<>ph"))
 
 
 def style():
@@ -34,6 +35,11 @@ def style():
     })
 
 
+def width(models):
+    """A row of up to three panels fits one column; more take both."""
+    return COLUMN if len(models) <= 3 else PAGE
+
+
 def save(fig, out, name):
     fig.savefig(Path(out) / f"{name}.svg", bbox_inches="tight", pad_inches=0.02,
                 metadata={"Date": None})
@@ -44,7 +50,7 @@ def dot_panels(rows, models, values, xlabel, out, name, *, log=False, ref=None, 
                extra=None):
     """One panel per model; values[model][language] = (point, lo, hi)."""
     fig, axes = plt.subplots(1, len(models), sharey=True, layout="constrained",
-                             figsize=(COLUMN, 0.165 * len(rows) + 0.5))
+                             figsize=(width(models), 0.165 * len(rows) + 0.5))
     axes = np.atleast_1d(axes)
     y = np.arange(len(rows))[::-1]
     for ax, model in zip(axes, models):
@@ -57,10 +63,12 @@ def dot_panels(rows, models, values, xlabel, out, name, *, log=False, ref=None, 
         ax.plot(point, y, "o", ms=3.2, color=INK, zorder=3)
         if extra:
             extra(ax, model, y)
-        ax.set_title(MODEL_NAMES[model], pad=3)
+        ax.set_title(PANEL[model], pad=3)
         if log:
             ax.set_xscale("log", base=2)
-            ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator([0.25, 0.5, 1, 2, 4, 8]))
+            ax.xaxis.set_major_locator(
+                matplotlib.ticker.FixedLocator([0.25, 0.5, 1, 2, 4, 8]) if len(models) <= 3
+                else matplotlib.ticker.LogLocator(base=2, numticks=4))
             ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:g}×"))
             ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
         if xlim:
@@ -139,7 +147,7 @@ def effort_multiples(rates, mean, out, name):
 def speed_strips(points, models, rows, out, name):
     """points[model][language] = per-trial runtime ratios to the same-language reference."""
     fig, axes = plt.subplots(1, len(models), sharey=True, layout="constrained",
-                             figsize=(COLUMN, 0.18 * len(rows) + 0.6))
+                             figsize=(width(models), 0.18 * len(rows) + 0.6))
     axes = np.atleast_1d(axes)
     y = np.arange(len(rows))[::-1]
     rng = np.random.default_rng(1)
@@ -155,10 +163,12 @@ def speed_strips(points, models, rows, out, name):
                     zorder=3)
         ax.set_xscale("log", base=2)
         ax.set_xlim(0.25, 64)
-        ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator([0.25, 1, 4, 16, 64]))
-        ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:g}×"))
+        ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator(
+            [0.25, 1, 4, 16, 64] if len(models) <= 3 else [0.25, 1, 4, 16]))
+        ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(
+            lambda v, _: "¼×" if v == 0.25 else f"{v:g}×"))
         ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
-        ax.set_title(MODEL_NAMES[model], pad=3)
+        ax.set_title(PANEL[model], pad=3)
     axes[0].set_yticks(y, [LANGUAGE_NAMES[r] for r in rows])
     fig.supxlabel("runtime / same-language reference (lower is faster)", fontsize=8)
     save(fig, out, name)
@@ -173,7 +183,7 @@ def absolute_speed(values, rows, models, out, name):
             label="reference")
     for model in models:
         ax.plot([values[model].get(r, np.nan) for r in rows], y, MARKERS[model], ms=3.4,
-                mfc="white", mec=INK, mew=0.8, label=MODEL_NAMES[model])
+                mfc="white", mec=INK, mew=0.8, label=PANEL[model])
     ax.set_xscale("log", base=2)
     ax.set_xlim(0.9, 40)
     ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator([1, 2, 4, 8, 16, 32]))
@@ -182,6 +192,6 @@ def absolute_speed(values, rows, models, out, name):
     ax.grid(axis="x", color="#e6e6e6", lw=0.5, zorder=0)
     ax.set_yticks(y, [LANGUAGE_NAMES[r] for r in rows])
     ax.set_xlabel("runtime / fastest program for the workload, any language")
-    fig.legend(frameon=False, fontsize=7, loc="outside upper center", ncol=1 + len(models),
+    fig.legend(frameon=False, fontsize=7, loc="outside upper center", ncol=5,
                handletextpad=0.2, columnspacing=1.0)
     save(fig, out, name)
