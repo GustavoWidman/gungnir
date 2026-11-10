@@ -56,11 +56,9 @@ def main(report, index_dir, runs, out):
                      for m, d in per.items()}
     order = sorted(LANGUAGES, key=lambda lang: -n["pass"][SHORT[models[0]]][lang]["rate"])
     figures.style()
-    figures.dot_panels(order, models, {m: {lang: (v["rate"], v["lo"], v["hi"]) for lang, v in
-                                           n["pass"][SHORT[m]].items() if lang != "all"}
-                                       for m in models},
-                       "trials passing every hidden test (%)", out / "figures", "pass-by-language",
-                       xlim=(0, 104))
+    figures.model_grid({m: {lang: v["rate"] for lang, v in n["pass"][SHORT[m]].items()} for m in models},
+                       models, out / "figures", "pass-by-language", fmt=lambda v: f"{v:.0f}",
+                       vmin=20, vmax=100)
 
     # The models that pass nearly everything, and those whose pass rates leave the language room
     # to matter.
@@ -110,17 +108,15 @@ def main(report, index_dir, runs, out):
 
     # What the session cost, relative to an average language for the same task.
     n["cost"] = {}
-    cost_points = {}
     for m, d in per.items():
         d = d.assign(**{f"{c}_rel": data.relative_to_task(d, c)
                         for c in ("tokens", "wall_s", "output_tokens", "commands", "cost_usd")})
         n["cost"][SHORT[m]] = by_language(d, lambda x: {
             c: dict(zip(("ratio", "lo", "hi"), stats.geomean_interval(x[f"{c}_rel"], x.scenario)))
             for c in ("tokens", "wall_s", "output_tokens", "commands", "cost_usd")})
-        cost_points[m] = {lang: tuple(v["tokens"][k] for k in ("ratio", "lo", "hi"))
-                          for lang, v in n["cost"][SHORT[m]].items()}
-    figures.dot_panels(order, models, cost_points, "tokens relative to the same task's average language",
-                       out / "figures", "tokens-by-language", log=True, ref=1)
+    figures.model_grid({m: {lang: v["tokens"]["ratio"] for lang, v in n["cost"][SHORT[m]].items()}
+                        for m in models}, models, out / "figures", "tokens-by-language",
+                       fmt=lambda v: f"{v:.1f}", vmin=0.5, vmax=4, log=True)
 
     # What the agent saw while it worked.
     n["session"] = {SHORT[m]: by_language(d, lambda x: {
@@ -129,11 +125,9 @@ def main(report, index_dir, runs, out):
         "sessions_with_failed_build": 100 * float((x.failed_builds > 0).mean()),
         "failed_builds_ci": stats.mean_interval(x.failed_builds, x.scenario)})
         for m, d in per.items()}
-    figures.dot_panels(order, models,
-                       {m: {lang: tuple(n["session"][SHORT[m]][lang]["failed_builds_ci"]) for lang in LANGUAGES}
-                        for m in models},
-                       "builds that failed with a compiler or type error, per session",
-                       out / "figures", "failed-builds")
+    figures.model_grid({m: {lang: n["session"][SHORT[m]][lang]["failed_builds"] for lang in LANGUAGES}
+                        for m in models}, models, out / "figures", "failed-builds",
+                       fmt=lambda v: f"{v:.1f}" if v < 10 else f"{v:.0f}", vmin=0.05, vmax=20, log=True)
     kinds = {}
     for lang, cols in (("zig", ["api", "rules", "types", "syntax", "other"]),
                        ("rust", ["borrow", "other"]), ("typescript", ["null", "other"])):
@@ -146,19 +140,19 @@ def main(report, index_dir, runs, out):
     per_trial = workloads.groupby(["model", "effort", "scenario", "language", "rep"]).agg(
         ratio=("wall_ratio", lambda v: float(np.exp(np.log(v).mean())))).reset_index()
     n["speed"] = {}
-    points = {}
     for m in models:
         d = per_trial[per_trial.model == m]
         if d.empty:
             continue
-        points[m] = {lang: d[d.language == lang].ratio.values for lang in LANGUAGES}
         n["speed"][SHORT[m]] = {lang: dict(zip(("ratio", "lo", "hi"), stats.geomean_interval(x.ratio, x.scenario)))
                                 | {"n": len(x), "slower_share": 100 * float((x.ratio > 1.1).mean())}
                                 for lang in LANGUAGES if len(x := d[d.language == lang])}
         n["speed"][SHORT[m]]["by_effort"] = {e: float(np.exp(np.log(d[d.effort == e].ratio).mean()))
                                              for e in EFFORTS if len(d[d.effort == e])}
-    speed_models = [m for m in models if m in points]
-    figures.speed_strips(points, speed_models, order, out / "figures", "speed")
+    speed_models = [m for m in models if SHORT[m] in n["speed"]]
+    figures.model_grid({m: {lang: v["ratio"] for lang, v in n["speed"][SHORT[m]].items() if lang in LANGUAGES}
+                        for m in speed_models}, speed_models, out / "figures", "speed",
+                       fmt=lambda v: f"{v:.1f}", vmin=0.5, vmax=3, log=True)
 
     best = workloads.groupby(["scenario", "workload"]).reference_median_s.min().rename("best")
     w = workloads.join(best, on=["scenario", "workload"])

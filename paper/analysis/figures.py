@@ -1,5 +1,5 @@
-"""The paper's figures. Rows are languages, panels are models, and intervals are 95% two-stage
-bootstrap intervals over scenarios and trials."""
+"""The paper's figures, each one column wide. Grids put models in rows and languages in columns,
+and intervals are 95% two-stage bootstrap intervals over scenarios and trials."""
 
 import os
 from pathlib import Path
@@ -11,13 +11,13 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib import font_manager  # noqa: E402
 
-from .data import EFFORTS, LANGUAGE_NAMES, MODEL_NAMES, PANEL, SHORT  # noqa: E402
+from .data import EFFORTS, LANGUAGE_NAMES, LANGUAGES, MODEL_NAMES, PANEL, SHORT  # noqa: E402
 
 COLUMN = 3.4  # inches, one column of the two-column layout
-PAGE = 7.1  # inches, both columns
 INK = "#222222"
 MUTED = "#9a9a9a"
 ACCENT = "#c0392b"
+SHADE = matplotlib.colors.LinearSegmentedColormap.from_list("shade", ["#f5f5f5", "#262626"])
 MARKERS = dict(zip(MODEL_NAMES, "osD^v<>ph"))
 
 
@@ -35,49 +35,10 @@ def style():
     })
 
 
-def width(models):
-    """A row of up to three panels fits one column; more take both."""
-    return COLUMN if len(models) <= 3 else PAGE
-
-
 def save(fig, out, name):
     fig.savefig(Path(out) / f"{name}.svg", bbox_inches="tight", pad_inches=0.02,
                 metadata={"Date": None})
     plt.close(fig)
-
-
-def dot_panels(rows, models, values, xlabel, out, name, *, log=False, ref=None, xlim=None,
-               extra=None):
-    """One panel per model; values[model][language] = (point, lo, hi)."""
-    fig, axes = plt.subplots(1, len(models), sharey=True, layout="constrained",
-                             figsize=(width(models), 0.165 * len(rows) + 0.5))
-    axes = np.atleast_1d(axes)
-    y = np.arange(len(rows))[::-1]
-    for ax, model in zip(axes, models):
-        point = np.array([values[model][r][0] for r in rows])
-        lo = np.array([values[model][r][1] for r in rows])
-        hi = np.array([values[model][r][2] for r in rows])
-        if ref is not None:
-            ax.axvline(ref, color=MUTED, lw=0.6, ls="--", zorder=0)
-        ax.hlines(y, lo, hi, color=INK, lw=0.8)
-        ax.plot(point, y, "o", ms=3.2, color=INK, zorder=3)
-        if extra:
-            extra(ax, model, y)
-        ax.set_title(PANEL[model], pad=3)
-        if log:
-            ax.set_xscale("log", base=2)
-            ax.xaxis.set_major_locator(
-                matplotlib.ticker.FixedLocator([0.25, 0.5, 1, 2, 4, 8]) if len(models) <= 3
-                else matplotlib.ticker.LogLocator(base=2, numticks=4))
-            ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:g}×"))
-            ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
-        if xlim:
-            ax.set_xlim(*xlim)
-        ax.grid(axis="x", color="#e6e6e6", lw=0.5, zorder=0)
-    axes[0].set_yticks(y, [LANGUAGE_NAMES[r] for r in rows])
-    axes[0].set_ylim(-0.6, len(rows) - 0.4)
-    fig.supxlabel(xlabel, fontsize=8)
-    save(fig, out, name)
 
 
 def index_bars(rows, values, out, name):
@@ -104,26 +65,39 @@ def index_bars(rows, values, out, name):
     ax.set_xlabel("gungnir index (average language = 100)", fontsize=8)
     save(fig, out, name)
 
+def grid_axes(ax, data, norm, fmt, columns, rows):
+    """Shades and labels one grid of values, darker for higher; NaN cells stay blank."""
+    shade = np.clip(np.nan_to_num(data, nan=norm.vmin), norm.vmin, norm.vmax)
+    ax.imshow(np.ma.masked_where(np.isnan(data), shade), cmap=SHADE, norm=norm, aspect="auto")
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            if not np.isnan(v := data[i, j]):
+                ax.text(j, i, fmt(v), ha="center", va="center", fontsize=6.5,
+                        color="white" if norm(np.clip(v, norm.vmin, norm.vmax)) > 0.55 else INK)
+    ax.set_xticks(range(len(columns)), [LANGUAGE_NAMES[c] for c in columns], rotation=35, ha="right")
+    ax.set_yticks(range(len(rows)), rows)
+    ax.tick_params(length=0)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+
+def model_grid(values, models, out, name, *, fmt, vmin, vmax, log=False):
+    """Model by language grid, values[model][language], shaded darker for higher values."""
+    data = np.array([[values[m].get(lang, np.nan) for lang in LANGUAGES] for m in models])
+    norm = (matplotlib.colors.LogNorm if log else matplotlib.colors.Normalize)(vmin, vmax)
+    fig, ax = plt.subplots(figsize=(COLUMN, 0.19 * len(models) + 0.5), layout="constrained")
+    grid_axes(ax, data, norm, fmt, LANGUAGES, [PANEL[m] for m in models])
+    save(fig, out, name)
+
+
 def heatmaps(tables, out, name):
-    """One scenario by language grid of pass rates in percent per model, side by side."""
-    fig, axes = plt.subplots(1, len(tables), sharey=True, layout="constrained",
-                             figsize=(PAGE if len(tables) > 1 else COLUMN, 2.5))
-    axes = np.atleast_1d(axes)
-    for ax, (model, table) in zip(axes, tables.items()):
-        data = table.values
-        ax.imshow(data, cmap="Greys", vmin=-10, vmax=130, aspect="auto")
-        for i in range(data.shape[0]):
-            for j in range(data.shape[1]):
-                v = data[i, j]
-                ax.text(j, i, f"{v:.0f}", ha="center", va="center", fontsize=7,
-                        color="white" if v > 62 else INK)
-        ax.set_xticks(range(data.shape[1]), [LANGUAGE_NAMES[c] for c in table.columns], rotation=35,
-                      ha="right")
-        ax.set_yticks(range(data.shape[0]), table.index)
-        ax.tick_params(length=0)
-        for spine in ax.spines.values():
-            spine.set_visible(False)
-        ax.set_title(MODEL_NAMES[model], pad=4)
+    """One scenario by language grid of pass rates in percent per model, stacked."""
+    fig, axes = plt.subplots(len(tables), 1, sharex=True, layout="constrained",
+                             figsize=(COLUMN, 1.75 * len(tables) + 0.35))
+    for ax, (model, table) in zip(np.atleast_1d(axes), tables.items()):
+        grid_axes(ax, table.values, matplotlib.colors.Normalize(-10, 130), lambda v: f"{v:.0f}",
+                  list(table.columns), list(table.index))
+        ax.set_title(MODEL_NAMES[model], pad=3)
     save(fig, out, name)
 
 
@@ -169,36 +143,6 @@ def effort_multiples(rates, mean, out, name):
     for ax in axes[1]:
         ax.set_xticks(x, ["none", "low", "med", "high", "xhigh", "max"], rotation=90)
     fig.supylabel("pass rate (%)", fontsize=8)
-    save(fig, out, name)
-
-
-def speed_strips(points, models, rows, out, name):
-    """points[model][language] = per-trial runtime ratios to the same-language reference."""
-    fig, axes = plt.subplots(1, len(models), sharey=True, layout="constrained",
-                             figsize=(width(models), 0.18 * len(rows) + 0.6))
-    axes = np.atleast_1d(axes)
-    y = np.arange(len(rows))[::-1]
-    rng = np.random.default_rng(1)
-    for ax, model in zip(axes, models):
-        ax.axvline(1, color=MUTED, lw=0.6, ls="--", zorder=0)
-        for yi, lang in zip(y, rows):
-            v = np.asarray(points[model].get(lang, []))
-            if len(v) == 0:
-                continue
-            ax.plot(v, yi + rng.uniform(-0.22, 0.22, len(v)), "o", ms=1.4, color=MUTED,
-                    alpha=0.6, mew=0, zorder=2)
-            ax.plot([np.exp(np.log(v).mean())] * 2, [yi - 0.32, yi + 0.32], color=INK, lw=1.4,
-                    zorder=3)
-        ax.set_xscale("log", base=2)
-        ax.set_xlim(0.25, 64)
-        ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator(
-            [0.25, 1, 4, 16, 64] if len(models) <= 3 else [0.25, 1, 4, 16]))
-        ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(
-            lambda v, _: "¼×" if v == 0.25 else f"{v:g}×"))
-        ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
-        ax.set_title(PANEL[model], pad=3)
-    axes[0].set_yticks(y, [LANGUAGE_NAMES[r] for r in rows])
-    fig.supxlabel("runtime / same-language reference (lower is faster)", fontsize=8)
     save(fig, out, name)
 
 
