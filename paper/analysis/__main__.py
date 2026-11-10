@@ -3,8 +3,9 @@
     python -m analysis REPORT INDEX RUNS OUT
 
 REPORT is a `gungnir report` directory for the study experiments, INDEX a `gungnir index`
-directory for the same experiments, RUNS the results directory those experiments write to, and
-OUT the paper directory, which receives `figures/*.svg` and `data/numbers.json`.
+directory for the same experiments, RUNS the directory that holds those experiments' results
+directories, each named after its experiment, and OUT the paper directory, which receives
+`figures/*.svg` and `data/numbers.json`.
 """
 
 import json
