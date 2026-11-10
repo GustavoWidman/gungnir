@@ -1749,49 +1749,140 @@
     "only_a": 26,
     "only_b": 26,
     "p": 1.0,
-    "both": 126
+    "both": 126,
+    "lead": 0.0,
+    "lead_lo": -7.916666666666666,
+    "lead_hi": 8.333333333333332,
+    "net_by_scenario": {
+     "bigint-calc": -4,
+     "exact-cover": -1,
+     "json-path": 0,
+     "ledger": -3,
+     "line-diff": 2,
+     "regex-lite": 2,
+     "route-fuel": 3,
+     "tiny-vm": 1
+    }
    },
    "python-rust": {
     "pairs": 240,
     "only_a": 43,
     "only_b": 43,
     "p": 1.0,
-    "both": 91
+    "both": 91,
+    "lead": 0.0,
+    "lead_lo": -17.083333333333332,
+    "lead_hi": 17.916666666666668,
+    "net_by_scenario": {
+     "bigint-calc": -13,
+     "exact-cover": -5,
+     "json-path": 0,
+     "ledger": -5,
+     "line-diff": 4,
+     "regex-lite": 2,
+     "route-fuel": 12,
+     "tiny-vm": 5
+    }
    },
    "c-cpp": {
     "pairs": 240,
     "only_a": 25,
     "only_b": 43,
     "p": 0.038460053348927506,
-    "both": 96
+    "both": 96,
+    "lead": 7.5,
+    "lead_lo": -2.083333333333333,
+    "lead_hi": 17.5,
+    "net_by_scenario": {
+     "bigint-calc": -3,
+     "exact-cover": 0,
+     "json-path": 2,
+     "ledger": 6,
+     "line-diff": 0,
+     "regex-lite": 2,
+     "route-fuel": 7,
+     "tiny-vm": 4
+    }
    },
    "python-go": {
     "pairs": 240,
     "only_a": 29,
     "only_b": 49,
     "p": 0.030786495821399938,
-    "both": 105
+    "both": 105,
+    "lead": 8.333333333333332,
+    "lead_lo": -3.3333333333333335,
+    "lead_hi": 20.416666666666668,
+    "net_by_scenario": {
+     "bigint-calc": 3,
+     "exact-cover": -4,
+     "json-path": -3,
+     "ledger": 2,
+     "line-diff": 2,
+     "regex-lite": 4,
+     "route-fuel": 8,
+     "tiny-vm": 8
+    }
    },
    "rust-go": {
     "pairs": 240,
     "only_a": 22,
     "only_b": 42,
     "p": 0.01685819004428113,
-    "both": 112
+    "both": 112,
+    "lead": 8.333333333333332,
+    "lead_lo": -5.416666666666667,
+    "lead_hi": 24.166666666666668,
+    "net_by_scenario": {
+     "bigint-calc": 16,
+     "exact-cover": 1,
+     "json-path": -3,
+     "ledger": 7,
+     "line-diff": -2,
+     "regex-lite": 2,
+     "route-fuel": -4,
+     "tiny-vm": 3
+    }
    },
    "python-typescript": {
     "pairs": 240,
     "only_a": 27,
     "only_b": 45,
     "p": 0.04437092000802569,
-    "both": 107
+    "both": 107,
+    "lead": 7.5,
+    "lead_lo": -4.166666666666666,
+    "lead_hi": 20.416666666666668,
+    "net_by_scenario": {
+     "bigint-calc": -3,
+     "exact-cover": -3,
+     "json-path": -1,
+     "ledger": 3,
+     "line-diff": 2,
+     "regex-lite": 4,
+     "route-fuel": 12,
+     "tiny-vm": 4
+    }
    },
    "python-javascript": {
     "pairs": 240,
     "only_a": 22,
     "only_b": 40,
     "p": 0.030015864349067285,
-    "both": 112
+    "both": 112,
+    "lead": 7.5,
+    "lead_lo": -2.5,
+    "lead_hi": 17.916666666666668,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": -2,
+     "json-path": -1,
+     "ledger": 6,
+     "line-diff": 0,
+     "regex-lite": 2,
+     "route-fuel": 9,
+     "tiny-vm": 3
+    }
    }
   },
   "terra": {
@@ -1800,49 +1891,140 @@
     "only_a": 1,
     "only_b": 0,
     "p": 1.0,
-    "both": 239
+    "both": 239,
+    "lead": -0.4166666666666667,
+    "lead_lo": -2.083333333333333,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": -1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-rust": {
     "pairs": 240,
     "only_a": 4,
     "only_b": 8,
     "p": 0.3876953125,
-    "both": 228
+    "both": 228,
+    "lead": 1.6666666666666667,
+    "lead_lo": -4.166666666666666,
+    "lead_hi": 10.416666666666668,
+    "net_by_scenario": {
+     "bigint-calc": -3,
+     "exact-cover": 0,
+     "json-path": -1,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 8,
+     "tiny-vm": 0
+    }
    },
    "c-cpp": {
     "pairs": 240,
     "only_a": 8,
     "only_b": 5,
     "p": 0.5810546875,
-    "both": 224
+    "both": 224,
+    "lead": -1.25,
+    "lead_lo": -5.416666666666667,
+    "lead_hi": 2.083333333333333,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": -3,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-go": {
     "pairs": 240,
     "only_a": 0,
     "only_b": 8,
     "p": 0.0078125,
-    "both": 232
+    "both": 232,
+    "lead": 3.3333333333333335,
+    "lead_lo": 0.0,
+    "lead_hi": 11.25,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 8,
+     "tiny-vm": 0
+    }
    },
    "rust-go": {
     "pairs": 240,
     "only_a": 0,
     "only_b": 4,
     "p": 0.125,
-    "both": 236
+    "both": 236,
+    "lead": 1.6666666666666667,
+    "lead_lo": 0.0,
+    "lead_hi": 5.0,
+    "net_by_scenario": {
+     "bigint-calc": 3,
+     "exact-cover": 0,
+     "json-path": 1,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-typescript": {
     "pairs": 240,
     "only_a": 1,
     "only_b": 8,
     "p": 0.0390625,
-    "both": 231
+    "both": 231,
+    "lead": 2.9166666666666665,
+    "lead_lo": -1.6666666666666667,
+    "lead_hi": 10.833333333333334,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": -1,
+     "route-fuel": 8,
+     "tiny-vm": 0
+    }
    },
    "python-javascript": {
     "pairs": 240,
     "only_a": 0,
     "only_b": 8,
     "p": 0.0078125,
-    "both": 232
+    "both": 232,
+    "lead": 3.3333333333333335,
+    "lead_lo": 0.0,
+    "lead_hi": 11.25,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 8,
+     "tiny-vm": 0
+    }
    }
   },
   "sol": {
@@ -1851,49 +2033,140 @@
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 80
+    "both": 80,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-rust": {
     "pairs": 80,
     "only_a": 1,
     "only_b": 0,
     "p": 1.0,
-    "both": 79
+    "both": 79,
+    "lead": -1.25,
+    "lead_lo": -5.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": -1,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "c-cpp": {
     "pairs": 80,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 79
+    "both": 79,
+    "lead": 1.25,
+    "lead_lo": 0.0,
+    "lead_hi": 5.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 1,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-go": {
     "pairs": 80,
     "only_a": 1,
     "only_b": 0,
     "p": 1.0,
-    "both": 79
+    "both": 79,
+    "lead": -1.25,
+    "lead_lo": -5.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": -1,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "rust-go": {
     "pairs": 80,
     "only_a": 1,
     "only_b": 1,
     "p": 1.0,
-    "both": 78
+    "both": 78,
+    "lead": 0.0,
+    "lead_lo": -5.0,
+    "lead_hi": 5.0,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": -1,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-typescript": {
     "pairs": 80,
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 80
+    "both": 80,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-javascript": {
     "pairs": 80,
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 80
+    "both": 80,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    }
   },
   "astra": {
@@ -1902,49 +2175,140 @@
     "only_a": 1,
     "only_b": 0,
     "p": 1.0,
-    "both": 39
+    "both": 39,
+    "lead": -2.5,
+    "lead_lo": -10.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": -1,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-rust": {
     "pairs": 40,
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 40
+    "both": 40,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "c-cpp": {
     "pairs": 40,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 39
+    "both": 39,
+    "lead": 2.5,
+    "lead_lo": 0.0,
+    "lead_hi": 10.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 1,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-go": {
     "pairs": 40,
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 40
+    "both": 40,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "rust-go": {
     "pairs": 40,
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 40
+    "both": 40,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-typescript": {
     "pairs": 40,
     "only_a": 1,
     "only_b": 0,
     "p": 1.0,
-    "both": 39
+    "both": 39,
+    "lead": -2.5,
+    "lead_lo": -10.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": -1,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-javascript": {
     "pairs": 40,
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 40
+    "both": 40,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    }
   },
   "nemotron": {
@@ -1953,49 +2317,140 @@
     "only_a": 3,
     "only_b": 6,
     "p": 0.5078125,
-    "both": 12
+    "both": 12,
+    "lead": 9.375,
+    "lead_lo": -12.5,
+    "lead_hi": 31.25,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": -1,
+     "json-path": 1,
+     "ledger": 1,
+     "line-diff": 1,
+     "regex-lite": 0,
+     "route-fuel": -1,
+     "tiny-vm": 1
+    }
    },
    "python-rust": {
     "pairs": 32,
     "only_a": 8,
     "only_b": 8,
     "p": 1.0,
-    "both": 8
+    "both": 8,
+    "lead": 0.0,
+    "lead_lo": -37.5,
+    "lead_hi": 37.5,
+    "net_by_scenario": {
+     "bigint-calc": -3,
+     "exact-cover": -1,
+     "json-path": 2,
+     "ledger": -2,
+     "line-diff": 1,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 3
+    }
    },
    "c-cpp": {
     "pairs": 32,
     "only_a": 7,
     "only_b": 8,
     "p": 1.0,
-    "both": 10
+    "both": 10,
+    "lead": 3.125,
+    "lead_lo": -31.25,
+    "lead_hi": 37.5,
+    "net_by_scenario": {
+     "bigint-calc": -3,
+     "exact-cover": -1,
+     "json-path": 0,
+     "ledger": 2,
+     "line-diff": 1,
+     "regex-lite": 1,
+     "route-fuel": 2,
+     "tiny-vm": -1
+    }
    },
    "python-go": {
     "pairs": 32,
     "only_a": 4,
     "only_b": 10,
     "p": 0.1795654296875,
-    "both": 12
+    "both": 12,
+    "lead": 18.75,
+    "lead_lo": -12.5,
+    "lead_hi": 50.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": -1,
+     "json-path": 2,
+     "ledger": -1,
+     "line-diff": 1,
+     "regex-lite": 2,
+     "route-fuel": 0,
+     "tiny-vm": 3
+    }
    },
    "rust-go": {
     "pairs": 32,
     "only_a": 1,
     "only_b": 7,
     "p": 0.0703125,
-    "both": 15
+    "both": 15,
+    "lead": 18.75,
+    "lead_lo": -3.125,
+    "lead_hi": 43.75,
+    "net_by_scenario": {
+     "bigint-calc": 3,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 1,
+     "line-diff": 0,
+     "regex-lite": 2,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-typescript": {
     "pairs": 32,
     "only_a": 4,
     "only_b": 6,
     "p": 0.75390625,
-    "both": 12
+    "both": 12,
+    "lead": 6.25,
+    "lead_lo": -21.875,
+    "lead_hi": 34.375,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": -1,
+     "json-path": 2,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": -1,
+     "route-fuel": -1,
+     "tiny-vm": 2
+    }
    },
    "python-javascript": {
     "pairs": 32,
     "only_a": 6,
     "only_b": 5,
     "p": 1.0,
-    "both": 10
+    "both": 10,
+    "lead": -3.125,
+    "lead_lo": -28.125,
+    "lead_hi": 18.75,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 1,
+     "ledger": -1,
+     "line-diff": -1,
+     "regex-lite": -1,
+     "route-fuel": 0,
+     "tiny-vm": 1
+    }
    }
   },
   "deepseek": {
@@ -2004,49 +2459,140 @@
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 8
+    "both": 8,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-rust": {
     "pairs": 8,
     "only_a": 1,
     "only_b": 1,
     "p": 1.0,
-    "both": 6
+    "both": 6,
+    "lead": 0.0,
+    "lead_lo": -37.5,
+    "lead_hi": 37.5,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": -1,
+     "regex-lite": 0,
+     "route-fuel": 1,
+     "tiny-vm": 0
+    }
    },
    "c-cpp": {
     "pairs": 8,
     "only_a": 2,
     "only_b": 0,
     "p": 0.5,
-    "both": 6
+    "both": 6,
+    "lead": -25.0,
+    "lead_lo": -50.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": -1,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": -1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-go": {
     "pairs": 8,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 7
+    "both": 7,
+    "lead": 12.5,
+    "lead_lo": 0.0,
+    "lead_hi": 37.5,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 1,
+     "tiny-vm": 0
+    }
    },
    "rust-go": {
     "pairs": 8,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 7
+    "both": 7,
+    "lead": 12.5,
+    "lead_lo": 0.0,
+    "lead_hi": 37.5,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 1,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-typescript": {
     "pairs": 8,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 7
+    "both": 7,
+    "lead": 12.5,
+    "lead_lo": 0.0,
+    "lead_hi": 37.5,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 1,
+     "tiny-vm": 0
+    }
    },
    "python-javascript": {
     "pairs": 8,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 7
+    "both": 7,
+    "lead": 12.5,
+    "lead_lo": 0.0,
+    "lead_hi": 37.5,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 1,
+     "tiny-vm": 0
+    }
    }
   },
   "haiku": {
@@ -2055,49 +2601,140 @@
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 40
+    "both": 40,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-rust": {
     "pairs": 40,
     "only_a": 1,
     "only_b": 1,
     "p": 1.0,
-    "both": 38
+    "both": 38,
+    "lead": 0.0,
+    "lead_lo": -10.0,
+    "lead_hi": 10.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": -1,
+     "regex-lite": 1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "c-cpp": {
     "pairs": 40,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 39
+    "both": 39,
+    "lead": 2.5,
+    "lead_lo": 0.0,
+    "lead_hi": 10.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-go": {
     "pairs": 40,
     "only_a": 2,
     "only_b": 1,
     "p": 1.0,
-    "both": 37
+    "both": 37,
+    "lead": -2.5,
+    "lead_lo": -12.5,
+    "lead_hi": 7.5,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": -1,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "rust-go": {
     "pairs": 40,
     "only_a": 1,
     "only_b": 0,
     "p": 1.0,
-    "both": 38
+    "both": 38,
+    "lead": -2.5,
+    "lead_lo": -10.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": -1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-typescript": {
     "pairs": 40,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 39
+    "both": 39,
+    "lead": 2.5,
+    "lead_lo": 0.0,
+    "lead_hi": 10.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-javascript": {
     "pairs": 40,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 39
+    "both": 39,
+    "lead": 2.5,
+    "lead_lo": 0.0,
+    "lead_hi": 10.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    }
   },
   "sonnet": {
@@ -2106,49 +2743,140 @@
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 32
+    "both": 32,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-rust": {
     "pairs": 32,
     "only_a": 0,
     "only_b": 3,
     "p": 0.25,
-    "both": 29
+    "both": 29,
+    "lead": 9.375,
+    "lead_lo": 0.0,
+    "lead_hi": 21.875,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 1,
+     "ledger": 0,
+     "line-diff": 1,
+     "regex-lite": 1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "c-cpp": {
     "pairs": 32,
     "only_a": 0,
     "only_b": 0,
     "p": 1.0,
-    "both": 32
+    "both": 32,
+    "lead": 0.0,
+    "lead_lo": 0.0,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-go": {
     "pairs": 32,
     "only_a": 1,
     "only_b": 2,
     "p": 1.0,
-    "both": 28
+    "both": 28,
+    "lead": 3.125,
+    "lead_lo": -9.375,
+    "lead_hi": 18.75,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": -1,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 1,
+     "regex-lite": 1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "rust-go": {
     "pairs": 32,
     "only_a": 2,
     "only_b": 0,
     "p": 0.5,
-    "both": 30
+    "both": 30,
+    "lead": -6.25,
+    "lead_lo": -18.75,
+    "lead_hi": 0.0,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": -1,
+     "json-path": -1,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-typescript": {
     "pairs": 32,
     "only_a": 0,
     "only_b": 3,
     "p": 0.25,
-    "both": 29
+    "both": 29,
+    "lead": 9.375,
+    "lead_lo": 0.0,
+    "lead_hi": 21.875,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 1,
+     "ledger": 0,
+     "line-diff": 1,
+     "regex-lite": 1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-javascript": {
     "pairs": 32,
     "only_a": 0,
     "only_b": 3,
     "p": 0.25,
-    "both": 29
+    "both": 29,
+    "lead": 9.375,
+    "lead_lo": 0.0,
+    "lead_hi": 21.875,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 1,
+     "ledger": 0,
+     "line-diff": 1,
+     "regex-lite": 1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    }
   },
   "opus": {
@@ -2157,49 +2885,140 @@
     "only_a": 1,
     "only_b": 1,
     "p": 1.0,
-    "both": 21
+    "both": 21,
+    "lead": 0.0,
+    "lead_lo": -16.666666666666664,
+    "lead_hi": 16.666666666666664,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 1,
+     "ledger": -1,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-rust": {
     "pairs": 24,
     "only_a": 1,
     "only_b": 3,
     "p": 0.625,
-    "both": 20
+    "both": 20,
+    "lead": 8.333333333333332,
+    "lead_lo": -12.5,
+    "lead_hi": 29.166666666666668,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": -1,
+     "line-diff": 0,
+     "regex-lite": 1,
+     "route-fuel": 1,
+     "tiny-vm": 0
+    }
    },
    "c-cpp": {
     "pairs": 24,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 23
+    "both": 23,
+    "lead": 4.166666666666666,
+    "lead_lo": 0.0,
+    "lead_hi": 16.666666666666664,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-go": {
     "pairs": 24,
     "only_a": 0,
     "only_b": 3,
     "p": 0.25,
-    "both": 21
+    "both": 21,
+    "lead": 12.5,
+    "lead_lo": 0.0,
+    "lead_hi": 29.166666666666668,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 1,
+     "route-fuel": 1,
+     "tiny-vm": 0
+    }
    },
    "rust-go": {
     "pairs": 24,
     "only_a": 0,
     "only_b": 1,
     "p": 1.0,
-    "both": 23
+    "both": 23,
+    "lead": 4.166666666666666,
+    "lead_lo": 0.0,
+    "lead_hi": 16.666666666666664,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 1,
+     "line-diff": 0,
+     "regex-lite": 0,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-typescript": {
     "pairs": 24,
     "only_a": 2,
     "only_b": 3,
     "p": 1.0,
-    "both": 19
+    "both": 19,
+    "lead": 4.166666666666666,
+    "lead_lo": -20.833333333333336,
+    "lead_hi": 29.166666666666668,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": -1,
+     "line-diff": 0,
+     "regex-lite": 1,
+     "route-fuel": 1,
+     "tiny-vm": -1
+    }
    },
    "python-javascript": {
     "pairs": 24,
     "only_a": 2,
     "only_b": 3,
     "p": 1.0,
-    "both": 19
+    "both": 19,
+    "lead": 4.166666666666666,
+    "lead_lo": -16.666666666666664,
+    "lead_hi": 25.104166666667044,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": 0,
+     "json-path": -1,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 1,
+     "route-fuel": 1,
+     "tiny-vm": -1
+    }
    }
   },
   "all": {
@@ -2208,49 +3027,140 @@
     "only_a": 32,
     "only_b": 33,
     "p": 1.0,
-    "both": 597
+    "both": 597,
+    "lead": 0.1358695652173913,
+    "lead_lo": -2.8532608695652173,
+    "lead_hi": 2.989130434782609,
+    "net_by_scenario": {
+     "bigint-calc": -4,
+     "exact-cover": -2,
+     "json-path": 2,
+     "ledger": -3,
+     "line-diff": 3,
+     "regex-lite": 1,
+     "route-fuel": 2,
+     "tiny-vm": 2
+    }
    },
    "python-rust": {
     "pairs": 736,
     "only_a": 59,
     "only_b": 67,
     "p": 0.5330527502675568,
-    "both": 539
+    "both": 539,
+    "lead": 1.0869565217391304,
+    "lead_lo": -7.744565217391304,
+    "lead_hi": 10.054347826086957,
+    "net_by_scenario": {
+     "bigint-calc": -19,
+     "exact-cover": -6,
+     "json-path": 2,
+     "ledger": -8,
+     "line-diff": 4,
+     "regex-lite": 5,
+     "route-fuel": 22,
+     "tiny-vm": 8
+    }
    },
    "c-cpp": {
     "pairs": 736,
     "only_a": 42,
     "only_b": 60,
     "p": 0.09183767826908254,
-    "both": 548
+    "both": 548,
+    "lead": 2.4456521739130435,
+    "lead_lo": -1.6304347826086956,
+    "lead_hi": 6.657608695652175,
+    "net_by_scenario": {
+     "bigint-calc": -5,
+     "exact-cover": 0,
+     "json-path": 2,
+     "ledger": 8,
+     "line-diff": 1,
+     "regex-lite": 0,
+     "route-fuel": 9,
+     "tiny-vm": 3
+    }
    },
    "python-go": {
     "pairs": 736,
     "only_a": 37,
     "only_b": 74,
     "p": 0.0005701181048309126,
-    "both": 561
+    "both": 561,
+    "lead": 5.0271739130434785,
+    "lead_lo": -0.8152173913043478,
+    "lead_hi": 11.141304347826086,
+    "net_by_scenario": {
+     "bigint-calc": 4,
+     "exact-cover": -7,
+     "json-path": -1,
+     "ledger": 1,
+     "line-diff": 3,
+     "regex-lite": 8,
+     "route-fuel": 18,
+     "tiny-vm": 11
+    }
    },
    "rust-go": {
     "pairs": 736,
     "only_a": 27,
     "only_b": 56,
     "p": 0.0019314374822250477,
-    "both": 579
+    "both": 579,
+    "lead": 3.940217391304348,
+    "lead_lo": -1.766304347826087,
+    "lead_hi": 11.141304347826086,
+    "net_by_scenario": {
+     "bigint-calc": 23,
+     "exact-cover": -1,
+     "json-path": -3,
+     "ledger": 9,
+     "line-diff": -1,
+     "regex-lite": 3,
+     "route-fuel": -4,
+     "tiny-vm": 3
+    }
    },
    "python-typescript": {
     "pairs": 736,
     "only_a": 35,
     "only_b": 67,
     "p": 0.0019928055857140587,
-    "both": 563
+    "both": 563,
+    "lead": 4.3478260869565215,
+    "lead_lo": -0.8152173913043478,
+    "lead_hi": 10.869565217391305,
+    "net_by_scenario": {
+     "bigint-calc": -2,
+     "exact-cover": -4,
+     "json-path": 2,
+     "ledger": 2,
+     "line-diff": 3,
+     "regex-lite": 5,
+     "route-fuel": 21,
+     "tiny-vm": 5
+    }
    },
    "python-javascript": {
     "pairs": 736,
     "only_a": 30,
     "only_b": 61,
     "p": 0.0015165131944572209,
-    "both": 568
+    "both": 568,
+    "lead": 4.211956521739131,
+    "lead_lo": -0.4076086956521739,
+    "lead_hi": 10.190217391304348,
+    "net_by_scenario": {
+     "bigint-calc": 2,
+     "exact-cover": -2,
+     "json-path": 0,
+     "ledger": 5,
+     "line-diff": 0,
+     "regex-lite": 4,
+     "route-fuel": 19,
+     "tiny-vm": 3
+    }
    }
   },
   "strong": {
@@ -2259,49 +3169,282 @@
     "only_a": 3,
     "only_b": 1,
     "p": 0.625,
-    "both": 459
+    "both": 459,
+    "lead": -0.43103448275862066,
+    "lead_lo": -1.7241379310344827,
+    "lead_hi": 0.646551724137931,
+    "net_by_scenario": {
+     "bigint-calc": -1,
+     "exact-cover": 0,
+     "json-path": 1,
+     "ledger": -1,
+     "line-diff": 0,
+     "regex-lite": -1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-rust": {
     "pairs": 464,
     "only_a": 8,
     "only_b": 16,
     "p": 0.15158963203430176,
-    "both": 440
+    "both": 440,
+    "lead": 1.7241379310344827,
+    "lead_lo": -2.3706896551724137,
+    "lead_hi": 6.896551724137931,
+    "net_by_scenario": {
+     "bigint-calc": -3,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": -1,
+     "line-diff": -1,
+     "regex-lite": 3,
+     "route-fuel": 10,
+     "tiny-vm": 0
+    }
    },
    "c-cpp": {
     "pairs": 464,
     "only_a": 10,
     "only_b": 9,
     "p": 1.0,
-    "both": 442
+    "both": 442,
+    "lead": -0.21551724137931033,
+    "lead_lo": -2.586206896551724,
+    "lead_hi": 2.1551724137931036,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": 1,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": -3,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-go": {
     "pairs": 464,
     "only_a": 4,
     "only_b": 15,
     "p": 0.0192108154296875,
-    "both": 444
+    "both": 444,
+    "lead": 2.3706896551724137,
+    "lead_lo": -1.0775862068965518,
+    "lead_hi": 7.327586206896551,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": -2,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 0,
+     "regex-lite": 2,
+     "route-fuel": 10,
+     "tiny-vm": 0
+    }
    },
    "rust-go": {
     "pairs": 464,
     "only_a": 4,
     "only_b": 7,
     "p": 0.548828125,
-    "both": 452
+    "both": 452,
+    "lead": 0.646551724137931,
+    "lead_lo": -1.7241379310344827,
+    "lead_hi": 3.2327586206896552,
+    "net_by_scenario": {
+     "bigint-calc": 4,
+     "exact-cover": -2,
+     "json-path": 0,
+     "ledger": 1,
+     "line-diff": 1,
+     "regex-lite": -1,
+     "route-fuel": 0,
+     "tiny-vm": 0
+    }
    },
    "python-typescript": {
     "pairs": 464,
     "only_a": 4,
     "only_b": 16,
     "p": 0.01181793212890625,
-    "both": 444
+    "both": 444,
+    "lead": 2.586206896551724,
+    "lead_lo": -0.8620689655172413,
+    "lead_hi": 7.327586206896551,
+    "net_by_scenario": {
+     "bigint-calc": 0,
+     "exact-cover": 0,
+     "json-path": 1,
+     "ledger": -1,
+     "line-diff": 1,
+     "regex-lite": 2,
+     "route-fuel": 10,
+     "tiny-vm": -1
+    }
    },
    "python-javascript": {
     "pairs": 464,
     "only_a": 2,
     "only_b": 16,
     "p": 0.001312255859375,
-    "both": 446
+    "both": 446,
+    "lead": 3.0172413793103448,
+    "lead_lo": -0.43103448275862066,
+    "lead_hi": 7.758620689655173,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": 0,
+     "json-path": 0,
+     "ledger": 0,
+     "line-diff": 1,
+     "regex-lite": 3,
+     "route-fuel": 10,
+     "tiny-vm": -1
+    }
+   }
+  },
+  "weak": {
+   "javascript-typescript": {
+    "pairs": 272,
+    "only_a": 29,
+    "only_b": 32,
+    "p": 0.7981526273057179,
+    "both": 138,
+    "lead": 1.1029411764705883,
+    "lead_lo": -6.25,
+    "lead_hi": 8.088235294117647,
+    "net_by_scenario": {
+     "bigint-calc": -3,
+     "exact-cover": -2,
+     "json-path": 1,
+     "ledger": -2,
+     "line-diff": 3,
+     "regex-lite": 2,
+     "route-fuel": 2,
+     "tiny-vm": 2
+    }
+   },
+   "python-rust": {
+    "pairs": 272,
+    "only_a": 51,
+    "only_b": 51,
+    "p": 1.0,
+    "both": 99,
+    "lead": 0.0,
+    "lead_lo": -19.485294117647058,
+    "lead_hi": 18.014705882352942,
+    "net_by_scenario": {
+     "bigint-calc": -16,
+     "exact-cover": -6,
+     "json-path": 2,
+     "ledger": -7,
+     "line-diff": 5,
+     "regex-lite": 2,
+     "route-fuel": 12,
+     "tiny-vm": 8
+    }
+   },
+   "c-cpp": {
+    "pairs": 272,
+    "only_a": 32,
+    "only_b": 51,
+    "p": 0.047524889256531824,
+    "both": 106,
+    "lead": 6.985294117647059,
+    "lead_lo": -4.044117647058823,
+    "lead_hi": 18.38235294117647,
+    "net_by_scenario": {
+     "bigint-calc": -6,
+     "exact-cover": -1,
+     "json-path": 2,
+     "ledger": 8,
+     "line-diff": 1,
+     "regex-lite": 3,
+     "route-fuel": 9,
+     "tiny-vm": 3
+    }
+   },
+   "python-go": {
+    "pairs": 272,
+    "only_a": 33,
+    "only_b": 59,
+    "p": 0.008780930806975229,
+    "both": 117,
+    "lead": 9.558823529411764,
+    "lead_lo": -2.2058823529411766,
+    "lead_hi": 20.955882352941178,
+    "net_by_scenario": {
+     "bigint-calc": 3,
+     "exact-cover": -5,
+     "json-path": -1,
+     "ledger": 1,
+     "line-diff": 3,
+     "regex-lite": 6,
+     "route-fuel": 8,
+     "tiny-vm": 11
+    }
+   },
+   "rust-go": {
+    "pairs": 272,
+    "only_a": 23,
+    "only_b": 49,
+    "p": 0.002942760530124976,
+    "both": 127,
+    "lead": 9.558823529411764,
+    "lead_lo": -4.411764705882353,
+    "lead_hi": 26.10294117647059,
+    "net_by_scenario": {
+     "bigint-calc": 19,
+     "exact-cover": 1,
+     "json-path": -3,
+     "ledger": 8,
+     "line-diff": -2,
+     "regex-lite": 4,
+     "route-fuel": -4,
+     "tiny-vm": 3
+    }
+   },
+   "python-typescript": {
+    "pairs": 272,
+    "only_a": 31,
+    "only_b": 51,
+    "p": 0.03524144017874746,
+    "both": 119,
+    "lead": 7.352941176470589,
+    "lead_lo": -2.941176470588235,
+    "lead_hi": 18.014705882352942,
+    "net_by_scenario": {
+     "bigint-calc": -2,
+     "exact-cover": -4,
+     "json-path": 1,
+     "ledger": 3,
+     "line-diff": 2,
+     "regex-lite": 3,
+     "route-fuel": 11,
+     "tiny-vm": 6
+    }
+   },
+   "python-javascript": {
+    "pairs": 272,
+    "only_a": 28,
+    "only_b": 45,
+    "p": 0.060370037339928545,
+    "both": 122,
+    "lead": 6.25,
+    "lead_lo": -2.2058823529411766,
+    "lead_hi": 15.808823529411764,
+    "net_by_scenario": {
+     "bigint-calc": 1,
+     "exact-cover": -2,
+     "json-path": 0,
+     "ledger": 5,
+     "line-diff": -1,
+     "regex-lite": 1,
+     "route-fuel": 9,
+     "tiny-vm": 4
+    }
    }
   }
  },
@@ -5175,6 +6318,17 @@
    "sessions": 736,
    "total": 1059
   }
+ },
+ "zig_api": {
+  "luna": 1.0166666666666666,
+  "terra": 0.35833333333333334,
+  "sol": 0.05,
+  "astra": 0.025,
+  "nemotron": 9.84375,
+  "deepseek": 0.875,
+  "haiku": 0.35,
+  "sonnet": 0.09375,
+  "opus": 0.20833333333333334
  },
  "speed": {
   "luna": {

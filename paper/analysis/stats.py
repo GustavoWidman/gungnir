@@ -33,15 +33,21 @@ def geomean_interval(values, clusters, seed=0):
 
 
 def paired(trials, a, b):
-    """Exact McNemar test of languages a and b over trials matched on model, effort, scenario
-    and generation: how often each passed where the other failed."""
+    """Languages a and b over trials matched on model, effort, scenario and generation: how often
+    each passed where the other failed, with an exact McNemar test that takes the pairs as
+    independent, and b's lead in pass rate over a, in points, with a two-stage bootstrap interval
+    that resamples the scenarios, whose pairs are not."""
     pairs = trials[trials.language.isin([a, b])].pivot_table(
         index=["model", "effort", "scenario", "rep"], columns="language", values="passed").dropna()
     only_a = int(((pairs[a] == 1) & (pairs[b] == 0)).sum())
     only_b = int(((pairs[a] == 0) & (pairs[b] == 1)).sum())
     p = stats.binomtest(only_a, only_a + only_b).pvalue if only_a + only_b else 1.0
+    lead = pairs[b] - pairs[a]
+    gap, lo, hi = mean_interval(lead, lead.index.get_level_values("scenario"))
     return {"pairs": len(pairs), "only_a": only_a, "only_b": only_b, "p": p,
-            "both": int(((pairs[a] == 1) & (pairs[b] == 1)).sum())}
+            "both": int(((pairs[a] == 1) & (pairs[b] == 1)).sum()),
+            "lead": 100 * gap, "lead_lo": 100 * lo, "lead_hi": 100 * hi,
+            "net_by_scenario": {s: int(v) for s, v in lead.groupby(level="scenario").sum().items()}}
 
 
 def logistic(trials, control):

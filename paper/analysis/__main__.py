@@ -105,7 +105,7 @@ def main(report, index_dir, runs, out):
     n["paired"] = {SHORT[m]: {f"{a}-{b}": stats.paired(d, a, b) for a, b in pairs}
                    for m, d in per.items()} | {
         g: {f"{a}-{b}": stats.paired(d, a, b) for a, b in pairs}
-        for g, d in (("all", trials), ("strong", groups["strong"]))}
+        for g, d in (("all", trials), ("strong", groups["strong"]), ("weak", groups["weak"]))}
 
     # What the session cost, relative to an average language for the same task.
     n["cost"] = {}
@@ -136,6 +136,9 @@ def main(report, index_dir, runs, out):
         kinds[lang] = {c: int(d[f"diag_{c}"].sum()) for c in cols} | {"sessions": len(d),
                                                                        "total": int(d.diagnostics.sum())}
     n["diagnostic_kinds"] = kinds
+    # Zig errors that name a member that does not exist, most often a standard-library
+    # declaration that a newer release removed, per Zig session.
+    n["zig_api"] = {SHORT[m]: float(d[d.language == "zig"].diag_api.fillna(0).mean()) for m, d in per.items()}
 
     # Runtime of the passing programs.
     per_trial = workloads.groupby(["model", "effort", "scenario", "language", "rep"]).agg(
