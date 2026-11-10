@@ -44,27 +44,28 @@ def paired(trials, a, b):
             "both": int(((pairs[a] == 1) & (pairs[b] == 1)).sum())}
 
 
-def logistic(trials):
-    """Likelihood-ratio tests of language, and of its interaction with the scenario and the
-    effort, in logistic models of pass or fail that already account for scenario and effort."""
+def logistic(trials, control):
+    """Likelihood-ratio tests of language, and of its interaction with the scenario, in logistic
+    models of pass or fail that already account for the scenario and for `control`: the system
+    (model and effort) when the trials span several models, or the effort within one model, for
+    which the interaction of language with effort is tested too."""
     d = trials.assign(language=pd.Categorical(trials.language), effort=pd.Categorical(trials.effort))
 
-    def fit(formula):
-        return smf.logit(formula, d).fit(disp=0, maxiter=500, method="bfgs")
+    def fit(formula, **kwargs):
+        return smf.logit(formula, d).fit(disp=0, maxiter=2000, method="bfgs", **kwargs)
 
-    base = fit("passed ~ C(scenario) + C(effort)")
-    main = fit("passed ~ C(scenario) + C(effort) + C(language, Treatment('python'))")
-    by_scenario = fit("passed ~ C(scenario) * C(language) + C(effort)")
-    by_effort = fit("passed ~ C(scenario) + C(effort) * C(language)")
+    language = "C(language, Treatment('python'))"
+    base = fit(f"passed ~ C(scenario) + C({control})")
+    main = fit(f"passed ~ C(scenario) + C({control}) + {language}")
+    by_scenario = fit(f"passed ~ C(scenario) * C(language) + C({control})")
 
     def lr(small, big):
         chi2 = 2 * (big.llf - small.llf)
         df = big.df_model - small.df_model
         return {"chi2": chi2, "df": int(df), "p": stats.chi2.sf(chi2, df)}
 
-    clustered = smf.logit("passed ~ C(scenario) + C(effort) + C(language, Treatment('python'))", d).fit(
-        disp=0, maxiter=500, method="bfgs", cov_type="cluster",
-        cov_kwds={"groups": pd.factorize(d.scenario + d.language.astype(str))[0]})
+    clustered = fit(f"passed ~ C(scenario) + C({control}) + {language}", cov_type="cluster",
+                    cov_kwds={"groups": pd.factorize(d.scenario + d.language.astype(str))[0]})
     odds = {}
     for name, coef in clustered.params.items():
         if "language" in name:
@@ -72,8 +73,10 @@ def logistic(trials):
             lo, hi = clustered.conf_int().loc[name]
             odds[lang] = {"or": np.exp(coef), "lo": np.exp(lo), "hi": np.exp(hi),
                           "p": clustered.pvalues[name]}
-    return {"language": lr(base, main), "scenario_x_language": lr(main, by_scenario),
-            "effort_x_language": lr(main, by_effort),
-            "r2": {"base": base.prsquared, "language": main.prsquared,
-                   "scenario_x_language": by_scenario.prsquared},
-            "odds_vs_python": odds}
+    result = {"language": lr(base, main), "scenario_x_language": lr(main, by_scenario),
+              "r2": {"base": base.prsquared, "language": main.prsquared,
+                     "scenario_x_language": by_scenario.prsquared},
+              "odds_vs_python": odds}
+    if control == "effort":
+        result["effort_x_language"] = lr(main, fit(f"passed ~ C(scenario) + C(effort) * C(language)"))
+    return result

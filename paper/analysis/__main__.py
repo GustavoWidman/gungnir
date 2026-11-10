@@ -62,11 +62,31 @@ def main(report, index_dir, runs, out):
                        "trials passing every hidden test (%)", out / "figures", "pass-by-language",
                        xlim=(0, 104))
 
+    # The models that pass nearly everything, and those whose pass rates leave the language room
+    # to matter.
+    strong = [m for m in models if per[m].passed.mean() >= 0.9]
+    weak = [m for m in models if m not in strong]
+    groups = {"strong": trials[trials.model.isin(strong)], "weak": trials[trials.model.isin(weak)]}
+    n["groups"] = {"strong": [SHORT[m] for m in strong], "weak": [SHORT[m] for m in weak]}
+    n["outcomes_group"] = {g: by_language(d, lambda x: {k: 100 * v for k, v in
+                                                         x.outcome.value_counts(normalize=True).items()})
+                           for g, d in groups.items()}
+    slow = groups["strong"][(groups["strong"].language == "python") & (groups["strong"].outcome == "timeout")]
+    n["strong_python_timeouts"] = {"total": len(slow)} | {s: int(k) for s, k in slow.scenario.value_counts().items()}
+
+    grids = {m: per[m].pivot_table(index="scenario", columns="language", values="passed")[LANGUAGES] * 100
+             for m in weak}
+    n["scenario_grid"] = {SHORT[m]: {s: {lang: float(v) for lang, v in row.items()} for s, row in g.iterrows()}
+                          for m, g in grids.items()}
+    figures.heatmaps(grids, out / "figures", "weak-scenarios")
+
+    n["effort_models"] = {SHORT[m]: {e: 100 * float(d[d.effort == e].passed.mean())
+                                     for e in EFFORTS if (d.effort == e).any()} for m, d in per.items()}
+    figures.effort_models(n["effort_models"], models, weak, out / "figures", "effort-models")
+
+    n["logistic"] = stats.logistic(trials, "system")
     luna = per.get("gpt-6-luna")
     if luna is not None:
-        grid = luna.pivot_table(index="scenario", columns="language", values="passed")[LANGUAGES] * 100
-        n["scenario_grid"] = {s: {lang: float(v) for lang, v in row.items()} for s, row in grid.iterrows()}
-        figures.heatmap(grid, out / "figures", "luna-scenarios", label="")
         rates = {}
         for lang in LANGUAGES:
             series = []
@@ -79,12 +99,14 @@ def main(report, index_dir, runs, out):
         n["effort"] = {lang: {e: r for e, r, _, _ in s} for lang, s in rates.items()} | {
             "all": dict(zip(EFFORTS, mean))}
         figures.effort_multiples(rates, mean, out / "figures", "luna-effort")
-        n["logistic"] = stats.logistic(luna)
+        n["logistic_luna"] = stats.logistic(luna, "effort")
 
     pairs = [("javascript", "typescript"), ("python", "rust"), ("c", "cpp"), ("python", "go"),
              ("rust", "go"), ("python", "typescript"), ("python", "javascript")]
     n["paired"] = {SHORT[m]: {f"{a}-{b}": stats.paired(d, a, b) for a, b in pairs}
-                   for m, d in per.items()}
+                   for m, d in per.items()} | {
+        g: {f"{a}-{b}": stats.paired(d, a, b) for a, b in pairs}
+        for g, d in (("all", trials), ("strong", groups["strong"]))}
 
     # What the session cost, relative to an average language for the same task.
     n["cost"] = {}

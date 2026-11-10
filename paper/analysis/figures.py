@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib import font_manager  # noqa: E402
 
-from .data import EFFORTS, LANGUAGE_NAMES, MODEL_NAMES, PANEL  # noqa: E402
+from .data import EFFORTS, LANGUAGE_NAMES, MODEL_NAMES, PANEL, SHORT  # noqa: E402
 
 COLUMN = 3.4  # inches, one column of the two-column layout
 PAGE = 7.1  # inches, both columns
@@ -104,23 +104,51 @@ def index_bars(rows, values, out, name):
     ax.set_xlabel("gungnir index (average language = 100)", fontsize=8)
     save(fig, out, name)
 
-def heatmap(table, out, name, *, label):
-    """Scenario by language grid of pass rates in percent."""
-    fig, ax = plt.subplots(figsize=(COLUMN, 2.5), layout="constrained")
-    data = table.values
-    ax.imshow(data, cmap="Greys", vmin=-10, vmax=130, aspect="auto")
-    for i in range(data.shape[0]):
-        for j in range(data.shape[1]):
-            v = data[i, j]
-            ax.text(j, i, f"{v:.0f}", ha="center", va="center", fontsize=7,
-                    color="white" if v > 62 else INK)
-    ax.set_xticks(range(data.shape[1]), [LANGUAGE_NAMES[c] for c in table.columns], rotation=35,
-                  ha="right")
-    ax.set_yticks(range(data.shape[0]), table.index)
-    ax.tick_params(length=0)
-    for s in ax.spines.values():
-        s.set_visible(False)
-    ax.set_title(label, pad=4)
+def heatmaps(tables, out, name):
+    """One scenario by language grid of pass rates in percent per model, side by side."""
+    fig, axes = plt.subplots(1, len(tables), sharey=True, layout="constrained",
+                             figsize=(PAGE if len(tables) > 1 else COLUMN, 2.5))
+    axes = np.atleast_1d(axes)
+    for ax, (model, table) in zip(axes, tables.items()):
+        data = table.values
+        ax.imshow(data, cmap="Greys", vmin=-10, vmax=130, aspect="auto")
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                v = data[i, j]
+                ax.text(j, i, f"{v:.0f}", ha="center", va="center", fontsize=7,
+                        color="white" if v > 62 else INK)
+        ax.set_xticks(range(data.shape[1]), [LANGUAGE_NAMES[c] for c in table.columns], rotation=35,
+                      ha="right")
+        ax.set_yticks(range(data.shape[0]), table.index)
+        ax.tick_params(length=0)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.set_title(MODEL_NAMES[model], pad=4)
+    save(fig, out, name)
+
+
+def effort_models(rates, models, labelled, out, name):
+    """rates[short][effort] = pass rate over languages; each model is a line across the efforts it
+    ran, black and named for the models in `labelled`, grey for the rest."""
+    fig, ax = plt.subplots(figsize=(COLUMN, 1.9), layout="constrained")
+    x = {e: i for i, e in enumerate(EFFORTS)}
+    for model in models:
+        r = rates[SHORT[model]]
+        xs, ys = [x[e] for e in r], list(r.values())
+        dark = model in labelled
+        ax.plot(xs, ys, "-o", color=INK if dark else MUTED, lw=1.0 if dark else 0.7,
+                ms=2.6 if dark else 1.8, zorder=3 if dark else 2)
+        if dark:
+            ax.annotate(PANEL[model], (xs[-1], ys[-1]), xytext=(4, 0), textcoords="offset points",
+                        va="center", fontsize=7, color=INK)
+    ax.set_xticks(range(len(EFFORTS)), EFFORTS)
+    ax.set_xlim(-0.3, len(EFFORTS) - 0.4)
+    ax.set_ylim(0, 102)
+    ax.set_yticks([0, 25, 50, 75, 100])
+    ax.tick_params(axis="y", length=2.5)
+    ax.grid(axis="y", color="#e6e6e6", lw=0.5, zorder=0)
+    ax.set_ylabel("pass rate (%)")
+    ax.set_xlabel("reasoning effort")
     save(fig, out, name)
 
 
