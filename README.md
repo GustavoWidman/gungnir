@@ -7,8 +7,8 @@ against a reference solution in the same language on a dedicated machine, and ex
 sample as CSV tables for statistical analysis. A system under test is a harness, a model and an
 effort level, so every claim is about that combination as shipped.
 
-The study behind it is in progress. The manuscript is a draft in [`paper/`](paper/), with
-research notes in [`paper/notes/`](paper/notes/).
+The study behind it is reported in the manuscript in [`paper/`](paper/), with research notes
+in [`paper/notes/`](paper/notes/).
 
 ## Start here
 
@@ -16,17 +16,18 @@ research notes in [`paper/notes/`](paper/notes/).
   and every phase
 - [AGENTS.md](AGENTS.md): repository and crate map, invariants, Rust style and commit rules
 - [`gungnir.toml`](gungnir.toml): the catalog of harnesses, backends, models and dated prices
-- [`experiments/`](experiments/): the matrices that have been run
+- [`experiments/`](experiments/): the experiment matrices
 
 ## What a trial measures
 
-A trial is one system on one scenario in one language, at one repetition. It moves through four
-phases, each committed as a directory that is complete or absent:
+A trial is one system on one scenario in one language, at one repetition. It moves through three
+phases, each committed as a directory that is complete or absent, and a report folds the
+committed trials of one or more experiments into tables:
 
 | Phase | What it records |
 |---|---|
 | `run` | The agent's session in a sandbox: transcript, final workspace, turns, wall time, and token usage per request, with the vendor's quota readings |
-| `grade` | An offline build, and every hidden case run in its own sandbox and compared on the host: pass, wrong answer, crash, timeout or out of memory per case, plus lizard complexity |
+| `grade` | An offline build, and every hidden case run in its own sandbox and compared on the host: pass, wrong answer, output over the cap, crash, timeout or out of memory per case, plus lizard complexity |
 | `measure` | The passing program against the reference, in alternating ABBA blocks pinned to one isolated core: wall-time ratio with a 95% interval, instruction ratio and peak memory per workload |
 | `report` | CSV tables of model samples: `trials`, `cases`, `functions`, `usage`, `quota`, `workloads` and `timings` |
 
@@ -49,7 +50,10 @@ and rate limits are retried until the session ends on its own, and never reach t
 | Codex | CLIProxyAPI (Responses endpoint) | Gemini 3.8 Flash |
 | Codex | LM Studio on local hardware (Responses endpoint) | Ornith 1.5 35B-A3B |
 
-Every model runs at every effort level it offers. Harness versions are pinned per experiment.
+The paper's study uses the Claude Haiku, Sonnet and Opus, OpenAI, NVIDIA and DeepSeek models;
+Fable, GLM, Gemini and Ornith have experiments of their own that it leaves out. An experiment
+runs each model at every effort level it offers or at the ones it names. Harness
+versions are pinned per experiment.
 
 | Language | Toolchain | Build |
 |---|---|---|
@@ -59,7 +63,7 @@ Every model runs at every effort level it offers. Harness versions are pinned pe
 | Go | 1.27 | `go build` |
 | C | Clang 23 | `-std=gnu23 -O3 -DNDEBUG` |
 | C++ | Clang 23, libstdc++ | `-std=gnu++23 -O3 -DNDEBUG` |
-| JavaScript | Bun 1.4 | run by Bun |
+| JavaScript | Bun 1.4 | parsed by `bun build`, run by Bun |
 | TypeScript | TypeScript 7.0, Bun 1.4 | strict `tsc --noEmit`, run by Bun |
 
 Each prompt states the toolchain version the sandbox reports, and the agent gets only the
@@ -89,17 +93,17 @@ with memory, task and time limits. A sandbox binds only the Nix closures of its 
 never the whole store, so no hidden case or reference is reachable. Grading and measuring run
 offline. An agent reaches the network only through a host-side CONNECT proxy that tunnels its
 backend's allowlisted hosts on port 443 and logs every connection. For NVIDIA, whose free tier
-refuses bursts of requests, the proxy relays the agent's model requests itself: it adds the API
-key, so the agent holds none, and tries a refused request again for up to 10 minutes. The relay
-also carries the requests of the backends whose endpoints the tunnel cannot reach: CLIProxyAPI
-on port 8317, and LM Studio over plain HTTP on the local network.
+refuses bursts of requests, and for DeepSeek, the proxy relays the agent's model requests
+itself: it adds the API key, so the agent holds none, and tries a refused request again for up
+to 10 minutes. The relay also carries the requests of the backends whose endpoints the tunnel
+cannot reach: CLIProxyAPI on port 8317, and LM Studio over plain HTTP on the local network.
 Credentials are staged into an isolated home per attempt and redacted from every stored
 transcript and log.
 
 ## Requirements
 
-- Linux with a systemd user manager that delegates the `cpu`, `cpuset`, `io`, `memory` and
-  `pids` controllers, and unprivileged user namespaces for bubblewrap.
+- Linux with a systemd user manager that delegates the `memory` and `pids`
+  controllers, and unprivileged user namespaces for bubblewrap.
 - Nix with flakes. The dev shell provides the Rust toolchain, Typst and the
   `GUNGNIR_TOOLCHAINS` set of sandbox environments.
 - A login or API key per backend, in the files `gungnir.toml` names:
@@ -111,7 +115,7 @@ transcript and log.
   - `~/.config/gungnir/cliproxy/api_key` for CLIProxyAPI;
   - `~/.config/gungnir/lmstudio/api_key` for LM Studio, which checks no key, so any placeholder
     such as `lm-studio` serves.
-- For measuring, a quiet machine with `kernel.perf_event_paranoid` at 1 or less, ideally
+- For measuring, a quiet machine with `kernel.perf_event_paranoid` at 2 or less, ideally
   with isolated cores (`isolcpus`, `nohz_full`), where `measure` runs one lane on the first
   thread of each, and fixed clocks, which `clock_mhz` in an experiment's `[measure]` table
   checks. An experiment's `[machine]` table pins its measurements to one machine, and
@@ -174,6 +178,12 @@ languages = ["python", "rust", "zig", "go", "c", "cpp", "javascript", "typescrip
 cpu = "13th Gen Intel(R) Core(TM) i9-13900K"
 host = "11b301add99fa61a4eb9f0a36eae41f1"
 
+[measure]
+blocks = 6
+runs = 3
+warmup = 0
+clock_mhz = 3000
+
 [pins]
 codex = "0.166.0"
 
@@ -182,7 +192,7 @@ wall = "4h"
 idle = "30m"
 
 [concurrency]
-openai = 5
+openai = 6
 
 [[systems]]
 model = "gpt-6-luna"
@@ -192,6 +202,12 @@ repetitions = 5
 [[systems]]
 model = "gpt-6.1-terra"
 efforts = "all"
+repetitions = 5
+
+[[systems]]
+model = "gpt-6.1-sol"
+efforts = "all"
+repetitions = 2
 ```
 
 An optional `[measure]` table states the timing protocol with all three of its keys: `blocks`
@@ -208,22 +224,22 @@ Results live under `runs/`, which is not tracked.
 
 ## Scope and limits
 
-- Systems run on vendor subscriptions, on NVIDIA's free API, behind a CLIProxyAPI instance and
-  on local hardware through LM Studio, through vendor harnesses.
+- Systems run on vendor subscriptions, on NVIDIA's free API and DeepSeek's API, behind a
+  CLIProxyAPI instance and on local hardware through LM Studio, through vendor harnesses.
   Results describe a harness, model and effort together; the harness is part of what is
   measured.
 - Costs are list-price equivalents computed from token usage and dated price tables, not bills.
 - An NVIDIA session's wall time includes the relay's waits on the free tier's throttling, which
   each attempt's `egress.jsonl` records.
 - Claude Code cuts each response of a model it does not know at 32,000 output tokens, reasoning
-  included, and tells the model to resume. After three such cuts in a row it ends the session
-  in an error, which is no sample, but a session that resumed and completed is one, and its
+  included, and tells the model to resume, up to three times in a row; the next cut ends the
+  session in an error, which is no sample, but a session that resumed and completed is one, and its
   transcript holds the resume turn. A model whose catalog entry sets `max-output-tokens`
-  launches with Claude Code's cap raised to it: GLM-5.3 and GLM-5.3-Flash state 131,072, which
-  Claude Code 2.1.316 lowers to its own maximum of 128,000.
+  launches with Claude Code's cap raised to it: the Claude models state 128,000, and GLM-5.3 and
+  GLM-5.3-Flash state 131,072, which Claude Code 2.1.316 lowers to its own maximum of 128,000.
 - Token categories are not comparable across vendors as reported: only Anthropic reports cache
-  writes, while OpenAI, Z.ai and NVIDIA count them as plain input. Compare new input (uncached
-  input plus cache writes), cache reads and output separately.
+  writes, while OpenAI, Z.ai, NVIDIA and DeepSeek count them as plain input. Compare new input
+  (uncached input plus cache writes), cache reads and output separately.
 - Pass rates near 100% stop separating systems, which is why the study scenarios are harder
   than the pilot's. Systems that still pass nearly everything differ in program speed, tokens
   and cost.
