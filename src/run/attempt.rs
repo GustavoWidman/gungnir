@@ -1026,7 +1026,7 @@ efforts = ["high"]
     }
 
     #[test]
-    fn a_discard_record_from_before_reasons_reads_as_a_rate_limit() {
+    fn a_discard_record_without_a_reason_reads_as_a_rate_limit() {
         let old = r#"{
             "session": "20261103T110000Z-7",
             "started": "2026-11-03T11:00:00Z",

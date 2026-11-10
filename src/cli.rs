@@ -97,11 +97,13 @@ enum Command {
         /// anthropic=2026-11-04T04:00:00-03:00. Repeat for several.
         #[arg(long = "stop-at", value_name = "BACKEND=TIME", value_parser = deadline)]
         deadlines: Vec<(BackendId, DateTime<Utc>)>,
-        /// Stop a backend after this many attempts in a row errored, crashed or failed.
+        /// Stop a backend after this many attempts in a row ended in an error, a crash, a sandbox
+        /// fault or a failure of gungnir's own.
         #[arg(long, value_name = "N", default_value_t = 3)]
         max_errors: u32,
-        /// Leave a trial pending once this many of its attempts were no sample or failed, rate
-        /// limits aside. Until then such a trial runs again after the rest of its lane.
+        /// Leave a trial pending once this many of its attempts in this invocation were no
+        /// sample or failed, rate limits aside. Until then such a trial runs again after the rest
+        /// of its lane.
         #[arg(long, value_name = "N", default_value = "5")]
         max_attempts: NonZeroU32,
         /// Print the committed runs that would be withdrawn as no sample and the trials each
@@ -1056,8 +1058,10 @@ fn write_rows<R: AsRef<[String]>>(f: &mut fmt::Formatter<'_>, rows: &[R]) -> fmt
 
 #[derive(Args)]
 struct Bench {
+    /// The scenario whose workloads to time.
     #[arg(long, value_name = "ID")]
     scenario: ScenarioId,
+    /// The language of the reference, and of the candidate.
     #[arg(long, value_name = "ID")]
     language: LanguageId,
     /// The candidate's workspace. Defaults to the reference.

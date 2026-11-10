@@ -1,4 +1,4 @@
-//! Trial identity and the layout of an experiment's results directory. Paths under
+//! Trial identity and the layout of an experiment's results directory. The directories under
 //! `results/<experiment>/` are named here and nowhere else.
 use crate::{
     catalog::System,
@@ -234,7 +234,7 @@ impl AttemptDir {
         self.path.join("artifacts")
     }
 
-    /// Present only for an attempt a rate limit ended.
+    /// Present only for an attempt that is no sample, with why.
     pub fn discarded(&self) -> PathBuf {
         self.path.join("discarded.json")
     }

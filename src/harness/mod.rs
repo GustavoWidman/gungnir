@@ -1,6 +1,7 @@
 //! Everything vendor-specific about driving an agent CLI headless: the command that launches
 //! it, the events in its stdout, and the fold of those events into how the attempt ended.
-//! Each driver is pure, so it is tested against captured transcripts with no process.
+//! Each driver is pure, so it is tested against captured and hand-written transcripts with no
+//! process.
 mod claude_code;
 mod codex;
 mod fold;

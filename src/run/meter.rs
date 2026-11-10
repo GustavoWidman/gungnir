@@ -15,8 +15,8 @@ use tokio::time::Instant;
 /// again, so that a hold also ends when a window that empties gradually falls below it.
 pub const REFRESH: Duration = Duration::from_secs(2 * 60);
 
-/// The hold fraction of a backend the command line names none for. In the study's GLM arm a
-/// session spent roughly 5% of the Pro plan's 5-hour window, and a lane holds with up to six
+/// The hold fraction of a backend the command line names none for. In the study-glm experiment
+/// a session spent roughly 5% of the Pro plan's 5-hour window, and a lane holds with up to six
 /// still running, about half done: holding at 80% leaves them the room to finish.
 pub const HOLD: f64 = 0.8;
 

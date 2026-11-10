@@ -171,10 +171,9 @@ impl Toolchains {
 
     /// perf and the flame graph tools, bound only into the sandboxes of `gungnir profile`.
     pub fn profile(&self) -> Result<&Toolchain> {
-        self.profile.as_ref().wrap_err(
-            "this toolchain set has no profiling tools; profile with a set built since they were \
-             added",
-        )
+        self.profile
+            .as_ref()
+            .wrap_err("this toolchain set has no profiling tools; profile with a set that has them")
     }
 
     pub fn language(&self, id: &str) -> Result<&Toolchain> {

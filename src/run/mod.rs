@@ -107,8 +107,9 @@ struct Manifest<'a> {
 }
 
 /// Runs every pending trial of `experiment`, held in the repository `repo`, until each has a
-/// committed run, `stop` drains, or an attempt fails. Refuses to start when a harness CLI is
-/// not at its pinned version, a reference does not pass, or a committed run is stale.
+/// committed run, `stop` drains, or the guard leaves it pending. Refuses to start when a
+/// harness CLI is not at its pinned version, a reference does not pass, or a committed run is
+/// stale.
 pub async fn run(
     experiment: &Experiment,
     repo: &Path,
@@ -322,7 +323,7 @@ fn homes(runtime: &Path, results: &ResultsDir) -> PathBuf {
 }
 
 /// Asks each harness CLI the experiment uses for its version, in an offline sandbox with only
-/// its own environment, and refuses one that is not at its pin.
+/// its own environment over the base, and refuses one that is not at its pin.
 async fn probe_versions(
     experiment: &Experiment,
     host: &Host<'_>,

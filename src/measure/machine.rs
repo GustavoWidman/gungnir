@@ -47,7 +47,7 @@ pub fn host_id(machine_id: &str) -> String {
 pub struct Machine {
     /// The CPU model, which some architectures do not report.
     pub cpu: Option<String>,
-    /// The host id, `/etc/machine-id`, which a record may lack.
+    /// The [`host_id`] of `/etc/machine-id`, which a record may lack.
     #[serde(default)]
     pub host: Option<String>,
     /// How many CPUs gungnir could run on, as `nproc` counts them.

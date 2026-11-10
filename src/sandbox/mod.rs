@@ -21,7 +21,8 @@ pub const HOME: &str = "/home/agent";
 #[derive(Clone, Debug)]
 pub struct Spec {
     pub network: Network,
-    /// Store paths bound read-only. Nothing else of `/nix/store` is visible.
+    /// Store paths bound read-only, beside the sandbox base's closure. Nothing else of
+    /// `/nix/store` is visible.
     pub closure: Closure,
     /// Host paths bound into the guest, in order, after everything else.
     pub mounts: Vec<Mount>,

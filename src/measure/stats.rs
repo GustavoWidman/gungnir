@@ -62,7 +62,7 @@ impl Ratio {
 }
 
 /// The 97.5th percentile of Student's t with `df` degrees of freedom. Tabulated up to 30,
-/// beyond which the Cornish-Fisher expansion is within 1e-6 of it.
+/// beyond which the Cornish-Fisher expansion is within 2e-6 of it.
 fn t975(df: usize) -> f64 {
     const TABLE: [f64; 30] = [
         12.706205, 4.302653, 3.182446, 2.776445, 2.570582, 2.446912, 2.364624, 2.306004, 2.262157,

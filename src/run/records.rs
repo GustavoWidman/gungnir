@@ -182,8 +182,8 @@ pub struct DiscardedAttempt {
     pub(super) usage: Vec<Sample>,
 }
 
-/// `discarded.json` as files of any age hold it. Before discards had reasons, only rate limits
-/// were discarded, with the vendor's reset time beside the usage.
+/// `discarded.json` as files of any age hold it. A file without a reason records a rate limit,
+/// with the vendor's reset time beside the usage.
 #[derive(Deserialize)]
 struct StoredDiscard {
     session: SessionId,

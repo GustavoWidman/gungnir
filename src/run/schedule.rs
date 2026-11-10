@@ -45,8 +45,9 @@ pub struct Guard {
     pub ceilings: BTreeMap<BackendId, Ceiling>,
     /// Stop starting attempts on a backend at this time.
     pub deadlines: BTreeMap<BackendId, DateTime<Utc>>,
-    /// Stop a backend after this many attempts in a row errored, crashed or failed, since an
-    /// expired login or an outage would otherwise turn every remaining trial into an error.
+    /// Stop a backend after this many attempts in a row ended in an error, a crash, a sandbox
+    /// fault or a failure of gungnir's own, since an expired login or an outage would otherwise
+    /// turn every remaining trial into an error.
     pub max_errors: Option<u32>,
     /// Leave a trial pending once this many of its attempts were discarded or failed, rate
     /// limits aside, so that a trial its agent can never finish does not run forever.
@@ -57,8 +58,8 @@ pub struct Guard {
 }
 
 /// A quota ceiling on one window, or on every window when `window` is `None`, counted only from
-/// attempts that started at or after `from`, so that a ceiling meant for a quota window that
-/// has not reset yet ignores the window before it.
+/// attempts that started, and readings taken, at or after `from`, so that a ceiling meant for a
+/// quota window that has not reset yet ignores the window before it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ceiling {
     pub window: Option<String>,
@@ -120,7 +121,8 @@ struct Lane {
     queue: VecDeque<TrialKey>,
     gate: Gate,
     running: usize,
-    /// Attempts in a row that errored, crashed or failed.
+    /// Attempts in a row that ended in an error, a crash, a sandbox fault or a failure of
+    /// gungnir's own.
     errors: u32,
     /// Why the lane starts nothing more, once its guard tripped.
     stopped: Option<String>,
@@ -376,8 +378,9 @@ fn retry(result: &Result<Attempted>) -> Option<Retry> {
 }
 
 /// The errors in a row after an attempt that ended as `result`, from `errors` before it. An
-/// error, a crash or a fault adds one, a session that ran until it finished or ran out of
-/// time resets the count, and a rate limit or a stop says nothing either way.
+/// error, a crash, a fault or a failure of gungnir's own adds one, a session that ran until it
+/// finished or ran out of time resets the count, and a rate limit or a stop says nothing either
+/// way.
 fn errors_after(errors: u32, result: &Result<Attempted>) -> u32 {
     match result {
         Ok(Attempted::Committed(_)) => 0,

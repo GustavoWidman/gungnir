@@ -40,7 +40,7 @@ pub struct Session {
     /// The version each harness CLI printed, for an invocation that runs agents.
     harnesses: BTreeMap<HarnessName, HarnessVersion>,
     /// The store path of each toolchain environment used, named as under
-    /// `$GUNGNIR_TOOLCHAINS`: `base`, `language/<id>` or `harness/<name>`.
+    /// `$GUNGNIR_TOOLCHAINS`: `base`, `measure`, `profile`, `language/<id>` or `harness/<name>`.
     toolchains: BTreeMap<String, PathBuf>,
 }
 

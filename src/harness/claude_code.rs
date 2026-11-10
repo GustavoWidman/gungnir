@@ -73,8 +73,8 @@ impl Driver for ClaudeCode {
                 ));
             }
         }
-        // Claude Code cuts each response of a model it does not know at 32,000 output tokens,
-        // tells the model to resume, and ends the session after three such cuts in a row.
+        // Claude Code cuts each response of a model it does not know at 32,000 output tokens and
+        // tells the model to resume, up to three times in a row; the next cut ends the session.
         if let Some(tokens) = req.system.max_output_tokens() {
             env.push(plain("CLAUDE_CODE_MAX_OUTPUT_TOKENS", tokens.to_string()));
         }
