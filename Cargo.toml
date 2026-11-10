@@ -3,6 +3,7 @@ name = "gungnir"
 version = "0.1.0"
 edition = "2024"
 description = "Benchmark of coding agents across programming languages and reasoning effort"
+license = "MIT"
 publish = false
 
 [dependencies]

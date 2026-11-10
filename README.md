@@ -252,3 +252,9 @@ Results live under `runs/`, which is not tracked.
   python3 -m analysis.crashes ../runs/report/study ../runs/index/study ../runs ../scenarios .
   ```
 - `docs/architecture.md`: the design contract
+
+## License
+
+Everything outside `paper/` is released under the [MIT license](LICENSE). The manuscript in
+`paper/` is © its authors, all rights reserved. The records of the study are archived under CC BY
+4.0 at [doi.org/10.5281/zenodo.24120074](https://doi.org/10.5281/zenodo.24120074).
