@@ -24,7 +24,7 @@ In bench mode the noise floor is under 0.5% for workloads above about 150 ms, an
 
 ## Desktop, four lanes, 2026-11-05
 
-CPUs 8-15 (P-cores 4 to 7) are isolated with `isolcpus`, `nohz_full` and `rcu_nocbs`. Four A/A comparisons run at once, one on the first thread of each isolated P-core (CPUs 8, 10, 12 and 14), with the sibling threads idle. Eight references were timed in two rounds of four per configuration, at the default protocol (6 ABBA blocks of 3 runs) unless noted. Raw output: `data/desktop-aa-lanes-2026-11-05/`, including a clock and package-temperature log sampled every 5 seconds.
+CPUs 8-15 (P-cores 4 to 7) are isolated with `isolcpus`, `nohz_full` and `rcu_nocbs`, and bench mode moves every IRQ's affinity, and the default for new ones, to the other CPUs (`hosts/desktop-nixos/benchmark.nix` in the machine's NixOS configuration). Four A/A comparisons run at once, one on the first thread of each isolated P-core (CPUs 8, 10, 12 and 14), with the sibling threads idle. Eight references were timed in two rounds of four per configuration, at the default protocol (6 ABBA blocks of 3 runs) unless noted. Raw output: `data/desktop-aa-lanes-2026-11-05/`, including a clock and package-temperature log sampled every 5 seconds.
 
 | Configuration | Median 95% half-width | 90th percentile | Largest | Reference run time |
 |---|---|---|---|---|
