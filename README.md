@@ -7,8 +7,10 @@ against a reference solution in the same language on a dedicated machine, and ex
 sample as CSV tables for statistical analysis. A system under test is a harness, a model and an
 effort level, so every claim is about that combination as shipped.
 
-The study behind it is reported in the manuscript in [`paper/`](paper/), with research notes
-in [`paper/notes/`](paper/notes/).
+The study behind it is reported in *Does the Language Matter to a Coding Agent? Correctness,
+Cost and Speed in Eight Languages*, on SSRN at
+[doi.org/10.2139/ssrn.7695922](https://doi.org/10.2139/ssrn.7695922). Its source is in
+[`paper/`](paper/), with research notes in [`paper/notes/`](paper/notes/).
 
 ## Start here
 
